@@ -59,8 +59,7 @@ void initResidual(Graph& graph) {
       PRTy sum = 0.0;
       for (auto jj = graph.in_edge_begin(src), ej = graph.in_edge_end(src); jj != ej; ++jj){
         auto dst = graph.getInEdgeDst(jj);
-        auto& ddata = graph.getData(dst);
-        sum += 1.0/nout(graph,dst, Galois::MethodFlag::NONE);
+        sum += 1.0/nout(graph, dst, Galois::MethodFlag::NONE);
       }
       data.residual = sum * alpha2 * (1.0-alpha2);
     }, Galois::do_all_steal(true));

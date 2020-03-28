@@ -59,10 +59,11 @@ inline void* alloc() {
     perror("mmap");
     exit(1);
   }
-  if (mbind(p, allocSize, MPOL_PREFERRED, NULL, 0, 0) < 0) {
-    perror("mbind");
-    exit(1);
-  }
+// I have no idea where MPOL_PREFERRED and mbind are defined.
+//  if (mbind(p, allocSize, MPOL_PREFERRED, NULL, 0, 0) < 0) {
+//    perror("mbind");
+//    exit(1);
+//  }
   return p;
 }
 #else

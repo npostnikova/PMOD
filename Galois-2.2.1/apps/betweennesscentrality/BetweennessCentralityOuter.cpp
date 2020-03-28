@@ -53,9 +53,10 @@ static llvm::cl::opt<bool> printAll("printAll", llvm::cl::desc("Print betweennes
 typedef Galois::Graph::LC_CSR_Graph<void, void>::with_no_lockable<true>::type
   ::with_numa_alloc<true>::type Graph;
 typedef Graph::GraphNode GNode;
+typedef uint64_t gsize_t ;
 
 Graph* G;
-int NumNodes;
+gsize_t NumNodes;
 
 Galois::Runtime::PerThreadStorage<double*> CB;
 Galois::Runtime::PerThreadStorage<double*> perThreadSigma;
@@ -85,9 +86,7 @@ struct process {
     std::deque<int, PerIt<int>::Ty> d(NumNodes, 0, lwl.getPerIterAlloc());
     std::deque<double, PerIt<double>::Ty> delta(NumNodes, 0.0, lwl.getPerIterAlloc());
     std::deque<GNdeque, PerIt<GNdeque>::Ty> succ(NumNodes, GNdeque(lwl.getPerIterAlloc()), lwl.getPerIterAlloc());
-#endif    
-    unsigned int QAt = 0;
-    
+#endif
     int req = _req;
     
     sigma[req] = 1;
@@ -127,7 +126,7 @@ struct process {
       delta[w] = delta_w;
     }
     double* Vec = *CB.getLocal();
-    for (unsigned int i = 0; i < NumNodes; ++i) {
+    for (gsize_t i = 0; i < NumNodes; ++i) {
       Vec[i] += delta[i];
       delta[i] = 0;
       sigma[i] = 0;
@@ -142,7 +141,7 @@ struct process {
 void verify() {
   double sampleBC = 0.0;
   bool firstTime = true;
-  for (int i=0; i<NumNodes; ++i) {
+  for (gsize_t i = 0; i < NumNodes; ++i) {
     double bc = (*CB.getRemote(0))[i];
     for (unsigned int j = 1; j < Galois::getActiveThreads(); ++j)
       bc += (*CB.getRemote(j))[i];
@@ -168,7 +167,7 @@ void printBCcertificate() {
   std::ofstream outf(foutname.str().c_str());
   std::cerr << "Writing certificate..." << std::endl;
 
-  for (int i=0; i<NumNodes; ++i) {
+  for (gsize_t i = 0; i < NumNodes; ++i) {
     double bc = (*CB.getRemote(0))[i];
     for (unsigned int j = 1; j < Galois::getActiveThreads(); ++j)
       bc += (*CB.getRemote(j))[i];

@@ -43,10 +43,10 @@
 
 #include GALOIS_CXX11_STD_HEADER(type_traits)
 #include <limits>
-
 #include <atomic>
-
 #include <iostream>
+#include <cmath>
+
 
 namespace Galois {
 namespace WorkList {

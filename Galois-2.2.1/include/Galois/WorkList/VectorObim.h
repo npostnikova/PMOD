@@ -181,8 +181,8 @@ private:
 
   inline CTy* updateLocalOrCreate(perItem& p, Index i) {
     //Try local then try update then find again or else create and update the master log
-    CTy* lC;
-    if (lC = Q[i])
+    CTy* lC = Q[i];
+    if (lC)
       return lC;
     //slowpath
     return slowUpdateLocalOrCreate(p, i);
@@ -245,7 +245,7 @@ public:
     // Find a successful pop
     perItem& p = *current.getLocal();
     CTy* C = p.current;
-    if (BlockPeriod && (BlockPeriod < 0 || (p.numPops++ & ((1ull<<BlockPeriod)-1) == 0)))
+    if (BlockPeriod && (BlockPeriod < 0 || ((p.numPops++ & ((1ull<<BlockPeriod)-1)) == 0)))
       return slowPop(p);
 
     Galois::optional<value_type> retval;

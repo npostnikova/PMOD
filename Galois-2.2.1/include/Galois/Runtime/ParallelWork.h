@@ -42,6 +42,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <cmath>
 
 #ifdef GALOIS_USE_HTM
 #include <speculation.h>

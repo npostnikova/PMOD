@@ -162,7 +162,7 @@ private:
       if(d==a.d) return true;
       return false;
       //return (k == a.k && d == a.d);
-    }  
+    }
     bool operator>=(const deltaIndex& a) const
     {
       unsigned delt = std::max(d, a.d);
@@ -340,10 +340,10 @@ private:
         for (unsigned i = 1; i < Runtime::activeThreads; ++i){
           while(current.getRemote(i)->lock.try_lock());
         }
-      
+
         ERR_MSG<<"Locked everyone else"<<std::endl;
         for(unsigned i=0; i<Runtime::activeThreads; ++i){
-        
+
           current.getRemote(i)->sinceLastFix=0;
           current.getRemote(i)->slowPopsLastPeriod=0;
           current.getRemote(i)->pushesLastPeriod=0;
@@ -366,7 +366,7 @@ private:
     p.popsFromSameQ=0;
     // if(myID == 0 && p.sinceLastFix>counter
     //   && ((double)(p.slowPopsLastPeriod)/(double)(p.sinceLastFix)) > 1.0/(double)(chunk_size)){
-    
+
     // }
 
     //p.lastNumPops=p.numPops;
@@ -488,7 +488,7 @@ public:
   void push(const value_type& val) {
     perItem& p = *current.getLocal();
     while (!p.lock.try_lock());
-    Index ind = val();
+    Index ind = val;
     //(val()>>delta)+maxIndex;//indexer(val);
     deltaIndex index;
     index.k = ind;
@@ -557,7 +557,7 @@ public:
     while (!p.lock.try_lock());
 
     p.sinceLastFix++;
-    
+
     unsigned myID = Runtime::LL::getTID();
 
     current.getRemote(myID)->pmodAllDeq++;
@@ -580,10 +580,10 @@ public:
         for (unsigned i = 1; i < Runtime::activeThreads; ++i){
           while(current.getRemote(i)->lock.try_lock());
         }
-      
+
         ERR_MSG<<"Locked everyone else"<<std::endl;
         for(unsigned i=0; i<Runtime::activeThreads; ++i){
-        
+
           current.getRemote(i)->sinceLastFix=0;
           current.getRemote(i)->slowPopsLastPeriod=0;
           current.getRemote(i)->pushesLastPeriod=0;

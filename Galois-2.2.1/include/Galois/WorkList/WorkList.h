@@ -41,6 +41,7 @@
 #include "OrderedList.h"
 #include "OwnerComputes.h"
 #include "StableIterator.h"
+#include "AdaptiveMultiQueue.h"
 
 namespace Galois {
 /**

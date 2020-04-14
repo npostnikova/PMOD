@@ -290,6 +290,30 @@ struct SerialAlgo {
   }
 };
 
+template <typename WorkItem>
+struct DecreaseKeyIndexer {
+	static int get_queue(WorkItem const& wi) {
+		auto& d = wi.n->getData().qInd;
+		return wi.n->getData().qInd;
+	}
+
+	static int get_index(WorkItem const& wi) {
+		return wi.n->getData().elemInd;
+	}
+
+	static bool set_queue(WorkItem const& wi, int expQ, int newQ) {
+		auto& data = wi.n->getData();
+		return data.qInd.compare_exchange_strong(expQ, newQ);
+	}
+
+	//! Update index of the element in the queue.
+	//! The method is called only when the queue is blocked, so CAS should always be successful.
+	static void set_index(WorkItem const& wi, size_t index) {
+		auto &data = wi.n->getData();
+		data.elemInd = index;
+	}
+};
+
 template<bool UseCas>
 struct AsyncAlgo {
   typedef SNode Node;
@@ -448,7 +472,9 @@ struct AsyncAlgo {
     typedef UpdateRequestComparer<UpdateRequest> Comparer;
     typedef UpdateRequestNodeComparer<UpdateRequest> NodeComparer;
     typedef UpdateRequestHasher<UpdateRequest> Hasher;
-    typedef GlobPQ<UpdateRequest, kLSMQ<UpdateRequest, UpdateRequestIndexer<UpdateRequest>, 256>> kLSM256;
+	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer> AMQ2;
+	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, true, DecreaseKeyIndexer<UpdateRequest>> AMQ2DecreaseKey;
+	  typedef GlobPQ<UpdateRequest, kLSMQ<UpdateRequest, UpdateRequestIndexer<UpdateRequest>, 256>> kLSM256;
     typedef GlobPQ<UpdateRequest, kLSMQ<UpdateRequest, UpdateRequestIndexer<UpdateRequest>, 16384>> kLSM16k;
     typedef GlobPQ<UpdateRequest, kLSMQ<UpdateRequest, UpdateRequestIndexer<UpdateRequest>, 4194304>> kLSM4m;
     typedef GlobPQ<UpdateRequest, LockFreeSkipList<Comparer, UpdateRequest>> GPQ;
@@ -456,6 +482,7 @@ struct AsyncAlgo {
     typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 1>> MQ1;
     typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 4>> MQ4;
     typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 1>> HMQ1;
+	  typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 2>> HMQ2;
     typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 4>> HMQ4;
     typedef GlobPQ<UpdateRequest, DistQueue<Comparer, UpdateRequest, false>> PTSL;
     typedef GlobPQ<UpdateRequest, DistQueue<Comparer, UpdateRequest, true>> PPSL;
@@ -485,6 +512,10 @@ struct AsyncAlgo {
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<OBIM>());
     else if (wl == "adap-obim")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<ADAPOBIM>());
+    else if (wl == "adap-mq2")
+	    Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2>());
+    else if (wl == "adap-mq2-dk")
+	    Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2DecreaseKey>());
     else if (wl == "slobim")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<SLOBIM>());
     else if (wl == "slobim-nochunk")
@@ -525,6 +556,8 @@ struct AsyncAlgo {
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ4>());
     else if (wl == "heapmultiqueue1")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ1>());
+    else if (wl == "heapmultiqueue2")
+	    Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ2>());
     else if (wl == "heapmultiqueue4")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ4>());
     else if (wl == "thrskiplist")

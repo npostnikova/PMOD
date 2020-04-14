@@ -78,6 +78,8 @@ struct UpdateRequestCommon {
 
 struct SNode {
   Dist dist;
+  std::atomic<int> qInd = {-1};
+  std::atomic<int> elemInd = {-1};
 };
 
 template<typename Graph>

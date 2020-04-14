@@ -46,6 +46,7 @@
 #include <atomic>
 #include <iostream>
 #include <cmath>
+#include <type_traits>
 
 
 namespace Galois {
@@ -485,10 +486,29 @@ public:
     }
   }
 
+//  template <class K = value_type>
+//  typename std::enable_if<std::is_fundamental<value_type>::value>
+//   push(const value_type& val) {
+//    push(val, val);
+//  }
+//
+//
+//  template <class K = value_type>
+//  typename std::enable_if<!std::is_fundamental<value_type>::value>
+//  push(const value_type& val) {
+//    push(val, val());
+//  }
+
   void push(const value_type& val) {
     perItem& p = *current.getLocal();
     while (!p.lock.try_lock());
-    Index ind = val;
+    Index ind;
+    if constexpr(std::is_fundamental<value_type>::value) {
+      ind = val;
+    } else {
+      ind = val();
+    }
+    //Index ind = index_val;
     //(val()>>delta)+maxIndex;//indexer(val);
     deltaIndex index;
     index.k = ind;

@@ -33,7 +33,7 @@ endif()
 
 if(CMAKE_Fortran_COMPILER_WORKS AND LAPACK_FOUND AND ZLIB_FOUND AND Boost_FOUND)
   include_directories(${ZLIB_INCLUDE_DIRS})
-  add_library(AVI ${Sources})
+  add_library(AVI ${Sources} ../../include/Galois/WorkList/Heap.h ../../include/Galois/WorkList/AbstractDecreaseKeyIndexer.h)
   target_link_libraries(AVI ${ZLIB_LIBRARIES})
   target_link_libraries(AVI ${Boost_LIBRARIES})
   set(AVI_FOUND TRUE)

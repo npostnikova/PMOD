@@ -223,7 +223,10 @@ public:
   template<typename... Args>
   NodeInfoBase(Args&&... args): data(std::forward<Args>(args)...) { }
 
-  typename NodeInfoBase::reference getData() { return data; } 
+  typename NodeInfoBase::reference getData() { return data; }
+
+  // todo
+	typename NodeInfoBase::reference getData() const { return data; }
 };
 
 template<bool HasLockable>

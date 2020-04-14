@@ -417,6 +417,7 @@ struct AsyncAlgo {
     typedef ChunkedFIFO<1> globNoChunk;
     typedef OrderedByIntegerMetric<Indexer,dChunk> OBIM;
     typedef AdaptiveOrderedByIntegerMetric<Indexer, dChunk, 0, true, false, CHUNK_SIZE> ADAPOBIM;
+    typedef AdaptiveMultiQueue<WorkItem, Comparer, false, void, 2> AMQ2;
     typedef OrderedByIntegerMetric<Indexer,dChunkedLIFO<64>> OBIM_LIFO;
     typedef OrderedByIntegerMetric<Indexer,dChunk, 4> OBIM_BLK4;
     typedef OrderedByIntegerMetric<Indexer,dChunk, 0, false> OBIM_NOBSP;
@@ -431,6 +432,7 @@ struct AsyncAlgo {
     typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 1>> MQ1;
     typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 4>> MQ4;
     typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 1>> HMQ1;
+	  typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 2>> HMQ2;
     typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 4>> HMQ4;
     typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, false>> PTSL;
     typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, true>> PPSL;
@@ -458,6 +460,8 @@ struct AsyncAlgo {
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM>());
     else if (wl == "adap-obim")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<ADAPOBIM>());
+    else if (wl == "adap-mq2")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<AMQ2>());
     else if (wl == "slobim")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SLOBIM>());
     else if (wl == "slobim-nochunk")
@@ -498,6 +502,8 @@ struct AsyncAlgo {
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ4>());
     else if (wl == "heapmultiqueue1")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ1>());
+    else if (wl == "heapmultiqueue2")
+	    Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ2>());
     else if (wl == "heapmultiqueue4")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ4>());
     else if (wl == "thrskiplist")

@@ -1,3 +1,4 @@
+set(CMAKE_CXX_STANDARD 14)
 if(USE_EXP)
   include_directories(../../exp/apps/bfs .)
 endif()

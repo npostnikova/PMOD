@@ -1,8 +1,8 @@
-GALOIS_HOME=./Galois-2.2.1/
+GALOIS_HOME=./Galois-2.2.1
 
 cd $GALOIS_HOME;
-mkdir build_final;
-cd build_final;
+mkdir build;
+cd build;
 rm -rf *
 cmake ../;
 

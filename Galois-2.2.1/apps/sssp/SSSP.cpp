@@ -474,6 +474,7 @@ struct AsyncAlgo {
     typedef UpdateRequestHasher<UpdateRequest> Hasher;
 	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer> AMQ2;
 	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, true, DecreaseKeyIndexer<UpdateRequest>> AMQ2DecreaseKey;
+	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, false, void, 2, true, true> AMQ2Blocking;
 	  typedef GlobPQ<UpdateRequest, kLSMQ<UpdateRequest, UpdateRequestIndexer<UpdateRequest>, 256>> kLSM256;
     typedef GlobPQ<UpdateRequest, kLSMQ<UpdateRequest, UpdateRequestIndexer<UpdateRequest>, 16384>> kLSM16k;
     typedef GlobPQ<UpdateRequest, kLSMQ<UpdateRequest, UpdateRequestIndexer<UpdateRequest>, 4194304>> kLSM4m;
@@ -516,6 +517,8 @@ struct AsyncAlgo {
 	    Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2>());
     else if (wl == "adap-mq2-dk")
 	    Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2DecreaseKey>());
+    else if (wl == "adap-mq2-blocking")
+	    Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2Blocking>());
     else if (wl == "slobim")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<SLOBIM>());
     else if (wl == "slobim-nochunk")

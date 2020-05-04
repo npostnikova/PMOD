@@ -392,7 +392,6 @@ public:
 
 /**
  * Blocking specialization.
- * todo: memory leaks
  *
  * @tparam T type of elements
  * @tparam Comparer comparator for elements of type `T`
@@ -420,10 +419,11 @@ private:
 	//! Maximum element of type `T`.
 	T maxT;
 	//! Number of locked queues.
-	std::atomic<int> locked = {0};
-	//! All the queues are empty.
-	std::atomic<bool> qs_empty = {false};
-
+	std::atomic<int> suspended = {0};
+	//! All the queues are empty. Rarely changed.
+	std::atomic<bool> no_work = {false};
+	//! Number of empty queues.
+	std::atomic<int> empty_queues = { nQ };
 	static const size_t CondC = 8;
 
 	struct CondNode {
@@ -447,12 +447,24 @@ private:
 			node.cond_mutex.unlock();
 			return false;
 		}
+		auto suspended_num = suspended.fetch_add(1);
+		if (suspended_num + 1 == nT) {
+			node.cond_mutex.unlock();
+			suspended.fetch_sub(1);
+			if (empty_queues < nQ)
+				return true;
+			resume_all();
+			return true;
+		}
 		node.state = CondNode::SUSPENDED;
-		node.cond_mutex.unlock();
+		std::unique_lock<std::mutex> lk(node.cond_mutex, std::adopt_lock);
+		node.cond_var.wait(lk, [&node] { return node.state == CondNode::RESUMED; });
+		node.state = CondNode::FREE;
+		lk.unlock();
 		return true;
 	}
 
-	//! Resumes if the cell is busy with a suspended thread.
+	//! Resumes if the cell is busy with a suspended thread. Non-blocking.
 	bool try_resume(size_t id) {
 		CondNode& node = suspend_array[id];
 		if (!node.cond_mutex.try_lock())
@@ -461,70 +473,57 @@ private:
 			node.cond_mutex.unlock();
 			return false;
 		}
-		std::lock_guard<std::mutex> lk(node.cond_mutex, std::adopt_lock);
+		std::lock_guard<std::mutex> guard(node.cond_mutex, std::adopt_lock);
 		node.state = CondNode::RESUMED;
 		node.cond_var.notify_one();
-		locked.fetch_sub(1);
+		suspended.fetch_sub(1);
 		return true;
 	}
 
-	//! Sets cell condition to resumed.
+	//! Resumes if the cell is busy with a suspended thread. Blocking.
 	void blocking_resume(size_t id) {
 		CondNode& node = suspend_array[id];
-		node.cond_mutex.lock();
-		if (node.state == CondNode::SUSPENDED)
-			locked.fetch_sub(1);
-		std::lock_guard<std::mutex> lk(node.cond_mutex, std::adopt_lock);
-		node.state = CondNode::RESUMED;
-		node.cond_var.notify_all();
+		std::lock_guard<std::mutex> guard(node.cond_mutex);
+		if (node.state == CondNode::SUSPENDED) {
+			suspended.fetch_sub(1);
+			node.state = CondNode::RESUMED;
+			node.cond_var.notify_all();
+		}
 	}
 
 	std::unique_ptr<CondNode[]> suspend_array;
 
+	//! Size of suspend array.
 	inline size_t suspend_size() {
 		return nT * CondC;
 	}
 
-	//! Returns id of blocked free cell.
-	size_t suspend_id() {
-		while (true) {
+	//! Suspends if the thread is not the last.
+	void suspend() {
+		while (empty_queues == nQ) {
 			size_t cell_id = rand_suspend_cell();
-			if (try_suspend(cell_id))
-				return cell_id;
+			if (try_suspend(cell_id)) {
+				return;
+			}
 			for (size_t i = 0; i < 8 && i + cell_id < suspend_size(); i++) {
 				if (try_suspend(i + cell_id))
-					return i + cell_id;
+					return;
 			}
 		}
 	}
 
-	//! Suspends on the locked cell.
-	void suspend_by_id(size_t id) {
-		CondNode & node = suspend_array[id];
-		std::unique_lock<std::mutex> lk(node.cond_mutex);
-		if (node.state == CondNode::SUSPENDED) {
-			node.cond_var.wait(lk, [&node] { return node.state == CondNode::RESUMED; });
-		}
-		node.state = CondNode::FREE;
-		lk.unlock();
-	}
-
-	//! Unlocks the cell.
-	void release_suspend_lock(size_t id) {
-		CondNode & node = suspend_array[id];
-		std::lock_guard<std::mutex> lk(node.cond_mutex);
-		node.state = CondNode::FREE;
-	}
-
-	void resume() {
-		if (locked <= 0) return;
-		for (size_t i = 0; i < suspend_size(); i++) {
+	//! Resumes at most cnt threads.
+	void resume(size_t cnt = 1) {
+		if (suspended <= 0) return;
+		for (size_t i = 0; i < suspend_size() && cnt != 0; i++) {
 			if (try_resume(i))
-				break;
+				cnt--;
 		}
 	}
 
+	//! Resumes all the threads. Blocking.
 	void resume_all() {
+		no_work = true;
 		for (size_t i = 0; i < suspend_size(); i++) {
 			blocking_resume(i);
 		}
@@ -532,7 +531,7 @@ private:
 
 	size_t generate_random() {
 		static thread_local std::mt19937 generator;
-		static thread_local std::uniform_int_distribution<size_t> distribution(0, nQ - 1);
+		static thread_local std::uniform_int_distribution<size_t> distribution(0, 1024);
 		return distribution(generator);
 	}
 
@@ -597,9 +596,19 @@ public:
 		heap->unlock();
 	}
 
+	//! Number of threads to resume by number of pushed.
+	size_t resume_num(size_t n) {
+		if (n == 0) return 0;
+		static const size_t RESUME_PROB = 16;
+		return random() % (n * RESUME_PROB) / RESUME_PROB;
+	}
+
 	//! Push a range onto the queue.
 	template<typename Iter>
 	unsigned int push(Iter b, Iter e) {
+		if (no_work) {
+			no_work = false;
+		}
 		const size_t chunk_size = 64;
 
 		int npush = 0;
@@ -613,13 +622,16 @@ public:
 				heap = &heaps[q_ind].data;
 			} while (!heap->try_lock());
 
+			if (heap->heap.size() == 1)
+				empty_queues.fetch_sub(1);
+
 			for (size_t cnt = 0; cnt < chunk_size && b != e; cnt++, npush++) {
 				heap->heap.push(*b++);
 			}
 			heap->min = heap->heap.min();
 			heap->unlock();
 		}
-		resume();
+		resume(resume_num(npush));
 		return npush;
 	}
 
@@ -631,62 +643,70 @@ public:
 		return push(rp.first, rp.second);
 	}
 
+	//! Extracts mimumun from the locked heap.
+	Galois::optional<value_type> extract_min(Heap* heap) {
+		auto result = heap->heap.extractMin();
+		heap->min = heap->heap.min();
+		if (heap->heap.size() == 1)
+			empty_queues.fetch_add(1);
+		heap->unlock();
+		return result;
+	}
+
 	//! Pop a value from the queue.
 	Galois::optional<value_type> pop() {
+		static const size_t ATTEMPTS = 32;
+		static const size_t RANDOM_ATTEMPTS = 16;
+
 		Galois::optional<value_type> result;
-		if (qs_empty)
-			return result;
-		Heap* heap_i, * heap_j;
-		int i_ind, j_ind;
 
-		do {
-			i_ind = rand_heap();
-			heap_i = &heaps[i_ind].data;
+    while (true) {
+    	for (size_t j = 0; j < ATTEMPTS; j++) {
+		    if (no_work) {
+			    return result;
+		    }
+		    Heap *heap_i, *heap_j;
+		    int i_ind, j_ind;
 
-			j_ind = rand_heap();
-			heap_j = &heaps[j_ind].data;
+		    for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
+			    do {
+				    i_ind = rand_heap();
+				    heap_i = &heaps[i_ind].data;
 
-			if (i_ind == j_ind)
-				continue;
+				    j_ind = rand_heap();
+				    heap_j = &heaps[j_ind].data;
 
-			if (compare(heap_i->min, heap_j->min))
-				heap_i = heap_j;
-		} while (!heap_i->try_lock());
+				    if (i_ind == j_ind)
+					    continue;
 
-		if (heap_i->heap.size() == 1) {
-			heap_i->unlock();
-			auto id = suspend_id();
-			auto blocked_ind = locked.fetch_add(1);
-			if (blocked_ind + 1 == nT) {
-				// all the threads are parked
-				locked.fetch_sub(1);
-				release_suspend_lock(id);
-				for (size_t k = 0; k < nQ; k++) {
-					heap_i = &heaps[k].data;
-					heap_i->lock();
-					if (heap_i->heap.min() != maxT) {
-						goto deq;
-					}
-					heap_i->unlock();
-				}
-				qs_empty = true;
-				resume_all();
-			} else {
-				suspend_by_id(id);
-			}
-			// empty
-			return result;
-		}
-		deq:
-		result = heap_i->heap.min();
-		heap_i->heap.extractMin();
-		heap_i->min = heap_i->heap.min();
-		heap_i->unlock();
-		return result;
+				    if (compare(heap_i->min, heap_j->min))
+					    heap_i = heap_j;
+			    } while (!heap_i->try_lock());
+
+			    if (heap_i->heap.size() != 1) {
+				    return extract_min(heap_i);
+			    } else {
+				    heap_i->unlock();
+			    }
+		    }
+
+		    for (size_t k = 0; k < nQ; k++) {
+			    heap_i = &heaps[k].data;
+			    if (!heap_i->try_lock()) continue;
+			    if (heap_i->heap.min() != maxT) {
+				    return extract_min(heap_i);
+			    }
+			    heap_i->unlock();
+		    }
+	    }
+	    suspend();
+    }
 	}
 };
 
-} // namespace WorkList
+
+
+} // namespace WorkListempty_q
 } // namespace Galois
 
 #endif // ADAPTIVE_MULTIQUEUE_H

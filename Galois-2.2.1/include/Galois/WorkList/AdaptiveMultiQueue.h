@@ -529,6 +529,16 @@ private:
     }
   }
 
+  //! Active waiting to avoid using shared data.
+  void active_waiting(int iters) {
+    static thread_local std::atomic<int32_t> consumedCPU = { random() % 92001};
+    int32_t t = consumedCPU;
+    for (size_t i = 0; i < iters; i++)
+      t += int32_t(t * 0x5DEECE66DLL + 0xBLL + (uint64_t)i and 0xFFFFFFFFFFFFLL);
+    if (t == 42)
+      consumedCPU += t;
+  }
+
   size_t generate_random() {
     static thread_local std::mt19937 generator;
     static thread_local std::uniform_int_distribution<size_t> distribution(0, 1024);
@@ -643,7 +653,7 @@ public:
     return push(rp.first, rp.second);
   }
 
-  //! Extracts mimumun from the locked heap.
+  //! Extracts minimum from the locked heap.
   Galois::optional<value_type> extract_min(Heap* heap) {
     auto result = heap->heap.extractMin();
     heap->min = heap->heap.min();
@@ -655,13 +665,13 @@ public:
 
   //! Pop a value from the queue.
   Galois::optional<value_type> pop() {
-    static const size_t ATTEMPTS = 32;
+    static const size_t ATTEMPTS = 8;
     static const size_t RANDOM_ATTEMPTS = 16;
 
     Galois::optional<value_type> result;
 
     while (true) {
-      for (size_t j = 0; j < ATTEMPTS; j++) {
+      for (size_t j = 0, sleeping_time = 32; j < ATTEMPTS; j++, sleeping_time *= 2) {
         if (no_work) {
           return result;
         }
@@ -698,6 +708,7 @@ public:
           }
           heap_i->unlock();
         }
+        active_waiting(sleeping_time);
       }
       suspend();
     }

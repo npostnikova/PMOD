@@ -505,7 +505,7 @@ private:
       if (try_suspend(cell_id)) {
         return;
       }
-      for (size_t i = 0; i < 8 && i + cell_id < suspend_size(); i++) {
+      for (size_t i = 1; i < 8 && i + cell_id < suspend_size(); i++) {
         if (try_suspend(i + cell_id))
           return;
       }
@@ -665,16 +665,16 @@ public:
 
   //! Pop a value from the queue.
   Galois::optional<value_type> pop() {
-    static const size_t ATTEMPTS = 8;
+    static const size_t SLEEPING_ATTEMPTS = 8;
     static const size_t RANDOM_ATTEMPTS = 16;
 
     Galois::optional<value_type> result;
 
-    while (true) {
-      for (size_t j = 0, sleeping_time = 32; j < ATTEMPTS; j++, sleeping_time *= 2) {
-        if (no_work) {
-          return result;
-        }
+	  while (true) {
+		  if (no_work) {
+			  return result;
+		  }
+		  while (empty_queues != nQ) {
         Heap *heap_i, *heap_j;
         int i_ind, j_ind;
 
@@ -686,7 +686,7 @@ public:
             j_ind = rand_heap();
             heap_j = &heaps[j_ind].data;
 
-            if (i_ind == j_ind)
+            if (i_ind == j_ind && nQ > 1)
               continue;
 
             if (compare(heap_i->min, heap_j->min))
@@ -708,16 +708,19 @@ public:
           }
           heap_i->unlock();
         }
-        active_waiting(sleeping_time);
       }
+		  for (size_t k = 0, iters = 32; k < SLEEPING_ATTEMPTS; k++, iters *= 2) {
+			  if (empty_queues != nQ || suspended + 1 == nT)
+				  break;
+			  active_waiting(iters);
+		  }
       suspend();
     }
   }
 };
 
 
-
-} // namespace WorkListempty_q
+} // namespace WorkList
 } // namespace Galois
 
 #endif // ADAPTIVE_MULTIQUEUE_H

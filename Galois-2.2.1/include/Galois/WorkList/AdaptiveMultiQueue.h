@@ -131,7 +131,7 @@ private:
     };
 
     std::condition_variable cond_var;
-    State state = FREE;
+    std::atomic<State> state = { FREE };
     std::mutex cond_mutex;
   };
 
@@ -189,6 +189,8 @@ private:
   //! Locks the cell if it's free.
   bool try_suspend(size_t id) {
     CondNode& node = suspend_array[id];
+    if (node.state != CondNode::FREE)
+      return false;
     if (!node.cond_mutex.try_lock())
       return false;
     if (node.state != CondNode::FREE) {
@@ -215,6 +217,8 @@ private:
   //! Resumes if the cell is busy with a suspended thread. Non-blocking.
   bool try_resume(size_t id) {
     CondNode& node = suspend_array[id];
+    if (node.state != CondNode::SUSPENDED)
+      return false;
     if (!node.cond_mutex.try_lock())
       return false;
     if (node.state != CondNode::SUSPENDED) {
@@ -231,6 +235,8 @@ private:
   //! Resumes if the cell is busy with a suspended thread. Blocking.
   void blocking_resume(size_t id) {
     CondNode& node = suspend_array[id];
+    if (node.state != CondNode::SUSPENDED)
+      return;
     std::lock_guard<std::mutex> guard(node.cond_mutex);
     if (node.state == CondNode::SUSPENDED) {
       suspended.fetch_sub(1);
@@ -325,6 +331,7 @@ public:
   template<typename Iter>
   unsigned int push(Iter b, Iter e) {
     if constexpr (Blocking) {
+      // Adapt to Galois abort policy.
       if (no_work)
         no_work = false;
     }

@@ -399,7 +399,7 @@ struct AsyncAlgo {
         *nBad += nEdge;
         *BadWork += oldWork;
       }
-      // Record work spent this iteratin.  If CAS fails, then this
+      // Record work spent this iteration.  If CAS fails, then this
       // iteration was bad.
       if ((unsigned int)oldDist < req.w ||
           !__sync_bool_compare_and_swap(&sdata.dist, oldDist, req.w | ((pusher.u + pusher.t.sample()) << 32))) {
@@ -472,9 +472,10 @@ struct AsyncAlgo {
     typedef UpdateRequestComparer<UpdateRequest> Comparer;
     typedef UpdateRequestNodeComparer<UpdateRequest> NodeComparer;
     typedef UpdateRequestHasher<UpdateRequest> Hasher;
-	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer> AMQ2;
-	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, true, DecreaseKeyIndexer<UpdateRequest>> AMQ2DecreaseKey;
-	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, false, void, 2, true, true> AMQ2Blocking;
+	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2> AMQ2;
+	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 4> AMQ4;
+	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, true, DecreaseKeyIndexer<UpdateRequest>> AMQ2DecreaseKey;
+	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, true> AMQ2Blocking;
 	  typedef GlobPQ<UpdateRequest, kLSMQ<UpdateRequest, UpdateRequestIndexer<UpdateRequest>, 256>> kLSM256;
     typedef GlobPQ<UpdateRequest, kLSMQ<UpdateRequest, UpdateRequestIndexer<UpdateRequest>, 16384>> kLSM16k;
     typedef GlobPQ<UpdateRequest, kLSMQ<UpdateRequest, UpdateRequestIndexer<UpdateRequest>, 4194304>> kLSM4m;
@@ -515,6 +516,8 @@ struct AsyncAlgo {
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<ADAPOBIM>());
     else if (wl == "adap-mq2")
 	    Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2>());
+    else if (wl == "adap-mq4")
+	    Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ4>());
     else if (wl == "adap-mq2-dk")
 	    Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2DecreaseKey>());
     else if (wl == "adap-mq2-blocking")

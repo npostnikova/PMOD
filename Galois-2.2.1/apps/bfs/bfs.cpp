@@ -417,7 +417,7 @@ struct AsyncAlgo {
     typedef ChunkedFIFO<1> globNoChunk;
     typedef OrderedByIntegerMetric<Indexer,dChunk> OBIM;
     typedef AdaptiveOrderedByIntegerMetric<Indexer, dChunk, 0, true, false, CHUNK_SIZE> ADAPOBIM;
-    typedef AdaptiveMultiQueue<WorkItem, Comparer, false, void, 2> AMQ2;
+    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2> AMQ2;
     typedef OrderedByIntegerMetric<Indexer,dChunkedLIFO<64>> OBIM_LIFO;
     typedef OrderedByIntegerMetric<Indexer,dChunk, 4> OBIM_BLK4;
     typedef OrderedByIntegerMetric<Indexer,dChunk, 0, false> OBIM_NOBSP;

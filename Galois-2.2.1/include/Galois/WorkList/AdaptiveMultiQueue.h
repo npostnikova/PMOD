@@ -66,7 +66,9 @@ template<typename T,
          bool DecreaseKey = false,
          typename DecreaseKeyIndexer = void,
          bool Concurrent = true,
-         bool Blocking = false>
+         bool Blocking = false,
+         size_t PushChange = 1,
+         size_t PopChange = 1>
 class AdaptiveMultiQueue {
 private:
   typedef T value_t;
@@ -303,13 +305,13 @@ public:
   //! Change the concurrency flag.
   template<bool _concurrent>
   struct rethread {
-    typedef AdaptiveMultiQueue<T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, _concurrent, Blocking> type;
+    typedef AdaptiveMultiQueue<T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, _concurrent, Blocking, PushChange, PopChange> type;
   };
 
   //! Change the type the worklist holds.
   template<typename _T>
   struct retype {
-    typedef AdaptiveMultiQueue<_T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, Concurrent, Blocking> type;
+    typedef AdaptiveMultiQueue<_T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, Concurrent, Blocking, PushChange, PopChange> type;
   };
 
   //! Push a value onto the queue.
@@ -327,6 +329,13 @@ public:
     heap->unlock();
   }
 
+  size_t get_push_local(size_t old_local) {
+    size_t change = random() % PushChange;
+    if (old_local >= nQ || change == 0)
+      return rand_heap();
+    return old_local;
+  }
+
   //! Push a range onto the queue.
   template<typename Iter>
   unsigned int push(Iter b, Iter e) {
@@ -335,23 +344,25 @@ public:
       if (no_work)
         no_work = false;
     }
-    const size_t chunk_size = 64;
+    const size_t chunk_size = 8;
 
+    // local queue
+    static thread_local size_t local_q = rand_heap();
+
+    size_t q_ind = 0;
     int npush = 0;
+    size_t change = 0;
+    Heap* heap = nullptr;
 
     while (b != e) {
-      Heap *heap;
-      int q_ind;
-
       do {
         if constexpr (DecreaseKey) {
           q_ind = DecreaseKeyIndexer::get_queue(*b);
-          if (!valid_index(q_ind))
-            q_ind = rand_heap();
+          local_q = valid_index(q_ind) ? q_ind : get_push_local(local_q);
         } else {
-          q_ind = rand_heap();
+          local_q = get_push_local(local_q);
         }
-        heap = &heaps[q_ind].data;
+        heap = &heaps[local_q].data;
       } while (!heap->try_lock());
 
       if constexpr (Blocking) {
@@ -362,12 +373,12 @@ public:
       for (size_t cnt = 0; cnt < chunk_size && b != e; cnt++, npush++) {
         if constexpr (DecreaseKey) {
           auto index = DecreaseKeyIndexer::get_queue(*b);
-          if (index == q_ind) {
+          if (index == local_q) {
             // the element is in the heap
             update_elem(*b++, heap);
           } else if (index == -1) {
             // no heaps contain the element
-            push_elem(*b++, heap, q_ind);
+            push_elem(*b++, heap, local_q);
           } else {
             // need to change heap
             break;
@@ -397,16 +408,28 @@ public:
     static const size_t SLEEPING_ATTEMPTS = 8;
     static const size_t RANDOM_ATTEMPTS = 16;
 
+    static thread_local size_t local_q = rand_heap();
+
     Galois::optional<value_type> result;
     Heap* heap_i = nullptr;
     Heap* heap_j = nullptr;
     size_t i_ind = 0;
     size_t j_ind = 0;
 
+    size_t change = random() % PopChange;
+
+    if (local_q < nQ && change != 0) {
+      heap_i = &heaps[local_q].data;
+      if (heap_i->try_lock()) {
+        if (heap_i->heap.size() != 1)
+          return extract_min(heap_i);
+        heap_i->unlock();
+      }
+    }
+
     while (true) {
       if constexpr (Blocking) {
-        if (no_work)
-          return result;
+        if (no_work) return result;
       }
       do {
         for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
@@ -420,8 +443,12 @@ public:
             if (i_ind == j_ind && nQ > 1)
               continue;
 
-            if (compare(heap_i->min, heap_j->min))
+            if (compare(heap_i->min, heap_j->min)) {
               heap_i = heap_j;
+              local_q = j_ind;
+            } else {
+              local_q = i_ind;
+            }
           } while (!heap_i->try_lock());
 
           if (heap_i->heap.size() != 1) {
@@ -434,11 +461,14 @@ public:
           heap_i = &heaps[(i_ind + k) % nQ].data;
           if (heap_i->min == maxT) continue;
           if (!heap_i->try_lock()) continue;
-          if (heap_i->heap.size() > 1)
+          if (heap_i->heap.size() > 1) {
+            local_q = (i_ind + k) % nQ;
             return extract_min(heap_i);
+          }
           heap_i->unlock();
         }
       } while (Blocking && empty_queues != nQ);
+
       if constexpr (!Blocking)
         return result;
       for (size_t k = 0, iters = 32; k < SLEEPING_ATTEMPTS; k++, iters *= 2) {

@@ -93,6 +93,7 @@ static Galois::Statistic* nBad;
 static Galois::Statistic* nEmpty;
 static Galois::Statistic* nOverall;
 static Galois::Statistic* nEdgesProcessed;
+static Galois::Statistic* nNodesProcessed;
 template<typename Graph>
 struct not_visited {
   Graph& g;
@@ -376,7 +377,7 @@ struct AsyncAlgo {
       }
       return;
     }
-
+    *nNodesProcessed += 1;
     for (typename Graph::edge_iterator ii = graph.edge_begin(req.n, flag), ei = graph.edge_end(req.n, flag); ii != ei; ++ii) {
       if (req.w != (unsigned int)*sdist) {
         *nBad += nEdge;
@@ -472,8 +473,13 @@ struct AsyncAlgo {
     typedef UpdateRequestComparer<UpdateRequest> Comparer;
     typedef UpdateRequestNodeComparer<UpdateRequest> NodeComparer;
     typedef UpdateRequestHasher<UpdateRequest> Hasher;
-	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2> AMQ2;
-	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 4> AMQ4;
+    const size_t push_p = 4;
+    const size_t pop_p = 2;
+	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, push_p, pop_p> AMQ2;
+	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 4, false, void, true, false, push_p, pop_p> AMQ4;
+	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 8, false, void, true, false, push_p, pop_p> AMQ8;
+//	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 4> AMQ4;
+//	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 8> AMQ8;
 	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, true, DecreaseKeyIndexer<UpdateRequest>> AMQ2DecreaseKey;
 	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, true> AMQ2Blocking;
 	  typedef GlobPQ<UpdateRequest, kLSMQ<UpdateRequest, UpdateRequestIndexer<UpdateRequest>, 256>> kLSM256;
@@ -502,7 +508,8 @@ struct AsyncAlgo {
     std::cout << "INFO: Using delta-step of " << (1 << stepShift) << "\n";
     std::cout << "WARNING: Performance varies considerably due to delta parameter.\n";
     std::cout << "WARNING: Do not expect the default to be good for your graph.\n";
-
+    std::cout << "Edges num: " << graph.sizeEdges() << std::endl;
+    std::cout << "Nodes num: " << graph.size() << std::endl;
     Bag initial;
     graph.getData(source).dist = 0;
     Galois::do_all(
@@ -518,6 +525,8 @@ struct AsyncAlgo {
 	    Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2>());
     else if (wl == "adap-mq4")
 	    Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ4>());
+    else if (wl == "adap-mq8")
+	    Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ8>());
     else if (wl == "adap-mq2-dk")
 	    Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2DecreaseKey>());
     else if (wl == "adap-mq2-blocking")
@@ -777,6 +786,7 @@ int main(int argc, char **argv) {
     nEmpty = new Galois::Statistic("nEmpty");
     nOverall = new Galois::Statistic("nOverall");
     nEdgesProcessed = new Galois::Statistic("nEdgesProcessed");
+    nNodesProcessed = new Galois::Statistic("nNodesProcessed");
   }
 
   Galois::StatTimer T("TotalTime");
@@ -805,6 +815,7 @@ int main(int argc, char **argv) {
     delete nEmpty;
     delete nOverall;
     delete nEdgesProcessed;
+    delete nNodesProcessed;
   }
 
   return 0;

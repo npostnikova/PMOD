@@ -50,6 +50,15 @@ private:
   std::atomic<bool> _lock;
 };
 
+// Probability P / Q
+template <size_t PV, size_t QV>
+struct Prob {
+  static const size_t P = PV;
+  static const size_t Q = QV;
+};
+
+Prob<1, 1> oneProb;
+
 /**
  * Basic implementation. Provides effective pushing of range of elements only.
  *
@@ -67,8 +76,8 @@ template<typename T,
          typename DecreaseKeyIndexer = void,
          bool Concurrent = true,
          bool Blocking = false,
-         size_t PushChange = 1,
-         size_t PopChange = 1>
+         typename PushChange = Prob<1, 1>,
+         typename PopChange = Prob<1, 1>>
 class AdaptiveMultiQueue {
 private:
   typedef T value_t;
@@ -330,8 +339,8 @@ public:
   }
 
   size_t get_push_local(size_t old_local) {
-    size_t change = random() % PushChange;
-    if (old_local >= nQ || change == 0)
+    size_t change = random() % PushChange::Q;
+    if (old_local >= nQ || change < PushChange::P)
       return rand_heap();
     return old_local;
   }
@@ -416,9 +425,9 @@ public:
     size_t i_ind = 0;
     size_t j_ind = 0;
 
-    size_t change = random() % PopChange;
+    size_t change = random() % PopChange::Q;
 
-    if (local_q < nQ && change != 0) {
+    if (local_q < nQ && change >= PopChange::P) {
       heap_i = &heaps[local_q].data;
       if (heap_i->try_lock()) {
         if (heap_i->heap.size() != 1)

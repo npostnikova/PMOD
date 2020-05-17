@@ -1,0 +1,54 @@
+#ifndef AMQTD_2_0_5
+#define AMQTD_2_0_5
+
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <1, 1>> AMQ_2_0_0;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <95, 100>> AMQ_2_0_1;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <9, 10>> AMQ_2_0_2;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <7, 10>> AMQ_2_0_3;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <5, 10>> AMQ_2_0_4;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <3, 10>> AMQ_2_0_5;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <1, 10>> AMQ_2_0_6;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <5, 100>> AMQ_2_0_7;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <1, 100>> AMQ_2_0_8;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <5, 1000>> AMQ_2_0_9;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <95, 100>, Prob <1, 1>> AMQ_2_1_0;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <95, 100>, Prob <95, 100>> AMQ_2_1_1;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <95, 100>, Prob <9, 10>> AMQ_2_1_2;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <95, 100>, Prob <7, 10>> AMQ_2_1_3;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <95, 100>, Prob <5, 10>> AMQ_2_1_4;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <95, 100>, Prob <3, 10>> AMQ_2_1_5;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <95, 100>, Prob <1, 10>> AMQ_2_1_6;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <95, 100>, Prob <5, 100>> AMQ_2_1_7;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <95, 100>, Prob <1, 100>> AMQ_2_1_8;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <95, 100>, Prob <5, 1000>> AMQ_2_1_9;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <9, 10>, Prob <1, 1>> AMQ_2_2_0;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <9, 10>, Prob <95, 100>> AMQ_2_2_1;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <9, 10>, Prob <9, 10>> AMQ_2_2_2;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <9, 10>, Prob <7, 10>> AMQ_2_2_3;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <9, 10>, Prob <5, 10>> AMQ_2_2_4;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <9, 10>, Prob <3, 10>> AMQ_2_2_5;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <9, 10>, Prob <1, 10>> AMQ_2_2_6;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <9, 10>, Prob <5, 100>> AMQ_2_2_7;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <9, 10>, Prob <1, 100>> AMQ_2_2_8;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <9, 10>, Prob <5, 1000>> AMQ_2_2_9;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <7, 10>, Prob <1, 1>> AMQ_2_3_0;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <7, 10>, Prob <95, 100>> AMQ_2_3_1;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <7, 10>, Prob <9, 10>> AMQ_2_3_2;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <7, 10>, Prob <7, 10>> AMQ_2_3_3;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <7, 10>, Prob <5, 10>> AMQ_2_3_4;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <7, 10>, Prob <3, 10>> AMQ_2_3_5;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <7, 10>, Prob <1, 10>> AMQ_2_3_6;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <7, 10>, Prob <5, 100>> AMQ_2_3_7;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <7, 10>, Prob <1, 100>> AMQ_2_3_8;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <7, 10>, Prob <5, 1000>> AMQ_2_3_9;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 10>, Prob <1, 1>> AMQ_2_4_0;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 10>, Prob <95, 100>> AMQ_2_4_1;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 10>, Prob <9, 10>> AMQ_2_4_2;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 10>, Prob <7, 10>> AMQ_2_4_3;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 10>, Prob <5, 10>> AMQ_2_4_4;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 10>, Prob <3, 10>> AMQ_2_4_5;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 10>, Prob <1, 10>> AMQ_2_4_6;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 10>, Prob <5, 100>> AMQ_2_4_7;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 10>, Prob <1, 100>> AMQ_2_4_8;
+typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 10>, Prob <5, 1000>> AMQ_2_4_9;
+#endif

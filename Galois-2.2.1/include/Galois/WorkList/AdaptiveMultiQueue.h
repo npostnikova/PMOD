@@ -344,6 +344,10 @@ public:
       return rand_heap();
     return old_local;
   }
+  size_t thread_id = 0;
+  void inc_thread_id() {
+    thread_id = (thread_id + 1) % 32;
+  }
 
   //! Push a range onto the queue.
   template<typename Iter>
@@ -356,7 +360,10 @@ public:
     const size_t chunk_size = 8;
 
     // local queue
-    static thread_local size_t local_q = rand_heap();
+
+    static thread_local std::vector<size_t> local_qs = std::vector<size_t>(32, nQ);
+    size_t& local_q = local_qs(thread_id);
+    inc_thread_in();
 
     size_t q_ind = 0;
     int npush = 0;
@@ -417,7 +424,9 @@ public:
     static const size_t SLEEPING_ATTEMPTS = 8;
     static const size_t RANDOM_ATTEMPTS = 16;
 
-    static thread_local size_t local_q = rand_heap();
+    static thread_local std::vector<size_t> local_qs = std::vector<size_t>(32, nQ);
+    size_t & local_q = local_qs(thread_id);
+    inc_thread_id();
 
     Galois::optional<value_type> result;
     Heap* heap_i = nullptr;

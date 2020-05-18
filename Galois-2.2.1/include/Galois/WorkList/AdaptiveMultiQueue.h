@@ -360,23 +360,25 @@ public:
 
     size_t q_ind = 0;
     int npush = 0;
-    size_t change = 0;
     Heap* heap = nullptr;
 
     while (b != e) {
-      do {
+      if constexpr (DecreaseKey) {
+        q_ind = DecreaseKeyIndexer::get_queue(*b);
+        local_q = valid_index(q_ind) ? q_ind : get_push_local(local_q);
+      } else {
+        local_q = get_push_local(local_q);
+      }
+      heap = &heaps[local_q].data;
+
+      while (!heap->try_lock()) {
         if constexpr (DecreaseKey) {
           q_ind = DecreaseKeyIndexer::get_queue(*b);
-          local_q = valid_index(q_ind) ? q_ind : get_push_local(local_q);
+          local_q = valid_index(q_ind) ? q_ind : rand_heap();
         } else {
-          local_q = get_push_local(local_q);
+          local_q = rand_heap();
         }
         heap = &heaps[local_q].data;
-      } while (!heap->try_lock());
-
-      if constexpr (Blocking) {
-        if (heap->heap.size() == 1)
-          empty_queues.fetch_sub(1);
       }
 
       for (size_t cnt = 0; cnt < chunk_size && b != e; cnt++, npush++) {
@@ -395,6 +397,10 @@ public:
         } else {
           heap->heap.push(*b++);
         }
+      }
+      if constexpr (Blocking) {
+        if (heap->heap.size() == 2)
+          empty_queues.fetch_sub(1);
       }
       heap->min = heap->heap.min();
       heap->unlock();

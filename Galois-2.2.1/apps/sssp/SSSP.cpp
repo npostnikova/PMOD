@@ -455,12 +455,13 @@ struct AsyncAlgo {
 
 
     using namespace Galois::WorkList;
-//    typedef dChunkedFIFO<CHUNK_SIZE> Chunk;
+    typedef dChunkedFIFO<CHUNK_SIZE> Chunk;
 //    typedef dVisChunkedFIFO<64> visChunk;
 //    typedef dChunkedPTFIFO<1> noChunk;
 //    typedef ChunkedFIFO<64> globChunk;
 //    typedef ChunkedFIFO<1> globNoChunk;
 //    typedef OrderedByIntegerMetric<UpdateRequestIndexer<UpdateRequest>, Chunk, 10> OBIM;
+    typedef OrderedByIntegerMetric<UpdateRequestIndexer<UpdateRequest>, Chunk, 10> OBIM;
 //    typedef AdaptiveOrderedByIntegerMetric<UpdateRequestIndexer<UpdateRequest>, Chunk, 10, true, false, CHUNK_SIZE> ADAPOBIM;
 //    typedef OrderedByIntegerMetric<UpdateRequestIndexer<UpdateRequest>, dChunkedLIFO<64>, 10> OBIM_LIFO;
 //    typedef OrderedByIntegerMetric<UpdateRequestIndexer<UpdateRequest>, Chunk, 4> OBIM_BLK4;
@@ -479,7 +480,8 @@ struct AsyncAlgo {
 //	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 8, false, void, true, false, push_p, pop_p> AMQ8;
 //	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 4> AMQ4;
 //	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 8> AMQ8;
-#include "AMQTypedefs.h"
+#include "AMQTypedefs_2_0_5.h"
+#include "AMQTypedefs_2_5_10.h"
 //    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, true, DecreaseKeyIndexer<UpdateRequest>> AMQ2DecreaseKey;
 //    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, true> AMQ2Blocking;
 //    typedef GlobPQ<UpdateRequest, kLSMQ<UpdateRequest, UpdateRequestIndexer<UpdateRequest>, 256>> kLSM256;
@@ -491,7 +493,7 @@ struct AsyncAlgo {
 //    typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 4>> MQ4;
 //    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 1>> HMQ1;
 //    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 2>> HMQ2;
-//    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 4>> HMQ4;
+    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 64>> HMQ64;
 //    typedef GlobPQ<UpdateRequest, DistQueue<Comparer, UpdateRequest, false>> PTSL;
 //    typedef GlobPQ<UpdateRequest, DistQueue<Comparer, UpdateRequest, true>> PPSL;
 //    typedef GlobPQ<UpdateRequest, LocalPQ<Comparer, UpdateRequest>> LPQ;
@@ -517,8 +519,8 @@ struct AsyncAlgo {
     graph.out_edges(source, Galois::MethodFlag::NONE).end(),
     InitialProcess(this, graph, initial, graph.getData(source)));
     std::string wl = worklistname;
-//    if (wl == "obim")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<OBIM>());
+    if (wl == "obim")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<OBIM>());
 //    else if (wl == "adap-obim")
 //      Galois::for_each_local(initial, Process(this, graph), Galois::wl<ADAPOBIM>());
 //    else if (wl == "adap-mq2")
@@ -573,8 +575,8 @@ struct AsyncAlgo {
 //      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ1>());
 //    else if (wl == "heapmultiqueue2")
 //      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ2>());
-//    else if (wl == "heapmultiqueue4")
-//      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ4>());
+    else if (wl == "hmq64")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ64>());
 //    else if (wl == "thrskiplist")
 //      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<PTSL>());
 //    else if (wl == "pkgskiplist")

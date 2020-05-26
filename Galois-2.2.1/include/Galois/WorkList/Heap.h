@@ -143,6 +143,7 @@ private:
 		while (smallest_child && cmp(heap[index], heap[smallest_child.get()])) {
 			swap(index, smallest_child.get());
 			index = smallest_child.get();
+			smallest_child = get_smallest_child(index);
 		}
 	}
 
@@ -154,6 +155,7 @@ private:
 			swap(index, smallest_child.get());
 			set_position(indexer, index);
 			index = smallest_child.get();
+			smallest_child = get_smallest_child(index);
 		}
 		set_position(indexer, index);
 	}

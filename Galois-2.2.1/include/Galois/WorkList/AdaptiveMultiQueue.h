@@ -101,7 +101,8 @@ private:
   }
 
   size_t generate_random() {
-    static thread_local std::mt19937 generator;
+    const auto seed = std::chrono::system_clock::now().time_since_epoch().count();
+    static std::mt19937 generator(seed);
     static thread_local std::uniform_int_distribution<size_t> distribution(0, 1024);
     return distribution(generator);
   }

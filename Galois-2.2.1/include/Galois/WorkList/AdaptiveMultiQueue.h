@@ -9,6 +9,7 @@
 #include <ctime>
 #include <thread>
 #include <random>
+#include <iostream>
 #include "Heap.h"
 
 namespace Galois {
@@ -152,7 +153,7 @@ private:
   //! All the queues are empty. Rarely changed.
   std::atomic<bool> no_work = {false};
   //! Number of empty queues.
-  std::atomic<int> empty_queues = { nQ };
+  std::atomic<size_t> empty_queues = { nQ };
   //! Array for threads to suspend.
   std::unique_ptr<CondNode[]> suspend_array;
   //! Suspend array size if CondC * nQ.
@@ -299,6 +300,8 @@ private:
 public:
   AdaptiveMultiQueue() : nT(Galois::getActiveThreads()), nQ(C * nT), suspend_array(std::make_unique<CondNode[]>(nT * CondC)) {
     heaps = std::make_unique<Runtime::LL::CacheLineStorage<Heap>[]>(nQ);
+
+    std::cout << "Queues: " << nQ << std::endl;
 
     memset(reinterpret_cast<void *>(&maxT), 0xff, sizeof(maxT));
     for (int i = 0; i < nQ; i++) {

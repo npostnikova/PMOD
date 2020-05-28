@@ -11,6 +11,7 @@
 #include <random>
 #include <iostream>
 #include "Heap.h"
+#include "WorkListHelpers.h"
 
 namespace Galois {
 namespace WorkList {
@@ -24,31 +25,35 @@ namespace WorkList {
  */
 template <typename  T, typename Comparer>
 struct LockableHeap {
-  DAryHeap<T, Comparer, 8> heap;
+  DAryHeap<T, Comparer, 4> heap;
   // todo: use atomic
   T min;
 
   //! Non-blocking lock.
   inline bool try_lock() {
-    bool expected = false;
-    return _lock.compare_exchange_strong(expected, true);
+//    bool expected = false;
+//    return _lock.compare_exchange_strong(expected, true);
+    return _lock.try_lock();
   }
 
   //! Blocking lock.
   inline void lock() {
-    bool expected = false;
-    while (!_lock.compare_exchange_strong(expected, true)) {
-      expected = false;
-    }
+//    bool expected = false;
+//    while (!_lock.compare_exchange_strong(expected, true)) {
+//      expected = false;
+//    }
+     _lock.lock();
   }
 
   //! Unlocks the queue.
   inline void unlock() {
-    _lock = false;
+    //_lock = false;
+    _lock.unlock();
   }
 
 private:
-  std::atomic<bool> _lock;
+  Runtime::LL::SimpleLock<true> _lock;
+  //std::atomic<bool> _lock;
 };
 
 // Probability P / Q
@@ -298,19 +303,8 @@ private:
     heap->heap.push(indexer, val);
   }
 
-  std::vector<size_t> local_push;
-  std::vector<size_t> local_pop;
-  size_t local_threads = 32;
-
-  size_t thread_id = 0;
-  size_t inc_thread_id() {
-    thread_id = (thread_id + 1) % local_threads;
-    return thread_id;
-  }
-
-public: // todo: threads
-  AdaptiveMultiQueue() : nT(Galois::getActiveThreads()), nQ(C * nT * local_threads), suspend_array(std::make_unique<CondNode[]>(nT * CondC)),
-  local_push(local_threads, nQ), local_pop(local_threads, nQ) {
+public:
+  AdaptiveMultiQueue() : nT(Galois::getActiveThreads()), nQ(C * nT), suspend_array(std::make_unique<CondNode[]>(nT * CondC)) {
     heaps = std::make_unique<Runtime::LL::CacheLineStorage<Heap>[]>(nQ);
 
     std::cout << "Queues: " << nQ << std::endl;
@@ -372,8 +366,7 @@ public: // todo: threads
     const size_t chunk_size = 8;
 
     // local queue
-    //static thread_local size_t local_q = rand_heap();
-    size_t& local_q = local_push[thread_id];
+    static thread_local size_t local_q = rand_heap();
 
     size_t q_ind = 0;
     int npush = 0;
@@ -440,9 +433,7 @@ public: // todo: threads
     static const size_t SLEEPING_ATTEMPTS = 8;
     static const size_t RANDOM_ATTEMPTS = 16;
 
-    //static thread_local size_t local_q = rand_heap();
-    size_t& local_q = local_pop[thread_id];
-
+    static thread_local size_t local_q = rand_heap();
     Galois::optional<value_type> result;
     Heap* heap_i = nullptr;
     Heap* heap_j = nullptr;

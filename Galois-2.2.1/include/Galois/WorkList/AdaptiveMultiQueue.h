@@ -11,6 +11,7 @@
 #include <random>
 #include <iostream>
 #include "Heap.h"
+#include "WorkListHelpers.h"
 
 namespace Galois {
 namespace WorkList {
@@ -24,31 +25,35 @@ namespace WorkList {
  */
 template <typename  T, typename Comparer>
 struct LockableHeap {
-  DAryHeap<T, Comparer, 8> heap;
+  DAryHeap<T, Comparer, 4> heap;
   // todo: use atomic
   T min;
 
   //! Non-blocking lock.
   inline bool try_lock() {
-    bool expected = false;
-    return _lock.compare_exchange_strong(expected, true);
+//    bool expected = false;
+//    return _lock.compare_exchange_strong(expected, true);
+    return _lock.try_lock();
   }
 
   //! Blocking lock.
   inline void lock() {
-    bool expected = false;
-    while (!_lock.compare_exchange_strong(expected, true)) {
-      expected = false;
-    }
+//    bool expected = false;
+//    while (!_lock.compare_exchange_strong(expected, true)) {
+//      expected = false;
+//    }
+     _lock.lock();
   }
 
   //! Unlocks the queue.
   inline void unlock() {
-    _lock = false;
+    //_lock = false;
+    _lock.unlock();
   }
 
 private:
-  std::atomic<bool> _lock;
+  Runtime::LL::SimpleLock<true> _lock;
+  //std::atomic<bool> _lock;
 };
 
 // Probability P / Q
@@ -297,6 +302,7 @@ private:
     indexer.set_queue(val, -1, q_ind); // fails if the element was added to another queue
     heap->heap.push(indexer, val);
   }
+
 public:
   AdaptiveMultiQueue() : nT(Galois::getActiveThreads()), nQ(C * nT), suspend_array(std::make_unique<CondNode[]>(nT * CondC)) {
     heaps = std::make_unique<Runtime::LL::CacheLineStorage<Heap>[]>(nQ);
@@ -364,10 +370,7 @@ public:
     const size_t chunk_size = 8;
 
     // local queue
-
-    static thread_local std::vector<size_t> local_qs = std::vector<size_t>(32, nQ);
-    size_t& local_q = local_qs(thread_id);
-    inc_thread_in();
+    static thread_local size_t local_q = rand_heap();
 
     size_t q_ind = 0;
     int npush = 0;
@@ -432,12 +435,9 @@ public:
   //! Pop a value from the queue.
   Galois::optional<value_type> pop() {
     static const size_t SLEEPING_ATTEMPTS = 8;
-    static const size_t RANDOM_ATTEMPTS = 16;
+    // static const size_t RANDOM_ATTEMPTS = 8;
 
-    static thread_local std::vector<size_t> local_qs = std::vector<size_t>(32, nQ);
-    size_t & local_q = local_qs(thread_id);
-    inc_thread_id();
-
+    static thread_local size_t local_q = rand_heap();
     Galois::optional<value_type> result;
     Heap* heap_i = nullptr;
     Heap* heap_j = nullptr;
@@ -460,7 +460,7 @@ public:
         if (no_work) return result;
       }
       do {
-        for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
+        //for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
           do {
             i_ind = rand_heap();
             heap_i = &heaps[i_ind].data;
@@ -473,7 +473,7 @@ public:
 
             if (compare(heap_i->min, heap_j->min)) {
               heap_i = heap_j;
-              local_q = j_ind;
+              local_q = i_ind = j_ind;
             } else {
               local_q = i_ind;
             }
@@ -484,11 +484,11 @@ public:
           } else {
             heap_i->unlock();
           }
-        }
+        //}
         for (size_t k = 1; k < nQ; k++) {
           heap_i = &heaps[(i_ind + k) % nQ].data;
           if (heap_i->min == maxT) continue;
-          if (!heap_i->try_lock()) continue;
+          heap_i->lock();
           if (heap_i->heap.size() > 1) {
             local_q = (i_ind + k) % nQ;
             return extract_min(heap_i);

@@ -431,7 +431,7 @@ public:
   //! Pop a value from the queue.
   Galois::optional<value_type> pop() {
     static const size_t SLEEPING_ATTEMPTS = 8;
-    static const size_t RANDOM_ATTEMPTS = 16;
+    // static const size_t RANDOM_ATTEMPTS = 8;
 
     static thread_local size_t local_q = rand_heap();
     Galois::optional<value_type> result;
@@ -456,7 +456,7 @@ public:
         if (no_work) return result;
       }
       do {
-        for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
+        //for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
           do {
             i_ind = rand_heap();
             heap_i = &heaps[i_ind].data;
@@ -469,7 +469,7 @@ public:
 
             if (compare(heap_i->min, heap_j->min)) {
               heap_i = heap_j;
-              local_q = j_ind;
+              local_q = i_ind = j_ind;
             } else {
               local_q = i_ind;
             }
@@ -480,11 +480,11 @@ public:
           } else {
             heap_i->unlock();
           }
-        }
+        //}
         for (size_t k = 1; k < nQ; k++) {
           heap_i = &heaps[(i_ind + k) % nQ].data;
           if (heap_i->min == maxT) continue;
-          if (!heap_i->try_lock()) continue;
+          heap_i->lock();
           if (heap_i->heap.size() > 1) {
             local_q = (i_ind + k) % nQ;
             return extract_min(heap_i);

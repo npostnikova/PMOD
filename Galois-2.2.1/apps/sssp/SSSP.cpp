@@ -69,6 +69,7 @@ enum Algo {
 
 static cll::opt<std::string> filename(cll::Positional, cll::desc("<input graph>"), cll::Required);
 static cll::opt<std::string> transposeGraphName("graphTranspose", cll::desc("Transpose of input graph"));
+static cll::opt<std::string> amqResultFile("resultFile", cll::desc("Result file name for amq experiment"), cll::init("result.txt"));
 static cll::opt<bool> symmetricGraph("symmetricGraph", cll::desc("Input graph is symmetric"));
 static cll::opt<unsigned int> startNode("startNode", cll::desc("Node to start search from"), cll::init(0));
 static cll::opt<unsigned int> reportNode("reportNode", cll::desc("Node to report distance to"), cll::init(1));
@@ -292,29 +293,29 @@ struct SerialAlgo {
   }
 };
 
-template <typename WorkItem>
-struct DecreaseKeyIndexer {
-  static int get_queue(WorkItem const& wi) {
-    auto& d = wi.n->getData().qInd;
-    return wi.n->getData().qInd;
-  }
-
-  static int get_index(WorkItem const& wi) {
-    return wi.n->getData().elemInd;
-  }
-
-  static bool set_queue(WorkItem const& wi, int expQ, int newQ) {
-    auto& data = wi.n->getData();
-    return data.qInd.compare_exchange_strong(expQ, newQ);
-  }
-
-  //! Update index of the element in the queue.
-  //! The method is called only when the queue is blocked, so CAS should always be successful.
-  static void set_index(WorkItem const& wi, size_t index) {
-    auto &data = wi.n->getData();
-    data.elemInd = index;
-  }
-};
+//template <typename WorkItem>
+//struct DecreaseKeyIndexer {
+//  static int get_queue(WorkItem const& wi) {
+//    auto& d = wi.n->getData().qInd;
+//    return wi.n->getData().qInd;
+//  }
+//
+//  static int get_index(WorkItem const& wi) {
+//    return wi.n->getData().elemInd;
+//  }
+//
+//  static bool set_queue(WorkItem const& wi, int expQ, int newQ) {
+//    auto& data = wi.n->getData();
+//    return data.qInd.compare_exchange_strong(expQ, newQ);
+//  }
+//
+//  //! Update index of the element in the queue.
+//  //! The method is called only when the queue is blocked, so CAS should always be successful.
+//  static void set_index(WorkItem const& wi, size_t index) {
+//    auto &data = wi.n->getData();
+//    data.elemInd = index;
+//  }
+//};
 
 template<bool UseCas>
 struct AsyncAlgo {
@@ -480,8 +481,6 @@ struct AsyncAlgo {
 //	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 8, false, void, true, false, push_p, pop_p> AMQ8;
 //	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 4> AMQ4;
 //	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 8> AMQ8;
-#include "AMQTypedefs_2_0_5.h"
-#include "AMQTypedefs_2_5_10.h"
 //    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, true, DecreaseKeyIndexer<UpdateRequest>> AMQ2DecreaseKey;
 //    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, true> AMQ2Blocking;
 //    typedef GlobPQ<UpdateRequest, kLSMQ<UpdateRequest, UpdateRequestIndexer<UpdateRequest>, 256>> kLSM256;
@@ -493,7 +492,7 @@ struct AsyncAlgo {
 //    typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 4>> MQ4;
 //    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 1>> HMQ1;
 //    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 2>> HMQ2;
-    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 64>> HMQ64;
+//    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 64>> HMQ64;
 //    typedef GlobPQ<UpdateRequest, DistQueue<Comparer, UpdateRequest, false>> PTSL;
 //    typedef GlobPQ<UpdateRequest, DistQueue<Comparer, UpdateRequest, true>> PPSL;
 //    typedef GlobPQ<UpdateRequest, LocalPQ<Comparer, UpdateRequest>> LPQ;
@@ -519,8 +518,8 @@ struct AsyncAlgo {
     graph.out_edges(source, Galois::MethodFlag::NONE).end(),
     InitialProcess(this, graph, initial, graph.getData(source)));
     std::string wl = worklistname;
-    if (wl == "obim")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<OBIM>());
+//    if (wl == "obim")
+//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<OBIM>());
 //    else if (wl == "adap-obim")
 //      Galois::for_each_local(initial, Process(this, graph), Galois::wl<ADAPOBIM>());
 //    else if (wl == "adap-mq2")
@@ -575,8 +574,8 @@ struct AsyncAlgo {
 //      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ1>());
 //    else if (wl == "heapmultiqueue2")
 //      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ2>());
-    else if (wl == "hmq64")
-      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ64>());
+//    else if (wl == "hmq64")
+//      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ64>());
 //    else if (wl == "thrskiplist")
 //      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<PTSL>());
 //    else if (wl == "pkgskiplist")
@@ -597,10 +596,11 @@ struct AsyncAlgo {
 //      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<kLSM4m>());
 //    else
 //      std::cerr << "No work list!" << "\n";
-#include "AMQMatch_2_0_5.h"
-#include "AMQMatch_4_0_5.h"
-#include "AMQMatch_2_5_10.h"
-#include "AMQMatch_4_5_10.h"
+#include "Galois/WorkList/AMQ2.h"
+
+#include "AMQMatch2.h"
+#include "AMQMatch3.h"
+#include "AMQMatch4.h"
   }
 };
 
@@ -761,6 +761,11 @@ void run(bool prealloc = true) {
   T.stop();
   time (&end);
   double dif = difftime (end,start);
+
+  std::ofstream out(amqResultFile, std::ios::app);
+  out << T.get() << " ";
+  out.close();
+
   printf ("Elapsed time is %.2lf seconds.\n", dif );
 
   Galois::reportPageAlloc("MeminfoPost");
@@ -823,11 +828,8 @@ int main(int argc, char **argv) {
 
   if (trackWork) {
     std::string wl = worklistname;
-    std::ofstream edges("result_amq_" + std::to_string(wl[5]) + "_edges.txt", std::ios::app);
-    std::ofstream nodes("result_amq_" + std::to_string(wl[5]) + "_nodes.txt", std::ios::app);
-    edges << wl << " " << getStatVal(nEdgesProcessed) << std::endl;
+    std::ofstream nodes(amqResultFile, std::ios::app);
     nodes << wl << " " << getStatVal(nNodesProcessed) << std::endl;
-    edges.close();
     nodes.close();
 
     delete BadWork;

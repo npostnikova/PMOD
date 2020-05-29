@@ -66,6 +66,16 @@ public:
       sum += (p - avgVal) * (p - avgVal);
     return sqrt((double)sum / (processed.size() - 1 ? processed.size() - 1 : 1));
   }
+
+  uint64_t standDevTime() {
+    if (time.empty())
+      return 0;
+    auto avgVal = avgTime();
+    uint64_t sum = 0;
+    for (auto p : time)
+      sum += (p - avgVal) * (p - avgVal);
+    return sqrt((double)sum / (time.size() - 1 > 0 ? processed.size() - 1 : 1));
+  }
 };
 
 void printProbs(ostream& out, vector<string> probs) {
@@ -127,11 +137,12 @@ int main(int argc, char* argv[]) {
 //    outStandDev << probs[i];
 
     for (size_t j = 0; j < amq2.size(); j++) {
-      double pg = (double)amq2[i][j].standDevProcessed() / (V / 100);
-      cout << amq2[0][0].avgProcessed() << endl;
+      double pg = (double)amq2[i][j].standDevProcessed() / (amq2[i][j].avgProcessed() * 0.01);
       outProcessed << fixed << setprecision(3) << ", " << (double)amq2[i][j].avgProcessed() / V;
-      if (pg > 0.5) outProcessed << fixed << setprecision(1) << " +-" << pg << "%";
-      outProcessed << "   " << fixed << setprecision(3) << (double)amq2[0][0].avgTime() / amq2[i][j].avgTime();
+      if (pg > 0.5) outProcessed << fixed << setprecision(1) << "+-" << pg << "%";
+      auto t = (double) amq2[i][j].standDevTime() /  (amq2[i][j].avgTime() * 0.01 );
+      outProcessed << "    " << fixed << setprecision(3) << (double)amq2[0][0].avgTime() / amq2[i][j].avgTime();
+      if (t > 0.5) outProcessed << fixed << setprecision(1) << "+-" << t << "%";
 
       //outTime << ", " << amq2[i][j].avgTime();
       //outStandDev << ", " << (double)amq2[i][j].standDevProcessed() / 10703.76;

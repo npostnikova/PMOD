@@ -56,6 +56,7 @@
 #ifdef GEM5
   #include "m5op.h"
 #endif
+#include <fstream>
 
 static const char* name = "Breadth-first Search";
 static const char* desc =
@@ -88,6 +89,7 @@ enum DetAlgo {
 namespace cll = llvm::cl;
 static cll::opt<std::string> filename(cll::Positional, cll::desc("<input graph>"), cll::Required);
 static cll::opt<std::string> transposeGraphName("graphTranspose", cll::desc("Transpose of input graph"));
+static cll::opt<std::string> amqResultFile("resultFile", cll::desc("Result file name for amq experiment"), cll::init("result.txt"));
 static cll::opt<bool> symmetricGraph("symmetricGraph", cll::desc("Input graph is symmetric"));
 static cll::opt<bool> useDetBase("detBase", cll::desc("Deterministic"));
 static cll::opt<bool> useDetDisjoint("detDisjoint", cll::desc("Deterministic with disjoint optimization"));
@@ -112,7 +114,7 @@ static cll::opt<Algo> algo("algo", cll::desc("Choose an algorithm:"),
       clEnumValN(Algo::ligraChi, "ligraChi", "Use Ligra and GraphChi programming model"),
       clEnumValN(Algo::ligra, "ligra", "Use Ligra programming model"),
 #endif
-      clEnumValEnd), cll::init(Algo::barrier));
+      clEnumValEnd), cll::init(Algo::async));
 static cll::opt<std::string> worklistname("wl", cll::desc("Worklist to use"), cll::value_desc("worklist"), cll::init("obim"));
 
 static const bool trackWork = true;
@@ -122,6 +124,7 @@ static Galois::Statistic* nBad;
 static Galois::Statistic* nEmpty;
 static Galois::Statistic* nOverall;
 static Galois::Statistic* nEdgesProcessed;
+static Galois::Statistic* nNodesProcessed;
 
 template<typename Graph, typename Enable = void>
 struct not_consistent {
@@ -366,6 +369,7 @@ struct AsyncAlgo {
       }
 
       int nEdge = 0;
+      *nNodesProcessed += 1;
       for (Graph::edge_iterator ii = graph.edge_begin(n, Galois::MethodFlag::NONE),
             ei = graph.edge_end(n, Galois::MethodFlag::NONE); ii != ei; ++ii, nEdge++) {
         GNode dst = graph.getEdgeDst(ii);
@@ -410,45 +414,45 @@ struct AsyncAlgo {
 
   void operator()(Graph& graph, const GNode& source) const {
     using namespace Galois::WorkList;
-    typedef dChunkedFIFO<CHUNK_SIZE> dChunk;
-    typedef dVisChunkedFIFO<64> visChunk;
-    typedef dChunkedPTFIFO<1> noChunk;
-    typedef ChunkedFIFO<64> globChunk;
-    typedef ChunkedFIFO<1> globNoChunk;
-    typedef OrderedByIntegerMetric<Indexer,dChunk> OBIM;
-    typedef AdaptiveOrderedByIntegerMetric<Indexer, dChunk, 0, true, false, CHUNK_SIZE> ADAPOBIM;
-    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2> AMQ2;
-    typedef OrderedByIntegerMetric<Indexer,dChunkedLIFO<64>> OBIM_LIFO;
-    typedef OrderedByIntegerMetric<Indexer,dChunk, 4> OBIM_BLK4;
-    typedef OrderedByIntegerMetric<Indexer,dChunk, 0, false> OBIM_NOBSP;
-    typedef OrderedByIntegerMetric<Indexer,noChunk> OBIM_NOCHUNK;
-    typedef OrderedByIntegerMetric<Indexer,globChunk> OBIM_GLOB;
-    typedef OrderedByIntegerMetric<Indexer,globNoChunk> OBIM_GLOB_NOCHUNK;
-    typedef OrderedByIntegerMetric<Indexer,noChunk, -1, false> OBIM_STRICT;
-    typedef OrderedByIntegerMetric<Indexer,dChunk, 0,true, true> OBIM_UBSP;
-    typedef OrderedByIntegerMetric<Indexer,visChunk, 0,true, true> OBIM_VISCHUNK;
-    typedef GlobPQ<WorkItem, LockFreeSkipList<Comparer, WorkItem>> GPQ;
-    typedef GlobPQ<WorkItem, SprayList<NodeComparer, WorkItem>> SL;
-    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 1>> MQ1;
-    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 4>> MQ4;
-    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 1>> HMQ1;
-	  typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 2>> HMQ2;
-    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 4>> HMQ4;
-    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, false>> PTSL;
-    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, true>> PPSL;
-    typedef GlobPQ<WorkItem, LocalPQ<Comparer, WorkItem>> LPQ;
-    typedef GlobPQ<WorkItem, SwarmPQ<Comparer, WorkItem>> SWARMPQ;
-    typedef GlobPQ<WorkItem, HeapSwarmPQ<Comparer, WorkItem>> HSWARMPQ;
-    typedef GlobPQ<WorkItem, PartitionPQ<Comparer, Hasher, WorkItem>> PPQ;
-    typedef SkipListOrderedByIntegerMetric<Indexer, dChunk> SLOBIM;
-    typedef SkipListOrderedByIntegerMetric<Indexer, noChunk> SLOBIM_NOCHUNK;
-    typedef SkipListOrderedByIntegerMetric<Indexer, visChunk> SLOBIM_VISCHUNK;
-    typedef VectorOrderedByIntegerMetric<Indexer,dChunk> VECOBIM;
-    typedef VectorOrderedByIntegerMetric<Indexer,noChunk> VECOBIM_NOCHUNK;
-    typedef VectorOrderedByIntegerMetric<Indexer,globNoChunk> VECOBIM_GLOB_NOCHUNK;
-    typedef GlobPQ<WorkItem, kLSMQ<WorkItem, Indexer, 256>> kLSM256;
-    typedef GlobPQ<WorkItem, kLSMQ<WorkItem, Indexer, 16384>> kLSM16k;
-    typedef GlobPQ<WorkItem, kLSMQ<WorkItem, Indexer, 4194304>> kLSM4m;
+//    typedef dChunkedFIFO<CHUNK_SIZE> dChunk;
+//    typedef dVisChunkedFIFO<64> visChunk;
+//    typedef dChunkedPTFIFO<1> noChunk;
+//    typedef ChunkedFIFO<64> globChunk;
+//    typedef ChunkedFIFO<1> globNoChunk;
+//    typedef OrderedByIntegerMetric<Indexer,dChunk> OBIM;
+//    typedef AdaptiveOrderedByIntegerMetric<Indexer, dChunk, 0, true, false, CHUNK_SIZE> ADAPOBIM;
+//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2> AMQ2;
+//    typedef OrderedByIntegerMetric<Indexer,dChunkedLIFO<64>> OBIM_LIFO;
+//    typedef OrderedByIntegerMetric<Indexer,dChunk, 4> OBIM_BLK4;
+//    typedef OrderedByIntegerMetric<Indexer,dChunk, 0, false> OBIM_NOBSP;
+//    typedef OrderedByIntegerMetric<Indexer,noChunk> OBIM_NOCHUNK;
+//    typedef OrderedByIntegerMetric<Indexer,globChunk> OBIM_GLOB;
+//    typedef OrderedByIntegerMetric<Indexer,globNoChunk> OBIM_GLOB_NOCHUNK;
+//    typedef OrderedByIntegerMetric<Indexer,noChunk, -1, false> OBIM_STRICT;
+//    typedef OrderedByIntegerMetric<Indexer,dChunk, 0,true, true> OBIM_UBSP;
+//    typedef OrderedByIntegerMetric<Indexer,visChunk, 0,true, true> OBIM_VISCHUNK;
+//    typedef GlobPQ<WorkItem, LockFreeSkipList<Comparer, WorkItem>> GPQ;
+//    typedef GlobPQ<WorkItem, SprayList<NodeComparer, WorkItem>> SL;
+//    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 1>> MQ1;
+//    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 4>> MQ4;
+//    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 1>> HMQ1;
+//	  typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 2>> HMQ2;
+//    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 4>> HMQ4;
+//    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, false>> PTSL;
+//    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, true>> PPSL;
+//    typedef GlobPQ<WorkItem, LocalPQ<Comparer, WorkItem>> LPQ;
+//    typedef GlobPQ<WorkItem, SwarmPQ<Comparer, WorkItem>> SWARMPQ;
+//    typedef GlobPQ<WorkItem, HeapSwarmPQ<Comparer, WorkItem>> HSWARMPQ;
+//    typedef GlobPQ<WorkItem, PartitionPQ<Comparer, Hasher, WorkItem>> PPQ;
+//    typedef SkipListOrderedByIntegerMetric<Indexer, dChunk> SLOBIM;
+//    typedef SkipListOrderedByIntegerMetric<Indexer, noChunk> SLOBIM_NOCHUNK;
+//    typedef SkipListOrderedByIntegerMetric<Indexer, visChunk> SLOBIM_VISCHUNK;
+//    typedef VectorOrderedByIntegerMetric<Indexer,dChunk> VECOBIM;
+//    typedef VectorOrderedByIntegerMetric<Indexer,noChunk> VECOBIM_NOCHUNK;
+//    typedef VectorOrderedByIntegerMetric<Indexer,globNoChunk> VECOBIM_GLOB_NOCHUNK;
+//    typedef GlobPQ<WorkItem, kLSMQ<WorkItem, Indexer, 256>> kLSM256;
+//    typedef GlobPQ<WorkItem, kLSMQ<WorkItem, Indexer, 16384>> kLSM16k;
+//    typedef GlobPQ<WorkItem, kLSMQ<WorkItem, Indexer, 4194304>> kLSM4m;
 
     graph.getData(source).dist = 0;
 
@@ -456,76 +460,82 @@ struct AsyncAlgo {
     if (wl.find("obim") == std::string::npos)
       stepShift = 0;
     std::cout << "INFO: Using delta-step of " << (1 << stepShift) << "\n";
-    if (wl == "obim")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM>());
-    else if (wl == "adap-obim")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<ADAPOBIM>());
-    else if (wl == "adap-mq2")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<AMQ2>());
-    else if (wl == "slobim")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SLOBIM>());
-    else if (wl == "slobim-nochunk")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SLOBIM_NOCHUNK>());
-    else if (wl == "slobim-vischunk")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SLOBIM_VISCHUNK>());
-    else if (wl == "vecobim")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<VECOBIM>());
-    else if (wl == "vecobim-nochunk")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<VECOBIM_NOCHUNK>());
-    else if (wl == "vecobim-glob-nochunk")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<VECOBIM_GLOB_NOCHUNK>());
-    else if (wl == "obim-strict")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM_STRICT>());
-    else if (wl == "obim-ubsp")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM_UBSP>());
-    else if (wl == "obim-lifo")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM_LIFO>());
-    else if (wl == "obim-blk4")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM_BLK4>());
-    else if (wl == "obim-nobsp")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM_NOBSP>());
-    else if (wl == "obim-nochunk")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM_NOCHUNK>());
-    else if (wl == "obim-vischunk")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM_VISCHUNK>());
-    else if (wl == "obim-glob")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM_GLOB>());
-    else if (wl == "obim-glob-nochunk")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM_GLOB_NOCHUNK>());
-    else if (wl == "skiplist")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<GPQ>());
-    else if (wl == "spraylist")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SL>());
-    else if (wl == "multiqueue1")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ1>());
-    else if (wl == "multiqueue4")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ4>());
-    else if (wl == "heapmultiqueue1")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ1>());
-    else if (wl == "heapmultiqueue2")
-	    Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ2>());
-    else if (wl == "heapmultiqueue4")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ4>());
-    else if (wl == "thrskiplist")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<PTSL>());
-    else if (wl == "pkgskiplist")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<PPSL>());
-    else if (wl == "lpq")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<LPQ>());
-    else if (wl == "swarm")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SWARMPQ>());
-    else if (wl == "heapswarm")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HSWARMPQ>());
-    else if (wl == "ppq")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<PPQ>());
-    else if (wl == "klsm256")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<kLSM256>());
-    else if (wl == "klsm16k")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<kLSM16k>());
-    else if (wl == "klsm4m")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<kLSM4m>());
-    else
-      std::cerr << "No work list!" << "\n";
+//    if (wl == "obim")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM>());
+//    else if (wl == "adap-obim")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<ADAPOBIM>());
+//    else if (wl == "adap-mq2")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<AMQ2>());
+//    else if (wl == "slobim")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SLOBIM>());
+//    else if (wl == "slobim-nochunk")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SLOBIM_NOCHUNK>());
+//    else if (wl == "slobim-vischunk")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SLOBIM_VISCHUNK>());
+//    else if (wl == "vecobim")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<VECOBIM>());
+//    else if (wl == "vecobim-nochunk")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<VECOBIM_NOCHUNK>());
+//    else if (wl == "vecobim-glob-nochunk")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<VECOBIM_GLOB_NOCHUNK>());
+//    else if (wl == "obim-strict")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM_STRICT>());
+//    else if (wl == "obim-ubsp")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM_UBSP>());
+//    else if (wl == "obim-lifo")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM_LIFO>());
+//    else if (wl == "obim-blk4")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM_BLK4>());
+//    else if (wl == "obim-nobsp")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM_NOBSP>());
+//    else if (wl == "obim-nochunk")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM_NOCHUNK>());
+//    else if (wl == "obim-vischunk")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM_VISCHUNK>());
+//    else if (wl == "obim-glob")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM_GLOB>());
+//    else if (wl == "obim-glob-nochunk")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM_GLOB_NOCHUNK>());
+//    else if (wl == "skiplist")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<GPQ>());
+//    else if (wl == "spraylist")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SL>());
+//    else if (wl == "multiqueue1")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ1>());
+//    else if (wl == "multiqueue4")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ4>());
+//    else if (wl == "heapmultiqueue1")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ1>());
+//    else if (wl == "heapmultiqueue2")
+//	    Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ2>());
+//     if (wl == "heapmultiqueue4")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ1>());
+//    else if (wl == "thrskiplist")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<PTSL>());
+//    else if (wl == "pkgskiplist")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<PPSL>());
+//    else if (wl == "lpq")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<LPQ>());
+//    else if (wl == "swarm")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SWARMPQ>());
+//    else if (wl == "heapswarm")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HSWARMPQ>());
+//    else if (wl == "ppq")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<PPQ>());
+//    else if (wl == "klsm256")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<kLSM256>());
+//    else if (wl == "klsm16k")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<kLSM16k>());
+//    else if (wl == "klsm4m")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<kLSM4m>());
+//    else
+//      std::cerr << "No work list!" << "\n";
+#define UpdateRequest WorkItem
+#include "Galois/WorkList/AMQ2.h"
+
+#include "AMQMatch2.h"
+#include "AMQMatch3.h"
+#include "AMQMatch4.h"
   }
 };
 
@@ -871,6 +881,9 @@ void run() {
 #endif
 
   T.stop();
+  std::ofstream out(amqResultFile, std::ios::app);
+  out << T.get() << " ";
+  out.close();
 
   Galois::reportPageAlloc("MeminfoPost");
 
@@ -887,6 +900,13 @@ void run() {
   }
 }
 
+uint64_t getStatVal(Galois::Statistic* value) {
+  uint64_t stat = 0;
+  for (unsigned x = 0; x < Galois::Runtime::activeThreads; ++x)
+    stat += value->getValue(x);
+  return stat;
+}
+
 int main(int argc, char **argv) {
   Galois::StatManager statManager;
   LonestarStart(argc, argv, name, desc, url);
@@ -898,6 +918,7 @@ int main(int argc, char **argv) {
     nEmpty = new Galois::Statistic("nEmpty");
     nOverall = new Galois::Statistic("nOverall");
     nEdgesProcessed = new Galois::Statistic("nEdgesProcessed");
+    nNodesProcessed = new Galois::Statistic("nNodesProcessed");
   }
 
   using namespace Galois::WorkList;
@@ -935,12 +956,18 @@ int main(int argc, char **argv) {
   T.stop();
 
   if (trackWork) {
+    std::string wl = worklistname;
+    std::ofstream nodes(amqResultFile, std::ios::app);
+    nodes << wl << " " << getStatVal(nNodesProcessed) << std::endl;
+    nodes.close();
+
     delete BadWork;
     delete WLEmptyWork;
     delete nBad;
     delete nEmpty;
     delete nOverall;
     delete nEdgesProcessed;
+    delete nNodesProcessed;
   }
 
   return 0;

@@ -911,11 +911,12 @@ static void printTop(Graph& graph, int topn, const char *algo_name, int numThrea
   // }
   //std::cout<<"\nend of print\n";
 
-  int rank = 1;
-  std::cout << "Rank PageRank Id\n";
-  for (typename Top::reverse_iterator ii = top.rbegin(), ei = top.rend(); ii != ei; ++ii, ++rank) {
-    std::cout << rank << ": " << ii->first.value << " " << graph.getId(ii->first.id) << "\n";
-  }
+//  int rank = 1;
+// too much output
+//  std::cout << "Rank PageRank Id\n";
+//  for (typename Top::reverse_iterator ii = top.rbegin(), ei = top.rend(); ii != ei; ++ii, ++rank) {
+//    std::cout << rank << ": " << ii->first.value << " " << graph.getId(ii->first.id) << "\n";
+//  }
 }
 
 template<typename Algo>

@@ -104,7 +104,10 @@ void verifyInOut(Graph& graph, PRTy tolerance) {
 template<typename UpdateRequest>
 struct UpdateRequestComparer: public std::binary_function<const UpdateRequest&, const UpdateRequest&, unsigned> {
   unsigned operator()(const UpdateRequest& x, const UpdateRequest& y) const {
-    return x.second > y.second;
+    // kostil'
+    if (y.first == 4294967295)
+      return false;
+    return x.second > y.second || x.first == 4294967295;
   }
 };
 

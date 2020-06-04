@@ -67,12 +67,14 @@ static Galois::Statistic* nBad;
 static Galois::Statistic* nEmpty;
 static Galois::Statistic* nOverall;
 static Galois::Statistic* nEdgesProcessed;
+static Galois::Statistic* nNodesProcessed;
 
 
 cll::opt<std::string> filename(cll::Positional, cll::desc("<input graph>"), cll::Required);
 static cll::opt<std::string> transposeGraphName("graphTranspose", cll::desc("Transpose of input graph"));
 static cll::opt<bool> symmetricGraph("symmetricGraph", cll::desc("Input graph is symmetric"));
 static cll::opt<std::string> outputPullFilename("outputPull", cll::desc("Precompute data for Pull algorithm to file"));
+static cll::opt<std::string> amqResultFile("resultFile", cll::desc("Result file name for amq experiment"), cll::init("result.txt"));
 cll::opt<unsigned int> maxIterations("maxIterations", cll::desc("Maximum iterations"), cll::init(100));
 cll::opt<unsigned int> memoryLimit("memoryLimit",
     cll::desc("Memory limit for out-of-core algorithms (in MB)"), cll::init(~0U));
@@ -99,7 +101,7 @@ static cll::opt<Algo> algo("algo", cll::desc("Choose an algorithm:"),
       clEnumValN(Algo::ligra, "ligra", "Use Ligra programming model"),
       clEnumValN(Algo::ligraChi, "ligraChi", "Use Ligra and GraphChi programming model"),
 #endif
-      clEnumValEnd), cll::init(Algo::pull));
+      clEnumValEnd), cll::init(Algo::async_prt));
 
 struct SerialAlgo {
   typedef Galois::Graph::LC_CSR_Graph<PNode,void>
@@ -129,6 +131,7 @@ struct SerialAlgo {
 
       for (auto ii = graph.begin(), ei = graph.end(); ii != ei; ++ii) {
         GNode src = *ii;
+        *nNodesProcessed += 1;
         PNode& sdata = graph.getData(src);
         int neighbors = std::distance(graph.edge_begin(src), graph.edge_end(src));
         for (auto jj = graph.edge_begin(src), ej = graph.edge_end(src); jj != ej; ++jj) {
@@ -536,8 +539,7 @@ struct AsyncPri{
       int src_nout = nout(graph,src, lockflag);
       PRTy delta = diff*alpha2/src_nout;
 
-
-
+      *nNodesProcessed += 1;
       // for each out-going neighbors
       for (auto jj = graph.edge_begin(src, lockflag), ej = graph.edge_end(src, lockflag); jj != ej; ++jj) {
         GNode dst = graph.getEdgeDst(jj);
@@ -571,7 +573,7 @@ struct AsyncPri{
         *WLEmptyWork += ctx.t.stopwatch();
         return;
       }
-      (*nEdgesProcessed)+=ninout(graph, src, Galois::MethodFlag::NONE);;
+      (*nEdgesProcessed)+=ninout(graph, src, Galois::MethodFlag::NONE);
       Galois::MethodFlag lockflag = Galois::MethodFlag::NONE;
 
       PRTy oldResidual = sdata.residual.exchange(0.0);
@@ -582,7 +584,7 @@ struct AsyncPri{
       PRTy delta = diff*alpha2/src_nout;
 
 
-
+      *nNodesProcessed += 1;
       // for each out-going neighbors
       for (auto jj = graph.edge_begin(src, lockflag), ej = graph.edge_end(src, lockflag); jj != ej; ++jj) {
         GNode dst = graph.getEdgeDst(jj);
@@ -613,206 +615,223 @@ struct AsyncPri{
     Galois::InsertBag<std::pair<GNode, int> > bag;
 
     using namespace Galois::WorkList;
-    typedef dChunkedFIFO<32> Chunk;
-    typedef dVisChunkedFIFO<32> visChunk;
-    typedef dChunkedPTFIFO<1> noChunk;
-    typedef ChunkedFIFO<32> globChunk;
-    typedef ChunkedFIFO<1> globNoChunk;
-    //typedef OrderedByIntegerMetric<sndPri, Chunk, 10> OBIM;
-    typedef AdaptiveOrderedByIntegerMetric<sndPri, WL, 0, true, false, 32> ADAPOBIM;
-    typedef OrderedByIntegerMetric<sndPri, dChunkedLIFO<32>, 10> OBIM_LIFO;
-    typedef OrderedByIntegerMetric<sndPri, Chunk, 4> OBIM_BLK4;
-    typedef OrderedByIntegerMetric<sndPri, Chunk, 10, false> OBIM_NOBSP;
-    typedef OrderedByIntegerMetric<sndPri, noChunk, 10> OBIM_NOCHUNK;
-    typedef OrderedByIntegerMetric<sndPri, globChunk, 10> OBIM_GLOB;
-    typedef OrderedByIntegerMetric<sndPri, globNoChunk, 10> OBIM_GLOB_NOCHUNK;
-    typedef OrderedByIntegerMetric<sndPri, noChunk, -1, false> OBIM_STRICT;
-    typedef OrderedByIntegerMetric<sndPri, Chunk, 10, true, true> OBIM_UBSP;
-    typedef OrderedByIntegerMetric<sndPri, visChunk, 10, true, true> OBIM_VISCHUNK;
+//    typedef dChunkedFIFO<32> Chunk;
+//    typedef dVisChunkedFIFO<32> visChunk;
+//    typedef dChunkedPTFIFO<1> noChunk;
+//    typedef ChunkedFIFO<32> globChunk;
+//    typedef ChunkedFIFO<1> globNoChunk;
+//    //typedef OrderedByIntegerMetric<sndPri, Chunk, 10> OBIM;
+//    typedef AdaptiveOrderedByIntegerMetric<sndPri, WL, 0, true, false, 32> ADAPOBIM;
+//    typedef OrderedByIntegerMetric<sndPri, dChunkedLIFO<32>, 10> OBIM_LIFO;
+//    typedef OrderedByIntegerMetric<sndPri, Chunk, 4> OBIM_BLK4;
+//    typedef OrderedByIntegerMetric<sndPri, Chunk, 10, false> OBIM_NOBSP;
+//    typedef OrderedByIntegerMetric<sndPri, noChunk, 10> OBIM_NOCHUNK;
+//    typedef OrderedByIntegerMetric<sndPri, globChunk, 10> OBIM_GLOB;
+//    typedef OrderedByIntegerMetric<sndPri, globNoChunk, 10> OBIM_GLOB_NOCHUNK;
+//    typedef OrderedByIntegerMetric<sndPri, noChunk, -1, false> OBIM_STRICT;
+//    typedef OrderedByIntegerMetric<sndPri, Chunk, 10, true, true> OBIM_UBSP;
+//    typedef OrderedByIntegerMetric<sndPri, visChunk, 10, true, true> OBIM_VISCHUNK;
     typedef UpdateRequestComparer<WorkItem> Comparer;
-    typedef UpdateRequestNodeComparer<WorkItem> NodeComparer;
-    typedef UpdateRequestHasher<WorkItem> Hasher;
-    typedef GlobPQ<WorkItem, LockFreeSkipList<Comparer, WorkItem>> GPQ;
-    typedef GlobPQ<WorkItem, LockFreeSkipList<NodeComparer, WorkItem>> GPQ_NC;
-    typedef GlobPQ<WorkItem, SprayList<NodeComparer, WorkItem>> SL;
-    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 1>> MQ1;
-    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 4>> MQ4;
-    typedef GlobPQ<WorkItem, MultiQueue<NodeComparer, WorkItem, 4>> MQ4_NC;
+//    typedef UpdateRequestNodeComparer<WorkItem> NodeComparer;
+//    typedef UpdateRequestHasher<WorkItem> Hasher;
+//    typedef GlobPQ<WorkItem, LockFreeSkipList<Comparer, WorkItem>> GPQ;
+//    typedef GlobPQ<WorkItem, LockFreeSkipList<NodeComparer, WorkItem>> GPQ_NC;
+//    typedef GlobPQ<WorkItem, SprayList<NodeComparer, WorkItem>> SL;
+//    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 1>> MQ1;
+//    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 4>> MQ4;
+//    typedef GlobPQ<WorkItem, MultiQueue<NodeComparer, WorkItem, 4>> MQ4_NC;
     typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 1>> HMQ1;
-    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 4>> HMQ4;
-    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, false>> PTSL;
-    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, true>> PPSL;
-    typedef GlobPQ<WorkItem, LocalPQ<Comparer, WorkItem>> LPQ;
-    typedef GlobPQ<WorkItem, SwarmPQ<Comparer, WorkItem>> SWARMPQ;
-    typedef GlobPQ<WorkItem, SwarmPQ<NodeComparer, WorkItem>> SWARMPQ_NC;
-    typedef GlobPQ<WorkItem, HeapSwarmPQ<Comparer, WorkItem>> HSWARMPQ;
-    typedef GlobPQ<WorkItem, PartitionPQ<Comparer, Hasher, WorkItem>> PPQ;
-    typedef SkipListOrderedByIntegerMetric<sndPri, Chunk, 10> SLOBIM;
-    typedef SkipListOrderedByIntegerMetric<sndPri, noChunk, 10> SLOBIM_NOCHUNK;
-    typedef SkipListOrderedByIntegerMetric<sndPri, visChunk, 10> SLOBIM_VISCHUNK;
-    typedef VectorOrderedByIntegerMetric<sndPri, Chunk, 10> VECOBIM;
-    typedef VectorOrderedByIntegerMetric<sndPri, noChunk, 10> VECOBIM_NOCHUNK;
-    typedef VectorOrderedByIntegerMetric<sndPri, globNoChunk, 10> VECOBIM_GLOB_NOCHUNK;
-    typedef GlobPQ<WorkItem, kLSMQ<WorkItem, sndPri, 256>> kLSM256;
-    typedef GlobPQ<WorkItem, kLSMQ<WorkItem, sndPri, 16384>> kLSM16k;
-    typedef GlobPQ<WorkItem, kLSMQ<WorkItem, sndPri, 4194304>> kLSM4m;
+//    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 4>> HMQ4;
+//    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, false>> PTSL;
+//    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, true>> PPSL;
+//    typedef GlobPQ<WorkItem, LocalPQ<Comparer, WorkItem>> LPQ;
+//    typedef GlobPQ<WorkItem, SwarmPQ<Comparer, WorkItem>> SWARMPQ;
+//    typedef GlobPQ<WorkItem, SwarmPQ<NodeComparer, WorkItem>> SWARMPQ_NC;
+//    typedef GlobPQ<WorkItem, HeapSwarmPQ<Comparer, WorkItem>> HSWARMPQ;
+//    typedef GlobPQ<WorkItem, PartitionPQ<Comparer, Hasher, WorkItem>> PPQ;
+//    typedef SkipListOrderedByIntegerMetric<sndPri, Chunk, 10> SLOBIM;
+//    typedef SkipListOrderedByIntegerMetric<sndPri, noChunk, 10> SLOBIM_NOCHUNK;
+//    typedef SkipListOrderedByIntegerMetric<sndPri, visChunk, 10> SLOBIM_VISCHUNK;
+//    typedef VectorOrderedByIntegerMetric<sndPri, Chunk, 10> VECOBIM;
+//    typedef VectorOrderedByIntegerMetric<sndPri, noChunk, 10> VECOBIM_NOCHUNK;
+//    typedef VectorOrderedByIntegerMetric<sndPri, globNoChunk, 10> VECOBIM_GLOB_NOCHUNK;
+//    typedef GlobPQ<WorkItem, kLSMQ<WorkItem, sndPri, 256>> kLSM256;
+//    typedef GlobPQ<WorkItem, kLSMQ<WorkItem, sndPri, 16384>> kLSM16k;
+//    typedef GlobPQ<WorkItem, kLSMQ<WorkItem, sndPri, 4194304>> kLSM4m;
+
+#define UpdateRequest WorkItem
+
+#include "Galois/WorkList/AMQ2.h"
+
 
     PRPri pri(graph, tolerance);
     fpPRPri fppri(graph, tolerance);
-    // Galois::do_all_local(graph, [&graph, &bag, &pri] (const GNode& node) {
-    //     bag.push(std::make_pair(node, pri(node)));
-    //   });
-    // Galois::for_each_local(bag, Process(graph, tolerance, amp), Galois::wl<OBIM>());
+//     Galois::do_all_local(graph, [&graph, &bag, &pri] (const GNode& node) {
+//         bag.push(std::make_pair(node, pri(node)));
+//       });
+//     Galois::for_each_local(bag, Process(graph, tolerance, amp), Galois::wl<OBIM>());
 
     auto fn = [&pri] (const GNode& node) { return WorkItem(node, pri(node)); };
     auto fn2 = [&fppri] (const GNode& node) { return WorkItem(node, fppri(node)); };
     std::string wl = worklistname_;
-    if (wl == "obim")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<OBIM>());
-    else if (wl == "adap-obim")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<ADAPOBIM>());
-    else if (wl == "slobim")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<SLOBIM>());
-    else if (wl == "slobim-nochunk")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<SLOBIM_NOCHUNK>());
-    else if (wl == "slobim-vischunk")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<SLOBIM_VISCHUNK>());
-    else if (wl == "vecobim")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<VECOBIM>());
-    else if (wl == "vecobim-nochunk")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<VECOBIM_NOCHUNK>());
-    else if (wl == "vecobim-glob-nochunk")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<VECOBIM_GLOB_NOCHUNK>());
-    else if (wl == "obim-strict")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<OBIM_STRICT>());
-    else if (wl == "obim-ubsp")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<OBIM_UBSP>());
-    else if (wl == "obim-lifo")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<OBIM_LIFO>());
-    else if (wl == "obim-blk4")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<OBIM_BLK4>());
-    else if (wl == "obim-nobsp")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<OBIM_NOBSP>());
-    else if (wl == "obim-nochunk")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<OBIM_NOCHUNK>());
-    else if (wl == "obim-vischunk")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<OBIM_VISCHUNK>());
-    else if (wl == "obim-glob")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<OBIM_GLOB>());
-    else if (wl == "obim-glob-nochunk")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<OBIM_GLOB_NOCHUNK>());
-    else if (wl == "skiplist")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<GPQ>());
-    else if (wl == "skiplist-nc")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<GPQ_NC>());
-    else if (wl == "spraylist")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<SL>());
-    else if (wl == "multiqueue1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<MQ1>());
-    else if (wl == "multiqueue4")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<MQ4>());
-    else if (wl == "multiqueue4-nc")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<MQ4_NC>());
-    else if (wl == "heapmultiqueue1")
+#include "AMQMatch2.h"
+#include "AMQMatch3.h"
+#include "AMQMatch4.h"
+
+//    if (wl == "amq2_1_1")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                       Process(graph, tolerance, amp), Galois::wl<AMQ2_1_1_1_1>());
+
+//    if (wl == "obim") {
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<OBIM>());
+//    }
+//    else if (wl == "adap-obim") {
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<ADAPOBIM>());
+//    }
+//    else if (wl == "slobim") {
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<SLOBIM>());
+//    }
+//    else if (wl == "slobim-nochunk")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<SLOBIM_NOCHUNK>());
+//    else if (wl == "slobim-vischunk")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<SLOBIM_VISCHUNK>());
+//    else if (wl == "vecobim")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<VECOBIM>());
+//    else if (wl == "vecobim-nochunk")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<VECOBIM_NOCHUNK>());
+//    else if (wl == "vecobim-glob-nochunk")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<VECOBIM_GLOB_NOCHUNK>());
+//    else if (wl == "obim-strict")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<OBIM_STRICT>());
+//    else if (wl == "obim-ubsp")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<OBIM_UBSP>());
+//    else if (wl == "obim-lifo")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<OBIM_LIFO>());
+//    else if (wl == "obim-blk4")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<OBIM_BLK4>());
+//    else if (wl == "obim-nobsp")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<OBIM_NOBSP>());
+//    else if (wl == "obim-nochunk")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<OBIM_NOCHUNK>());
+//    else if (wl == "obim-vischunk")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<OBIM_VISCHUNK>());
+//    else if (wl == "obim-glob")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<OBIM_GLOB>());
+//    else if (wl == "obim-glob-nochunk")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<OBIM_GLOB_NOCHUNK>());
+//    else if (wl == "skiplist")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<GPQ>());
+//    else if (wl == "skiplist-nc")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<GPQ_NC>());
+//    else if (wl == "spraylist")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<SL>());
+//    else if (wl == "multiqueue1")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<MQ1>());
+//    else if (wl == "multiqueue4")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<MQ4>());
+//    else if (wl == "multiqueue4-nc")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<MQ4_NC>());
+    if (wl == "heapmultiqueue1")
       Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
                      boost::make_transform_iterator(graph.end(), std::ref(fn)),
                      ProcessWithBreaks(graph, tolerance, amp), Galois::wl<HMQ1>());
-    else if (wl == "heapmultiqueue4")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<HMQ4>());
-    else if (wl == "thrskiplist")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<PTSL>());
-    else if (wl == "pkgskiplist")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<PPSL>());
-    else if (wl == "lpq")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<LPQ>());
-    else if (wl == "swarm")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<SWARMPQ>());
-    else if (wl == "swarm-nc")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<SWARMPQ_NC>());
-    else if (wl == "heapswarm")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<HSWARMPQ>());
-    else if (wl == "ppq")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<PPQ>());
-     else if (wl == "klsm256")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<kLSM256>());
-     else if (wl == "klsm16k")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<kLSM16k>());
-    else if (wl == "klsm4m")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<kLSM4m>());
-   else
-      std::cerr << "No work list!" << "\n";
-    /*Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<SL>());*/
-    std::cout<< "here2\n";
+//    else if (wl == "heapmultiqueue4")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<HMQ4>());
+//    else if (wl == "thrskiplist")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<PTSL>());
+//    else if (wl == "pkgskiplist")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<PPSL>());
+//    else if (wl == "lpq")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<LPQ>());
+//    else if (wl == "swarm")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<SWARMPQ>());
+//    else if (wl == "swarm-nc")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<SWARMPQ_NC>());
+//    else if (wl == "heapswarm")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<HSWARMPQ>());
+//    else if (wl == "ppq")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<PPQ>());
+//     else if (wl == "klsm256")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<kLSM256>());
+//     else if (wl == "klsm16k")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<kLSM16k>());
+//    else if (wl == "klsm4m")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<kLSM4m>());
+//   else
+//      std::cerr << "No work list!" << "\n";
+//    /*Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<SL>());*/
+//    std::cout<< "here2\n";
 
   }
 
@@ -932,7 +951,9 @@ void runAsync() {
   //omp_get_wtime();
   //std::cout<<"Time: "<<(double(end - start) / CLOCKS_PER_SEC)<<std::endl;
   T.stop();
-
+  std::ofstream out(amqResultFile, std::ios::app);
+  out << T.get() << " ";
+  out.close();
   Galois::reportPageAlloc("MeminfoPost");
 
   Galois::Runtime::reportNumaAlloc("NumaPost");
@@ -970,6 +991,13 @@ void run() {
     printTop(graph, 10);
 }
 
+uint64_t getStatVal(Galois::Statistic* value) {
+  uint64_t stat = 0;
+  for (unsigned x = 0; x < Galois::Runtime::activeThreads; ++x)
+    stat += value->getValue(x);
+  return stat;
+}
+
 int main(int argc, char **argv) {
   LonestarStart(argc, argv, name, desc, url);
   Galois::StatManager statManager;
@@ -985,6 +1013,7 @@ int main(int argc, char **argv) {
   nEmpty = new Galois::Statistic("nEmpty");
   nOverall = new Galois::Statistic("nOverall");
   nEdgesProcessed = new Galois::Statistic("nEdgesProcessed");
+  nNodesProcessed = new Galois::Statistic("nNodesProcessed");
 
 
   if (outputPullFilename.size()) {
@@ -1009,12 +1038,18 @@ int main(int argc, char **argv) {
   }
   T.stop();
 
+  std::string wl = worklistname;
+  std::ofstream nodes(amqResultFile, std::ios::app);
+  nodes << wl << " " << getStatVal(nNodesProcessed) << std::endl;
+  nodes.close();
+
   delete BadWork;
   delete WLEmptyWork;
   delete nBad;
   delete nEmpty;
   delete nOverall;
   delete nEdgesProcessed;
+  delete nNodesProcessed;
 
   return 0;
 }

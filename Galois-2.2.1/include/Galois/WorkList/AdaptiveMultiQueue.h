@@ -127,7 +127,7 @@ private:
       }
     }
     if constexpr (ChunkPop) {
-      for (size_t i = 0; i < 8; i++) {
+      for (size_t i = 0; i < 4; i++) {
         if (heap->heap.size() > 1) {
           popped_v.push_back(getMin(heap));
         } else break;

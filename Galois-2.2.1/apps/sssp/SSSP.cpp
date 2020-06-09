@@ -498,10 +498,10 @@ struct AsyncAlgo {
     typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>> AMQ2_1_1000_1_1000;
     typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <5, 1000>> AMQ2_5_1000_5_1000;
     typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 100>> AMQ2_5_1000_1_100;
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 1000>, true> AMQ28_5_1000_1_1000;
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>, true> AMQ28_1_1000_1_1000;
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <5, 1000>, true> AMQ28_5_1000_5_1000;
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 100>, true> AMQ28_5_1000_1_100;
+    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 1000>, true> AMQ22_5_1000_1_1000;
+    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>, true> AMQ22_1_1000_1_1000;
+    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <5, 1000>, true> AMQ22_5_1000_5_1000;
+    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 100>, true> AMQ22_5_1000_1_100;
     typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 3, false, void, true, false, Prob <5, 1000>, Prob <1, 1000>> AMQ3_5_1000_1_1000;
     typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 3, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>> AMQ3_1_1000_1_1000;
     typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 3, false, void, true, false, Prob <5, 1000>, Prob <5, 1000>> AMQ3_5_1000_5_1000;
@@ -605,14 +605,14 @@ struct AsyncAlgo {
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_5_1000_5_1000>());
     else if (wl == "amq2_0.005_0.01")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_5_1000_1_100>());
-    else if (wl == "amq28_0.005_0.001")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ28_5_1000_1_1000>());
-    else if (wl == "amq28_0.001_0.001")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ28_1_1000_1_1000>());
-    else if (wl == "amq28_0.005_0.005")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ28_5_1000_5_1000>());
-    else if (wl == "amq28_0.005_0.01")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ28_5_1000_1_100>());
+    else if (wl == "amq22_0.005_0.001")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ22_5_1000_1_1000>());
+    else if (wl == "amq22_0.001_0.001")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ22_1_1000_1_1000>());
+    else if (wl == "amq22_0.005_0.005")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ22_5_1000_5_1000>());
+    else if (wl == "amq22_0.005_0.01")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ22_5_1000_1_100>());
     else if (wl == "amq3_0.005_0.001")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ3_5_1000_1_1000>());
     else if (wl == "amq3_0.001_0.001")

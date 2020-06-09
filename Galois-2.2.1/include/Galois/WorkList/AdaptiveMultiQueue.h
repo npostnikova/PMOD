@@ -443,7 +443,7 @@ public:
   }
   //! Pop a value from the queue.
   Galois::optional<value_type> pop() {
-    static std::vector<value_type> popped_v;
+    static thread_local std::vector<value_type> popped_v;
     if constexpr (ChunkPop) {
       if (!popped_v.empty()) {
         auto ret = popped_v.back();

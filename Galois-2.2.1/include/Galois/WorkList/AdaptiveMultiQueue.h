@@ -127,7 +127,7 @@ private:
       }
     }
     if constexpr (ChunkPop) {
-      for (size_t i = 0; i < 4; i++) {
+      for (size_t i = 0; i < 8; i++) {
         if (heap->heap.size() > 1) {
           popped_v.push_back(getMin(heap));
         } else break;
@@ -463,12 +463,24 @@ public:
 
     size_t change = random() % PopChange::Q;
 
-    if (local_q < nQ && change >= PopChange::P) {
-      heap_i = &heaps[local_q].data;
-      if (heap_i->try_lock()) {
-        if (heap_i->heap.size() != 1)
-          return extract_min(heap_i, popped_v);
-        heap_i->unlock();
+    if constexpr (ChunkPop) {
+      if (local_q < nQ && change >= PopChange::P * 8) {
+        heap_i = &heaps[local_q].data;
+        if (heap_i->try_lock()) {
+          if (heap_i->heap.size() != 1)
+            return extract_min(heap_i, popped_v);
+          heap_i->unlock();
+        }
+      }
+    }
+    else {
+      if (local_q < nQ && change >= PopChange::P) {
+        heap_i = &heaps[local_q].data;
+        if (heap_i->try_lock()) {
+          if (heap_i->heap.size() != 1)
+            return extract_min(heap_i, popped_v);
+          heap_i->unlock();
+        }
       }
     }
 

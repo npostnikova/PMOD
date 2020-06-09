@@ -83,7 +83,8 @@ template<typename T,
          bool Concurrent = true,
          bool Blocking = false,
          typename PushChange = Prob<1, 1>,
-         typename PopChange = Prob<1, 1>>
+         typename PopChange = Prob<1, 1>,
+         bool ChunkPop = false>
 class AdaptiveMultiQueue {
 private:
   typedef T value_t;
@@ -118,13 +119,22 @@ private:
   }
 
   //! Extracts minimum from the locked heap.
-  Galois::optional<value_t> extract_min(Heap* heap) {
+  Galois::optional<value_t> extract_min(Heap* heap, std::vector<value_t>& popped_v) {
     auto result = getMin(heap);
-    heap->min = heap->heap.min();
     if constexpr (Blocking) {
-      if (heap->heap.size() == 1)
+      if (heap->heap.size() == 1) {
         empty_queues.fetch_add(1);
+      }
     }
+    if constexpr (ChunkPop) {
+      for (size_t i = 0; i < 8; i++) {
+        if (heap->heap.size() > 1) {
+          popped_v.push_back(getMin(heap));
+        } else break;
+      }
+      std::reverse(popped_v.begin(), popped_v.end());
+    }
+    heap->min = heap->heap.min();
     heap->unlock();
     return result;
   }
@@ -324,13 +334,13 @@ public:
   //! Change the concurrency flag.
   template<bool _concurrent>
   struct rethread {
-    typedef AdaptiveMultiQueue<T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, _concurrent, Blocking, PushChange, PopChange> type;
+    typedef AdaptiveMultiQueue<T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, _concurrent, Blocking, PushChange, PopChange, ChunkPop> type;
   };
 
   //! Change the type the worklist holds.
   template<typename _T>
   struct retype {
-    typedef AdaptiveMultiQueue<_T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, Concurrent, Blocking, PushChange, PopChange> type;
+    typedef AdaptiveMultiQueue<_T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, Concurrent, Blocking, PushChange, PopChange, ChunkPop> type;
   };
 
   //! Push a value onto the queue.
@@ -431,9 +441,16 @@ public:
     auto rp = range.local_pair();
     return push(rp.first, rp.second);
   }
-
   //! Pop a value from the queue.
   Galois::optional<value_type> pop() {
+    static std::vector<value_type> popped_v;
+    if constexpr (ChunkPop) {
+      if (!popped_v.empty()) {
+        auto ret = popped_v.back();
+        popped_v.pop_back();
+        return ret;
+      }
+    }
     static const size_t SLEEPING_ATTEMPTS = 8;
     // static const size_t RANDOM_ATTEMPTS = 8;
 
@@ -450,7 +467,7 @@ public:
       heap_i = &heaps[local_q].data;
       if (heap_i->try_lock()) {
         if (heap_i->heap.size() != 1)
-          return extract_min(heap_i);
+          return extract_min(heap_i, popped_v);
         heap_i->unlock();
       }
     }
@@ -480,7 +497,7 @@ public:
           } while (!heap_i->try_lock());
 
           if (heap_i->heap.size() != 1) {
-            return extract_min(heap_i);
+            return extract_min(heap_i, popped_v);
           } else {
             heap_i->unlock();
           }
@@ -491,7 +508,7 @@ public:
           heap_i->lock();
           if (heap_i->heap.size() > 1) {
             local_q = (i_ind + k) % nQ;
-            return extract_min(heap_i);
+            return extract_min(heap_i, popped_v);
           }
           heap_i->unlock();
         }

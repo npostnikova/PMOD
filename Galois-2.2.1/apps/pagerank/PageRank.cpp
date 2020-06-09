@@ -665,6 +665,10 @@ struct AsyncPri{
     typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>> AMQ2_1_1000_1_1000;
     typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <5, 1000>> AMQ2_5_1000_5_1000;
     typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 100>> AMQ2_5_1000_1_100;
+    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 1000>, true> AMQ2CP_5_1000_1_1000;
+    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>, true> AMQ2CP_1_1000_1_1000;
+    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <5, 1000>, true> AMQ2CP_5_1000_5_1000;
+    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 100>, true> AMQ2CP_5_1000_1_100;
     typedef AdaptiveMultiQueue<WorkItem, Comparer, 3, false, void, true, false, Prob <5, 1000>, Prob <1, 1000>> AMQ3_5_1000_1_1000;
     typedef AdaptiveMultiQueue<WorkItem, Comparer, 3, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>> AMQ3_1_1000_1_1000;
     typedef AdaptiveMultiQueue<WorkItem, Comparer, 3, false, void, true, false, Prob <5, 1000>, Prob <5, 1000>> AMQ3_5_1000_5_1000;
@@ -738,6 +742,22 @@ struct AsyncPri{
       Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
                      boost::make_transform_iterator(graph.end(), std::ref(fn)),
                      Process(graph, tolerance, amp), Galois::wl<AMQ2_5_1000_1_100>());
+    else if (wl == "amq2cp_0.005_0.001")
+      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     Process(graph, tolerance, amp), Galois::wl<AMQ2CP_5_1000_1_1000>());
+    else if (wl == "amq2cp_0.001_0.001")
+      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     Process(graph, tolerance, amp), Galois::wl<AMQ2CP_1_1000_1_1000>());
+    else if (wl == "amq2cp_0.005_0.005")
+      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     Process(graph, tolerance, amp), Galois::wl<AMQ2CP_5_1000_5_1000>());
+    else if (wl == "amq2cp_0.005_0.01")
+      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     Process(graph, tolerance, amp), Galois::wl<AMQ2CP_5_1000_1_100>());
     else if (wl == "amq3_0.005_0.001")
       Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
                      boost::make_transform_iterator(graph.end(), std::ref(fn)),

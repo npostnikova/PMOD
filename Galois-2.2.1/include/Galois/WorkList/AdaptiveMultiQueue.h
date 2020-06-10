@@ -84,7 +84,7 @@ template<typename T,
          bool Blocking = false,
          typename PushChange = Prob<1, 1>,
          typename PopChange = Prob<1, 1>,
-         bool ChunkPop = false>
+         size_t ChunkPop = 0>
 class AdaptiveMultiQueue {
 private:
   typedef T value_t;
@@ -126,8 +126,8 @@ private:
         empty_queues.fetch_add(1);
       }
     }
-    if constexpr (ChunkPop) {
-      for (size_t i = 0; i < 2; i++) {
+    if constexpr (ChunkPop > 0) {
+      for (size_t i = 0; i < ChunkPop; i++) {
         if (heap->heap.size() > 1) {
           popped_v.push_back(getMin(heap));
         } else break;
@@ -444,7 +444,7 @@ public:
   //! Pop a value from the queue.
   Galois::optional<value_type> pop() {
     static thread_local std::vector<value_type> popped_v;
-    if constexpr (ChunkPop) {
+    if constexpr (ChunkPop > 0) {
       if (!popped_v.empty()) {
         auto ret = popped_v.back();
         popped_v.pop_back();
@@ -463,8 +463,8 @@ public:
 
     size_t change = random() % PopChange::Q;
 
-    if constexpr (ChunkPop) {
-      if (local_q < nQ && change >= PopChange::P * 3) {
+    if constexpr (ChunkPop > 0) {
+      if (local_q < nQ && change >= PopChange::P * (ChunkPop + 1)) {
         heap_i = &heaps[local_q].data;
         if (heap_i->try_lock()) {
           if (heap_i->heap.size() != 1)

@@ -541,11 +541,13 @@ struct AsyncAlgo {
     else if (wl == "adap-obim")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<ADAPOBIM>());
 
-#include "AMQChunk2.h"
+#include "AMQChunk16.h"
 
 #include "AMQChunkMatch2.h"
 #include "AMQChunkMatch4.h"
 #include "AMQChunkMatch8.h"
+#include "AMQChunkMatch16.h"
+#include "AMQChunkMatch32.h"
 
 //    else if (wl == "adap-mq2")
 //	    Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2>());

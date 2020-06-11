@@ -1,5 +1,5 @@
-#ifndef AMQCHUNK3
-#define AMQCHUNK3
+#ifndef AMQCHUNK4
+#define AMQCHUNK4
 
 typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 4> AMQ2_1_1_1_1_4;
 typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <95, 100>, 4> AMQ2_1_1_95_100_4;

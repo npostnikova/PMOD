@@ -93,6 +93,30 @@ struct DAryHeap {
 		}
 	}
 
+  void build() {
+    // D * index + 1 is the first child
+    for (size_t i = 0; is_valid_index(D * i + 1); i++) {
+      sift_down(i);
+    }
+  }
+
+  void divideElems(DAryHeap<T, Compare, D>& h, T& maxT) {
+    size_t newSize = 0;
+    for (size_t i = 0; i < size(); i++) {
+      if (i % 2 == 0 && cmp(maxT, heap[i])) {
+        h.push_back(heap[i]);
+      } else {
+        heap[newSize] = heap[i];
+        newSize++;
+      }
+    }
+    while (size() != newSize) {
+      heap.pop_back();
+    }
+    build();
+    h.build();
+  }
+
 private:
 	T MAX_VAL;
 	size_t qInd = 0;
@@ -203,6 +227,9 @@ private:
 		return index;
 	}
 
+	void push_back(T const& val) {
+	  heap.push_back(val);
+	}
 	//! Nice for debug (not really).
 //	void print_heap() {
 //		for (size_t i = 0; i < heap.size(); i++) {

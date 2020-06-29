@@ -476,7 +476,7 @@ struct AsyncAlgo {
     typedef UpdateRequestComparer<UpdateRequest> Comparer;
     typedef UpdateRequestNodeComparer<UpdateRequest> NodeComparer;
     typedef UpdateRequestHasher<UpdateRequest> Hasher;
-//	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, push_p, pop_p> AMQ2;
+	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2> AMQ2;
 //	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 4, false, void, true, false, push_p, pop_p> AMQ4;
 //	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 8, false, void, true, false, push_p, pop_p> AMQ8;
 //	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 4> AMQ4;
@@ -541,7 +541,7 @@ struct AsyncAlgo {
     else if (wl == "adap-obim")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<ADAPOBIM>());
 
-#include "AMQChunk16.h"
+//#include "AMQChunk16.h"
 
 #include "AMQChunkMatch2.h"
 #include "AMQChunkMatch4.h"
@@ -606,9 +606,11 @@ struct AsyncAlgo {
 //    else if (wl == "hmq4")
 //      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ4>());
 //
+    if (wl == "amq2")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2>());
+//    else if (wl == "amq2_0.001_0.001")
 //    else if (wl == "amq2_0.005_0.001")
 //      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_5_1000_1_1000>());
-//    else if (wl == "amq2_0.001_0.001")
 //      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_1000_1_1000>());
 //    else if (wl == "amq2_0.005_0.005")
 //      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_5_1000_5_1000>());

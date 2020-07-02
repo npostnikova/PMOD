@@ -100,10 +100,10 @@ struct DAryHeap {
     }
   }
 
-  void divideElems(DAryHeap<T, Compare, D>& h, T& maxT) {
+  void divideElems(DAryHeap<T, Compare, D>& h) {
     size_t newSize = 0;
     for (size_t i = 0; i < size(); i++) {
-      if (i % 2 == 0 && cmp(maxT, heap[i])) {
+      if (i % 2 == 0) {
         h.push_back(heap[i]);
       } else {
         heap[newSize] = heap[i];
@@ -117,9 +117,21 @@ struct DAryHeap {
     h.build();
   }
 
+  void pushAllAndClear(DAryHeap<T, Compare, D>& fromH) {
+	  while (fromH.size() > 0) {
+	    push(fromH.removeLast());
+	  }
+	}
+
 private:
 	T MAX_VAL;
 	size_t qInd = 0;
+
+	inline T removeLast() {
+	  auto res = heap.back();
+	  heap.pop_back();
+	  return res;
+	}
 
 	void swap(index_t  i, index_t j) {
 		T t = heap[i];

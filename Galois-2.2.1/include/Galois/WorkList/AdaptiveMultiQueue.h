@@ -89,7 +89,7 @@ template<typename T,
          size_t S = 1, // todo
          size_t F = 1,
          size_t E = 2,
-         int LEFT   = 1024,
+         int LEFT   = -1024,
          int RIGHT = 1024>
 class AdaptiveMultiQueue {
 private:
@@ -104,9 +104,9 @@ private:
   const size_t initNQ;
   //size_t nQ; // todo
   //! Maximum element of type `T`.
-  T maxT;
+  // T maxT;
   //! The number of queues is changed under the mutex.
-  std::mutex adaptLock;
+  Runtime::LL::SimpleLock<true> adaptLock;
   const size_t maxQNum;
 
   //! Thread local random.
@@ -133,8 +133,8 @@ private:
   Galois::optional<value_t> extract_min(Heap* heap, std::vector<value_t>& popped_v, size_t success, size_t failure, size_t empty) {
     auto result = getMin(heap);
     if constexpr (Blocking) {
-      if (heap->heap.size() == 1) {
-        empty_queues.fetch_add(1);
+      if (heap->heap.size() == 0) {
+        empty_queues++;
       }
     }
     if constexpr (ChunkPop > 0) {
@@ -332,12 +332,12 @@ public:
     heaps = std::make_unique<Runtime::LL::CacheLineStorage<Heap>[]>(maxQNum);
     std::cout << "Queues: " << nQ << std::endl;
 
-    memset(reinterpret_cast<void *>(&maxT), 0xff, sizeof(maxT));
+//    memset(reinterpret_cast<void *>(&maxT), 0xff, sizeof(maxT));
     for (size_t i = 0; i < maxQNum; i++) {
       heaps[i].data.heap.set_index(i);
-      heaps[i].data.heap.set_max_val(maxT);
-      heaps[i].data.min = maxT;
-      heaps[i].data.heap.push(heaps[i].data.min);
+//      heaps[i].data.heap.set_max_val(maxT);
+//      heaps[i].data.min = maxT;
+//      heaps[i].data.heap.push(heaps[i].data.min);
     }
   }
 
@@ -377,10 +377,10 @@ public:
       return rand_heap();
     return old_local;
   }
-  size_t thread_id = 0;
-  void inc_thread_id() {
-    thread_id = (thread_id + 1) % 32;
-  }
+//  size_t thread_id = 0;
+//  void inc_thread_id() {
+//    thread_id = (thread_id + 1) % 32;
+//  }
 
   void deleteQueue(size_t expectedNQ) {
     if (!adaptLock.try_lock())
@@ -402,16 +402,18 @@ public:
     mergeH->lock();
     Heap* removeH = &heaps[curNQ - 1].data;
     removeH->lock();
-    while (removeH->heap.size() > 1) {
-      // todo: fix for decrease key
-      mergeH->heap.push(removeH->heap.extractMin());
-    }
+//    while (removeH->heap.size() > 0) {
+//      // todo: fix for decrease key
+//      mergeH->heap.push(removeH->heap.extractMin());
+//    }
+
+    mergeH->heap.pushAllAndClear(removeH->heap);
 
     // mark the heap empty
     removeH->size = 0;
-    removeH->min = maxT;
+    // removeH->min = maxT;
 
-    mergeH->size = mergeH->heap.size() - 1;
+    mergeH->size = mergeH->heap.size();
     mergeH->min = mergeH->heap.min();
 
     nQ--;
@@ -442,12 +444,13 @@ public:
     elemsH->lock();
     addH->lock();
 
-    elemsH->heap.divideElems(addH->heap, maxT);
+    // todo: if empty
+    elemsH->heap.divideElems(addH->heap);
 
-    elemsH->size = elemsH->heap.size() - 1;
+    elemsH->size = elemsH->heap.size();
     elemsH->min = elemsH->heap.min();
 
-    addH->size = addH->heap.size() - 1;
+    addH->size = addH->heap.size();
     addH->min = addH->heap.min();
 
     nQ++;
@@ -476,7 +479,7 @@ public:
     int64_t curState = failCnt + emptyCnt - succCnt;
     if (curState > RIGHT)
       addQueue(curQ);
-    else if (curState < 0 && (-curState) > LEFT)
+    else if (curState < LEFT)
       deleteQueue(curQ);
   }
 
@@ -545,11 +548,11 @@ public:
         }
       }
       if constexpr (Blocking) {
-        if (heap->heap.size() == 2)
+        if (heap->heap.size() == 1)
           empty_queues.fetch_sub(1);
       }
       heap->min = heap->heap.min();
-      heap->size = heap->heap.size() - 1;
+      heap->size = heap->heap.size();
       heap->unlock();
     }
     if constexpr (Blocking)
@@ -605,8 +608,8 @@ public:
     if constexpr (ChunkPop > 0) {
       if (local_q < nQ && change >= PopChange::P * (ChunkPop + 1)) {
         heap_i = &heaps[local_q].data;
-        if (try_lock_heap(local_q)) {  // todo: should I cnt the failure?
-          if (heap_i->heap.size() != 1) {
+        if (heap_i->size != 0 && try_lock_heap(local_q)) {  // todo: should I cnt the failure?
+          if (heap_i->heap.size() != 0) {
             return extract_min(heap_i, popped_v, 1, 0, 0);
           }
           heap_i->unlock();
@@ -620,7 +623,7 @@ public:
       if (local_q < nQ && change >= PopChange::P) {
         heap_i = &heaps[local_q].data;
         if (try_lock_heap(local_q)) {
-          if (heap_i->heap.size() != 1) {
+          if (heap_i->heap.size() != 0) {
             return extract_min(heap_i, popped_v, 1, 0, 0);
           }
           heap_i->unlock();
@@ -662,7 +665,7 @@ public:
           success++;
 
 
-          if (heap_i->heap.size() != 1) {
+          if (heap_i->heap.size() != 0) {
             return extract_min(heap_i, popped_v, success, failure, empty);
           } else {
             empty++;
@@ -671,10 +674,10 @@ public:
         //}
         for (size_t k = 1; k < nQ; k++) {
           heap_i = &heaps[(i_ind + k) % nQ].data;
-          if (heap_i->min == maxT)
+          if (heap_i->size == 0)
             continue;
           heap_i->lock();
-          if (heap_i->heap.size() > 1) {
+          if (heap_i->heap.size() > 0) {
             local_q = (i_ind + k) % nQ;
             return extract_min(heap_i, popped_v, success, failure, empty);
           } else {

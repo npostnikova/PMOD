@@ -39,7 +39,7 @@ int main() {
           ifs << "if (wl == \"amq2" + suff + "\")\n"
                                              "\tGalois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2" +
                  suff + ">());" << endl;
-          script << "$APP -t={THREAD} -wl=amq2" << suff << " --resultFile=${RES}_adap_${THREAD} $GRAPH_PATH" << endl;
+          script << "$APP -t=${THREADS} -wl=amq2" << suff << " --resultFile=${RES}_adap_${THREADS} $GRAPH_PATH" << endl;
         }
       }
     }

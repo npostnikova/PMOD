@@ -88,9 +88,10 @@ template<typename T,
          size_t ChunkPop = 0,
          size_t S = 1, // todo
          size_t F = 1,
-         size_t E = 2,
-         int LEFT   = -1024,
-         int RIGHT = 1024>
+         size_t E = 1,
+         int LEFT  = -900,
+         int RIGHT = 900,
+         size_t WINDOW_SIZE = 128>
 class AdaptiveMultiQueue {
 private:
   typedef T value_t;
@@ -347,13 +348,13 @@ public:
   //! Change the concurrency flag.
   template<bool _concurrent>
   struct rethread {
-    typedef AdaptiveMultiQueue<T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, _concurrent, Blocking, PushChange, PopChange, ChunkPop> type;
+    typedef AdaptiveMultiQueue<T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, _concurrent, Blocking, PushChange, PopChange, ChunkPop, S, F, E, LEFT, RIGHT, WINDOW_SIZE> type;
   };
 
   //! Change the type the worklist holds.
   template<typename _T>
   struct retype {
-    typedef AdaptiveMultiQueue<_T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, Concurrent, Blocking, PushChange, PopChange, ChunkPop> type;
+    typedef AdaptiveMultiQueue<_T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, Concurrent, Blocking, PushChange, PopChange, ChunkPop, S, F, E, LEFT, RIGHT, WINDOW_SIZE> type;
   };
 
   //! Push a value onto the queue.
@@ -377,10 +378,6 @@ public:
       return rand_heap();
     return old_local;
   }
-//  size_t thread_id = 0;
-//  void inc_thread_id() {
-//    thread_id = (thread_id + 1) % 32;
-//  }
 
   void deleteQueue(size_t expectedNQ) {
     if (!adaptLock.try_lock())
@@ -454,32 +451,35 @@ public:
     addH->min = addH->heap.min();
 
     nQ++;
-    elemsH->unlock();
     addH->unlock();
+    elemsH->unlock();
     // std::cout << ">>>>>>>>>>>>>>> Added: " << nQ << std::endl;
     adaptLock.unlock();
   }
 
 
   inline void reportStat(size_t s, size_t f, size_t e) {
-    static thread_local int64_t succCnt  = 0;
-    static thread_local int64_t failCnt  = 0;
-    static thread_local int64_t emptyCnt = 0;
     static thread_local size_t curQ = 0;
+
+    static const size_t windowSize = WINDOW_SIZE;
+    static thread_local int window[windowSize] = { 0 };
+    static thread_local size_t statInd = 0;
+    static thread_local int64_t windowSum = 0;
 
     if (curQ != nQ) {
       curQ = nQ;
-      succCnt = failCnt = emptyCnt = 0;
+      memset(&window, 0, sizeof(int) * windowSize);
+      windowSum = 0;
+      statInd = 0;
     }
+    windowSum -= window[statInd];
+    window[statInd] = f * F + e * E - s * S;
+    windowSum += window[statInd];
+    statInd = (statInd + 1) % windowSize;
 
-    succCnt  += s * S;
-    failCnt  += f * F;
-    emptyCnt += e * E;
-
-    int64_t curState = failCnt + emptyCnt - succCnt;
-    if (curState > RIGHT)
+    if (windowSum > RIGHT)
       addQueue(curQ);
-    else if (curState < LEFT)
+    else if (windowSum < LEFT)
       deleteQueue(curQ);
   }
 
@@ -590,7 +590,7 @@ public:
       }
     }
     static const size_t SLEEPING_ATTEMPTS = 8;
-    // static const size_t RANDOM_ATTEMPTS = 8;
+    const size_t RANDOM_ATTEMPTS = nT == 1 ? 1 : 4;
 
     size_t failure = 0;
     size_t success = 0;
@@ -640,7 +640,7 @@ public:
         if (no_work) return result;
       }
       do {
-        //for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
+        for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
           while (true) {
             i_ind = rand_heap();
             heap_i = &heaps[i_ind].data;
@@ -651,7 +651,10 @@ public:
             if (i_ind == j_ind && nQ > 1)
               continue;
 
-            if (compare(heap_i->min, heap_j->min)) {
+            if (heap_i->size == 0) {
+              heap_i = heap_j;
+              local_q = i_ind = j_ind;
+            } else if (heap_j->size > 0 && compare(heap_i->min, heap_j->min)) {
               heap_i = heap_j;
               local_q = i_ind = j_ind;
             } else {
@@ -671,7 +674,7 @@ public:
             empty++;
             heap_i->unlock();
           }
-        //}
+        }
         for (size_t k = 1; k < nQ; k++) {
           heap_i = &heaps[(i_ind + k) % nQ].data;
           if (heap_i->size == 0)

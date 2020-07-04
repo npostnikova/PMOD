@@ -102,8 +102,9 @@ struct DAryHeap {
 
   void divideElems(DAryHeap<T, Compare, D>& h) {
     size_t newSize = 0;
+    h.heap.reserve(h.heap.size() + heap.size() / 2);
     for (size_t i = 0; i < size(); i++) {
-      if (i % 2 == 0) {
+      if (i % 2 != 0) {
         h.push_back(heap[i]);
       } else {
         heap[newSize] = heap[i];
@@ -118,9 +119,16 @@ struct DAryHeap {
   }
 
   void pushAllAndClear(DAryHeap<T, Compare, D>& fromH) {
-	  while (fromH.size() > 0) {
-	    push(fromH.removeLast());
+	  auto prevSize = heap.size();
+	  heap.insert(heap.begin(), fromH.heap.begin(), fromH.heap.end());
+	  for (size_t i = prevSize; i < heap.size(); i++) {
+	    sift_up(i);
 	  }
+	  fromH.heap.clear();//erase(fromH.heap.begin(), fromH.heap.end());
+//    heap.reserve(heap.size() + fromH.size());
+//	  while (fromH.size() > 0) {
+//	    push(fromH.removeLast());
+//	  }
 	}
 
 private:

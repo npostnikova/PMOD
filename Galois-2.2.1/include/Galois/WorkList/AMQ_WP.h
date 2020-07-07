@@ -13,6 +13,7 @@
 #include <iostream>
 #include "Heap.h"
 #include "WorkListHelpers.h"
+#include "AdaptiveMultiQueue.h"
 
 /**
  * Implementation with window + percent
@@ -21,55 +22,6 @@
 namespace Galois {
 namespace WorkList {
 
-/**
- * Lockable heap structure.
- *
- * @tparam T type of stored elements
- * @tparam Comparer callable defining ordering for objects of type `T`.
- * Its `operator()` returns `true` iff the first argument should follow the second one.
- */
-template <typename  T, typename Comparer>
-struct LockableHeap {
-  DAryHeap<T, Comparer, 4> heap;
-  // todo: use atomic
-  T min;
-  std::atomic<size_t> size = {0}; // atomic? who should update?
-
-  //! Non-blocking lock.
-  inline bool try_lock() {
-//    bool expected = false;
-//    return _lock.compare_exchange_strong(expected, true);
-    return _lock.try_lock();
-  }
-
-  //! Blocking lock.
-  inline void lock() {
-//    bool expected = false;
-//    while (!_lock.compare_exchange_strong(expected, true)) {
-//      expected = false;
-//    }
-    _lock.lock();
-  }
-
-  //! Unlocks the queue.
-  inline void unlock() {
-    //_lock = false;
-    _lock.unlock();
-  }
-
-private:
-  Runtime::LL::SimpleLock<true> _lock;
-  //std::atomic<bool> _lock;
-};
-
-// Probability P / Q
-template <size_t PV, size_t QV>
-struct Prob {
-  static const size_t P = PV;
-  static const size_t Q = QV;
-};
-
-Prob<1, 1> oneProb;
 
 /**
  * Basic implementation. Provides effective pushing of range of elements only.

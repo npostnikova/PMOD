@@ -434,9 +434,9 @@ public:
       memset(&windowE, 0, sizeof(int) * windowSize);
       memset(&windowS, 0, sizeof(int) * windowSize);
       memset(&windowF, 0, sizeof(int) * windowSize);
-      windowS = 0;
-      windowF = 0;
-      windowE = 0;
+      windowSumS = 0;
+      windowSumF = 0;
+      windowSumE = 0;
       statInd = 0;
     }
     windowSumE -= windowE[statInd];

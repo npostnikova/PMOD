@@ -42,6 +42,7 @@
 #include "OwnerComputes.h"
 #include "StableIterator.h"
 #include "AdaptiveMultiQueue.h"
+#include "AMQ_WP.h"
 
 namespace Galois {
 /**

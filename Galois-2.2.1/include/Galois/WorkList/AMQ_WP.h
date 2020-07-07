@@ -1,5 +1,6 @@
-#ifndef ADAPTIVE_MULTIQUEUE_H
-#define ADAPTIVE_MULTIQUEUE_H
+#ifndef GALOIS_AMQ_WP_H
+#define GALOIS_AMQ_WP_H
+
 
 #include <atomic>
 #include <memory>
@@ -12,6 +13,10 @@
 #include <iostream>
 #include "Heap.h"
 #include "WorkListHelpers.h"
+
+/**
+ * Implementation with window + percent
+ */
 
 namespace Galois {
 namespace WorkList {
@@ -43,7 +48,7 @@ struct LockableHeap {
 //    while (!_lock.compare_exchange_strong(expected, true)) {
 //      expected = false;
 //    }
-     _lock.lock();
+    _lock.lock();
   }
 
   //! Unlocks the queue.
@@ -77,22 +82,23 @@ Prob<1, 1> oneProb;
  * @tparam Concurrent if the implementation should be concurrent
  */
 template<typename T,
-         typename Comparer,
-         size_t C = 2,
-         bool DecreaseKey = false,
-         typename DecreaseKeyIndexer = void,
-         bool Concurrent = true,
-         bool Blocking = false,
-         typename PushChange = Prob<1, 1>,
-         typename PopChange  = Prob<1, 1>,
-         size_t ChunkPop = 0,
-         size_t S = 1, // todo
-         size_t F = 1,
-         size_t E = 1,
-         int LEFT  = -900,
-         int RIGHT = 900,
-         size_t WINDOW_SIZE = 128>
-class AdaptiveMultiQueue {
+typename Comparer,
+size_t C = 2,
+bool DecreaseKey = false,
+typename DecreaseKeyIndexer = void,
+bool Concurrent = true,
+bool Blocking = false,
+typename PushChange = Prob<1, 1>,
+typename PopChange  = Prob<1, 1>,
+size_t ChunkPop = 0,
+size_t S = 1, // todo
+size_t F = 1,
+size_t E = 1,
+int LEFT  = -900,
+int RIGHT = 900,
+size_t WINDOW_SIZE = 128,
+int EVENT_PERCENT = 70>
+class AMQ_WP {
 private:
   typedef T value_t;
   typedef LockableHeap<T, Comparer> Heap;
@@ -328,7 +334,7 @@ private:
   }
 
 public:
-  AdaptiveMultiQueue() : nT(Galois::getActiveThreads()), nQ(C * nT), initNQ(nT * C), suspend_array(std::make_unique<CondNode[]>(nT * CondC)), maxQNum(C * nT * 4) {
+  AMQ_WP() : nT(Galois::getActiveThreads()), nQ(C * nT), initNQ(nT * C), suspend_array(std::make_unique<CondNode[]>(nT * CondC)), maxQNum(C * nT * 4) {
     //std::atomic_init(&nQ, C * nT); // todo
     heaps = std::make_unique<Runtime::LL::CacheLineStorage<Heap>[]>(maxQNum);
     std::cout << "Queues: " << nQ << std::endl;
@@ -348,13 +354,13 @@ public:
   //! Change the concurrency flag.
   template<bool _concurrent>
   struct rethread {
-    typedef AdaptiveMultiQueue<T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, _concurrent, Blocking, PushChange, PopChange, ChunkPop, S, F, E, LEFT, RIGHT, WINDOW_SIZE> type;
+    typedef AMQ_WP<T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, _concurrent, Blocking, PushChange, PopChange, ChunkPop, S, F, E, LEFT, RIGHT, WINDOW_SIZE, EVENT_PERCENT> type;
   };
 
   //! Change the type the worklist holds.
   template<typename _T>
   struct retype {
-    typedef AdaptiveMultiQueue<_T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, Concurrent, Blocking, PushChange, PopChange, ChunkPop, S, F, E, LEFT, RIGHT, WINDOW_SIZE> type;
+    typedef AMQ_WP<_T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, Concurrent, Blocking, PushChange, PopChange, ChunkPop, S, F, E, LEFT, RIGHT, WINDOW_SIZE, EVENT_PERCENT> type;
   };
 
   //! Push a value onto the queue.
@@ -462,25 +468,43 @@ public:
     static thread_local size_t curQ = 0;
 
     static const size_t windowSize = WINDOW_SIZE;
-    static thread_local int window[windowSize] = { 0 };
+    static const double event_percent = EVENT_PERCENT / 100.0;
+    static thread_local int windowF[windowSize] = { 0 };
+    static thread_local int windowE[windowSize] = { 0 };
+    static thread_local int windowS[windowSize] = { 0 };
     static thread_local size_t statInd = 0;
-    static thread_local int64_t windowSum = 0;
+    static thread_local int64_t windowSumE = 0;
+    static thread_local int64_t windowSumS = 0;
+    static thread_local int64_t windowSumF = 0;
 
     if (curQ != nQ) {
       curQ = nQ;
-      memset(&window, 0, sizeof(int) * windowSize);
-      windowSum = 0;
+      memset(&windowE, 0, sizeof(int) * windowSize);
+      memset(&windowS, 0, sizeof(int) * windowSize);
+      memset(&windowF, 0, sizeof(int) * windowSize);
+      windowS = 0;
+      windowF = 0;
+      windowE = 0;
       statInd = 0;
     }
-    windowSum -= window[statInd];
-    window[statInd] = f * F + e * E - s * S;
-    windowSum += window[statInd];
-    statInd = (statInd + 1) % windowSize;
+    windowSumE -= windowE[statInd];
+    windowSumF -= windowF[statInd];
+    windowSumS -= windowS[statInd];
+    windowE[statInd] = e * E;
+    windowF[statInd] = f * F;
+    windowS[statInd] = s * S;
+    windowSumE += windowE[statInd];
+    windowSumF += windowF[statInd];
+    windowSumS += windowS[statInd];
+    int64_t windowSum = windowE[statInd] + windowF[statInd] - windowS[statInd];
 
-    if (windowSum > RIGHT)
+    if (windowSum > RIGHT && (windowSumE + windowSumF) / windowSum > event_percent)  {
       addQueue(curQ);
-    else if (windowSum < LEFT)
+    }
+    else if (windowSum < LEFT && windowSumS / windowSum > event_percent) {
       deleteQueue(curQ);
+    }
+    statInd = (statInd + 1) % windowSize;
   }
 
   //! Push a range onto the queue.
@@ -711,4 +735,5 @@ public:
 } // namespace WorkList
 } // namespace Galois
 
-#endif // ADAPTIVE_MULTIQUEUE_H
+
+#endif //GALOIS_AMQ_WP_H

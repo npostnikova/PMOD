@@ -549,8 +549,10 @@ struct AsyncAlgo {
 #include "AMQChunkMatch16.h"
 #include "AMQChunkMatch32.h"
 
-#include "AdapTypedefs.h"
+//#include "AdapTypedefs.h"
+#include "AdapWPTypedefs.h"
 #include "AdapIfs.h"
+#include "AdapWPIfs.h"
 
 //    else if (wl == "adap-mq2")
 //	    Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2>());

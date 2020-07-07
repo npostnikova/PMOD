@@ -1,16 +1,4 @@
 #ifdef ADAPWPEXP
-if (wl == "amqwp2_1_32_32_8_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_8_50>());
-if (wl == "amqwp2_1_32_32_8_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_8_60>());
-if (wl == "amqwp2_1_32_32_8_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_8_70>());
-if (wl == "amqwp2_1_32_32_8_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_8_80>());
-if (wl == "amqwp2_1_32_32_8_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_8_85>());
-if (wl == "amqwp2_1_32_32_8_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_8_90>());
 if (wl == "amqwp2_2_32_32_8_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_8_50>());
 if (wl == "amqwp2_2_32_32_8_60")
@@ -23,18 +11,6 @@ if (wl == "amqwp2_2_32_32_8_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_8_85>());
 if (wl == "amqwp2_2_32_32_8_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_8_90>());
-if (wl == "amqwp2_1_32_32_16_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_16_50>());
-if (wl == "amqwp2_1_32_32_16_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_16_60>());
-if (wl == "amqwp2_1_32_32_16_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_16_70>());
-if (wl == "amqwp2_1_32_32_16_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_16_80>());
-if (wl == "amqwp2_1_32_32_16_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_16_85>());
-if (wl == "amqwp2_1_32_32_16_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_16_90>());
 if (wl == "amqwp2_2_32_32_16_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_16_50>());
 if (wl == "amqwp2_2_32_32_16_60")
@@ -47,18 +23,6 @@ if (wl == "amqwp2_2_32_32_16_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_16_85>());
 if (wl == "amqwp2_2_32_32_16_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_16_90>());
-if (wl == "amqwp2_1_32_32_32_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_32_50>());
-if (wl == "amqwp2_1_32_32_32_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_32_60>());
-if (wl == "amqwp2_1_32_32_32_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_32_70>());
-if (wl == "amqwp2_1_32_32_32_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_32_80>());
-if (wl == "amqwp2_1_32_32_32_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_32_85>());
-if (wl == "amqwp2_1_32_32_32_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_32_90>());
 if (wl == "amqwp2_2_32_32_32_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_32_50>());
 if (wl == "amqwp2_2_32_32_32_60")
@@ -71,18 +35,6 @@ if (wl == "amqwp2_2_32_32_32_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_32_85>());
 if (wl == "amqwp2_2_32_32_32_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_32_90>());
-if (wl == "amqwp2_1_32_32_64_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_64_50>());
-if (wl == "amqwp2_1_32_32_64_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_64_60>());
-if (wl == "amqwp2_1_32_32_64_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_64_70>());
-if (wl == "amqwp2_1_32_32_64_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_64_80>());
-if (wl == "amqwp2_1_32_32_64_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_64_85>());
-if (wl == "amqwp2_1_32_32_64_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_64_90>());
 if (wl == "amqwp2_2_32_32_64_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_64_50>());
 if (wl == "amqwp2_2_32_32_64_60")
@@ -95,18 +47,6 @@ if (wl == "amqwp2_2_32_32_64_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_64_85>());
 if (wl == "amqwp2_2_32_32_64_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_64_90>());
-if (wl == "amqwp2_1_32_32_128_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_128_50>());
-if (wl == "amqwp2_1_32_32_128_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_128_60>());
-if (wl == "amqwp2_1_32_32_128_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_128_70>());
-if (wl == "amqwp2_1_32_32_128_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_128_80>());
-if (wl == "amqwp2_1_32_32_128_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_128_85>());
-if (wl == "amqwp2_1_32_32_128_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_128_90>());
 if (wl == "amqwp2_2_32_32_128_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_128_50>());
 if (wl == "amqwp2_2_32_32_128_60")
@@ -119,18 +59,6 @@ if (wl == "amqwp2_2_32_32_128_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_128_85>());
 if (wl == "amqwp2_2_32_32_128_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_128_90>());
-if (wl == "amqwp2_1_32_32_256_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_256_50>());
-if (wl == "amqwp2_1_32_32_256_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_256_60>());
-if (wl == "amqwp2_1_32_32_256_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_256_70>());
-if (wl == "amqwp2_1_32_32_256_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_256_80>());
-if (wl == "amqwp2_1_32_32_256_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_256_85>());
-if (wl == "amqwp2_1_32_32_256_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_256_90>());
 if (wl == "amqwp2_2_32_32_256_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_256_50>());
 if (wl == "amqwp2_2_32_32_256_60")
@@ -143,18 +71,6 @@ if (wl == "amqwp2_2_32_32_256_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_256_85>());
 if (wl == "amqwp2_2_32_32_256_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_256_90>());
-if (wl == "amqwp2_1_32_32_512_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_512_50>());
-if (wl == "amqwp2_1_32_32_512_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_512_60>());
-if (wl == "amqwp2_1_32_32_512_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_512_70>());
-if (wl == "amqwp2_1_32_32_512_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_512_80>());
-if (wl == "amqwp2_1_32_32_512_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_512_85>());
-if (wl == "amqwp2_1_32_32_512_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_32_32_512_90>());
 if (wl == "amqwp2_2_32_32_512_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_512_50>());
 if (wl == "amqwp2_2_32_32_512_60")
@@ -167,18 +83,6 @@ if (wl == "amqwp2_2_32_32_512_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_512_85>());
 if (wl == "amqwp2_2_32_32_512_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_32_32_512_90>());
-if (wl == "amqwp2_1_64_64_8_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_8_50>());
-if (wl == "amqwp2_1_64_64_8_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_8_60>());
-if (wl == "amqwp2_1_64_64_8_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_8_70>());
-if (wl == "amqwp2_1_64_64_8_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_8_80>());
-if (wl == "amqwp2_1_64_64_8_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_8_85>());
-if (wl == "amqwp2_1_64_64_8_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_8_90>());
 if (wl == "amqwp2_2_64_64_8_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_8_50>());
 if (wl == "amqwp2_2_64_64_8_60")
@@ -191,18 +95,6 @@ if (wl == "amqwp2_2_64_64_8_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_8_85>());
 if (wl == "amqwp2_2_64_64_8_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_8_90>());
-if (wl == "amqwp2_1_64_64_16_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_16_50>());
-if (wl == "amqwp2_1_64_64_16_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_16_60>());
-if (wl == "amqwp2_1_64_64_16_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_16_70>());
-if (wl == "amqwp2_1_64_64_16_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_16_80>());
-if (wl == "amqwp2_1_64_64_16_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_16_85>());
-if (wl == "amqwp2_1_64_64_16_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_16_90>());
 if (wl == "amqwp2_2_64_64_16_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_16_50>());
 if (wl == "amqwp2_2_64_64_16_60")
@@ -215,18 +107,6 @@ if (wl == "amqwp2_2_64_64_16_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_16_85>());
 if (wl == "amqwp2_2_64_64_16_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_16_90>());
-if (wl == "amqwp2_1_64_64_32_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_32_50>());
-if (wl == "amqwp2_1_64_64_32_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_32_60>());
-if (wl == "amqwp2_1_64_64_32_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_32_70>());
-if (wl == "amqwp2_1_64_64_32_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_32_80>());
-if (wl == "amqwp2_1_64_64_32_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_32_85>());
-if (wl == "amqwp2_1_64_64_32_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_32_90>());
 if (wl == "amqwp2_2_64_64_32_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_32_50>());
 if (wl == "amqwp2_2_64_64_32_60")
@@ -239,18 +119,6 @@ if (wl == "amqwp2_2_64_64_32_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_32_85>());
 if (wl == "amqwp2_2_64_64_32_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_32_90>());
-if (wl == "amqwp2_1_64_64_64_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_64_50>());
-if (wl == "amqwp2_1_64_64_64_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_64_60>());
-if (wl == "amqwp2_1_64_64_64_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_64_70>());
-if (wl == "amqwp2_1_64_64_64_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_64_80>());
-if (wl == "amqwp2_1_64_64_64_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_64_85>());
-if (wl == "amqwp2_1_64_64_64_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_64_90>());
 if (wl == "amqwp2_2_64_64_64_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_64_50>());
 if (wl == "amqwp2_2_64_64_64_60")
@@ -263,18 +131,6 @@ if (wl == "amqwp2_2_64_64_64_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_64_85>());
 if (wl == "amqwp2_2_64_64_64_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_64_90>());
-if (wl == "amqwp2_1_64_64_128_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_128_50>());
-if (wl == "amqwp2_1_64_64_128_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_128_60>());
-if (wl == "amqwp2_1_64_64_128_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_128_70>());
-if (wl == "amqwp2_1_64_64_128_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_128_80>());
-if (wl == "amqwp2_1_64_64_128_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_128_85>());
-if (wl == "amqwp2_1_64_64_128_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_128_90>());
 if (wl == "amqwp2_2_64_64_128_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_128_50>());
 if (wl == "amqwp2_2_64_64_128_60")
@@ -287,18 +143,6 @@ if (wl == "amqwp2_2_64_64_128_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_128_85>());
 if (wl == "amqwp2_2_64_64_128_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_128_90>());
-if (wl == "amqwp2_1_64_64_256_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_256_50>());
-if (wl == "amqwp2_1_64_64_256_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_256_60>());
-if (wl == "amqwp2_1_64_64_256_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_256_70>());
-if (wl == "amqwp2_1_64_64_256_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_256_80>());
-if (wl == "amqwp2_1_64_64_256_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_256_85>());
-if (wl == "amqwp2_1_64_64_256_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_256_90>());
 if (wl == "amqwp2_2_64_64_256_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_256_50>());
 if (wl == "amqwp2_2_64_64_256_60")
@@ -311,18 +155,6 @@ if (wl == "amqwp2_2_64_64_256_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_256_85>());
 if (wl == "amqwp2_2_64_64_256_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_256_90>());
-if (wl == "amqwp2_1_64_64_512_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_512_50>());
-if (wl == "amqwp2_1_64_64_512_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_512_60>());
-if (wl == "amqwp2_1_64_64_512_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_512_70>());
-if (wl == "amqwp2_1_64_64_512_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_512_80>());
-if (wl == "amqwp2_1_64_64_512_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_512_85>());
-if (wl == "amqwp2_1_64_64_512_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_64_64_512_90>());
 if (wl == "amqwp2_2_64_64_512_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_512_50>());
 if (wl == "amqwp2_2_64_64_512_60")
@@ -335,18 +167,6 @@ if (wl == "amqwp2_2_64_64_512_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_512_85>());
 if (wl == "amqwp2_2_64_64_512_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_64_64_512_90>());
-if (wl == "amqwp2_1_128_128_8_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_8_50>());
-if (wl == "amqwp2_1_128_128_8_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_8_60>());
-if (wl == "amqwp2_1_128_128_8_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_8_70>());
-if (wl == "amqwp2_1_128_128_8_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_8_80>());
-if (wl == "amqwp2_1_128_128_8_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_8_85>());
-if (wl == "amqwp2_1_128_128_8_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_8_90>());
 if (wl == "amqwp2_2_128_128_8_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_8_50>());
 if (wl == "amqwp2_2_128_128_8_60")
@@ -359,18 +179,6 @@ if (wl == "amqwp2_2_128_128_8_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_8_85>());
 if (wl == "amqwp2_2_128_128_8_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_8_90>());
-if (wl == "amqwp2_1_128_128_16_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_16_50>());
-if (wl == "amqwp2_1_128_128_16_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_16_60>());
-if (wl == "amqwp2_1_128_128_16_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_16_70>());
-if (wl == "amqwp2_1_128_128_16_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_16_80>());
-if (wl == "amqwp2_1_128_128_16_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_16_85>());
-if (wl == "amqwp2_1_128_128_16_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_16_90>());
 if (wl == "amqwp2_2_128_128_16_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_16_50>());
 if (wl == "amqwp2_2_128_128_16_60")
@@ -383,18 +191,6 @@ if (wl == "amqwp2_2_128_128_16_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_16_85>());
 if (wl == "amqwp2_2_128_128_16_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_16_90>());
-if (wl == "amqwp2_1_128_128_32_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_32_50>());
-if (wl == "amqwp2_1_128_128_32_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_32_60>());
-if (wl == "amqwp2_1_128_128_32_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_32_70>());
-if (wl == "amqwp2_1_128_128_32_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_32_80>());
-if (wl == "amqwp2_1_128_128_32_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_32_85>());
-if (wl == "amqwp2_1_128_128_32_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_32_90>());
 if (wl == "amqwp2_2_128_128_32_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_32_50>());
 if (wl == "amqwp2_2_128_128_32_60")
@@ -407,18 +203,6 @@ if (wl == "amqwp2_2_128_128_32_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_32_85>());
 if (wl == "amqwp2_2_128_128_32_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_32_90>());
-if (wl == "amqwp2_1_128_128_64_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_64_50>());
-if (wl == "amqwp2_1_128_128_64_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_64_60>());
-if (wl == "amqwp2_1_128_128_64_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_64_70>());
-if (wl == "amqwp2_1_128_128_64_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_64_80>());
-if (wl == "amqwp2_1_128_128_64_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_64_85>());
-if (wl == "amqwp2_1_128_128_64_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_64_90>());
 if (wl == "amqwp2_2_128_128_64_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_64_50>());
 if (wl == "amqwp2_2_128_128_64_60")
@@ -431,18 +215,6 @@ if (wl == "amqwp2_2_128_128_64_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_64_85>());
 if (wl == "amqwp2_2_128_128_64_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_64_90>());
-if (wl == "amqwp2_1_128_128_128_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_128_50>());
-if (wl == "amqwp2_1_128_128_128_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_128_60>());
-if (wl == "amqwp2_1_128_128_128_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_128_70>());
-if (wl == "amqwp2_1_128_128_128_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_128_80>());
-if (wl == "amqwp2_1_128_128_128_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_128_85>());
-if (wl == "amqwp2_1_128_128_128_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_128_90>());
 if (wl == "amqwp2_2_128_128_128_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_128_50>());
 if (wl == "amqwp2_2_128_128_128_60")
@@ -455,18 +227,6 @@ if (wl == "amqwp2_2_128_128_128_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_128_85>());
 if (wl == "amqwp2_2_128_128_128_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_128_90>());
-if (wl == "amqwp2_1_128_128_256_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_256_50>());
-if (wl == "amqwp2_1_128_128_256_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_256_60>());
-if (wl == "amqwp2_1_128_128_256_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_256_70>());
-if (wl == "amqwp2_1_128_128_256_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_256_80>());
-if (wl == "amqwp2_1_128_128_256_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_256_85>());
-if (wl == "amqwp2_1_128_128_256_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_256_90>());
 if (wl == "amqwp2_2_128_128_256_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_256_50>());
 if (wl == "amqwp2_2_128_128_256_60")
@@ -479,18 +239,6 @@ if (wl == "amqwp2_2_128_128_256_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_256_85>());
 if (wl == "amqwp2_2_128_128_256_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_256_90>());
-if (wl == "amqwp2_1_128_128_512_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_512_50>());
-if (wl == "amqwp2_1_128_128_512_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_512_60>());
-if (wl == "amqwp2_1_128_128_512_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_512_70>());
-if (wl == "amqwp2_1_128_128_512_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_512_80>());
-if (wl == "amqwp2_1_128_128_512_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_512_85>());
-if (wl == "amqwp2_1_128_128_512_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_128_128_512_90>());
 if (wl == "amqwp2_2_128_128_512_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_512_50>());
 if (wl == "amqwp2_2_128_128_512_60")
@@ -503,18 +251,6 @@ if (wl == "amqwp2_2_128_128_512_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_512_85>());
 if (wl == "amqwp2_2_128_128_512_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_128_128_512_90>());
-if (wl == "amqwp2_1_256_256_8_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_8_50>());
-if (wl == "amqwp2_1_256_256_8_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_8_60>());
-if (wl == "amqwp2_1_256_256_8_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_8_70>());
-if (wl == "amqwp2_1_256_256_8_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_8_80>());
-if (wl == "amqwp2_1_256_256_8_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_8_85>());
-if (wl == "amqwp2_1_256_256_8_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_8_90>());
 if (wl == "amqwp2_2_256_256_8_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_8_50>());
 if (wl == "amqwp2_2_256_256_8_60")
@@ -527,18 +263,6 @@ if (wl == "amqwp2_2_256_256_8_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_8_85>());
 if (wl == "amqwp2_2_256_256_8_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_8_90>());
-if (wl == "amqwp2_1_256_256_16_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_16_50>());
-if (wl == "amqwp2_1_256_256_16_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_16_60>());
-if (wl == "amqwp2_1_256_256_16_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_16_70>());
-if (wl == "amqwp2_1_256_256_16_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_16_80>());
-if (wl == "amqwp2_1_256_256_16_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_16_85>());
-if (wl == "amqwp2_1_256_256_16_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_16_90>());
 if (wl == "amqwp2_2_256_256_16_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_16_50>());
 if (wl == "amqwp2_2_256_256_16_60")
@@ -551,18 +275,6 @@ if (wl == "amqwp2_2_256_256_16_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_16_85>());
 if (wl == "amqwp2_2_256_256_16_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_16_90>());
-if (wl == "amqwp2_1_256_256_32_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_32_50>());
-if (wl == "amqwp2_1_256_256_32_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_32_60>());
-if (wl == "amqwp2_1_256_256_32_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_32_70>());
-if (wl == "amqwp2_1_256_256_32_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_32_80>());
-if (wl == "amqwp2_1_256_256_32_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_32_85>());
-if (wl == "amqwp2_1_256_256_32_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_32_90>());
 if (wl == "amqwp2_2_256_256_32_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_32_50>());
 if (wl == "amqwp2_2_256_256_32_60")
@@ -575,18 +287,6 @@ if (wl == "amqwp2_2_256_256_32_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_32_85>());
 if (wl == "amqwp2_2_256_256_32_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_32_90>());
-if (wl == "amqwp2_1_256_256_64_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_64_50>());
-if (wl == "amqwp2_1_256_256_64_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_64_60>());
-if (wl == "amqwp2_1_256_256_64_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_64_70>());
-if (wl == "amqwp2_1_256_256_64_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_64_80>());
-if (wl == "amqwp2_1_256_256_64_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_64_85>());
-if (wl == "amqwp2_1_256_256_64_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_64_90>());
 if (wl == "amqwp2_2_256_256_64_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_64_50>());
 if (wl == "amqwp2_2_256_256_64_60")
@@ -599,18 +299,6 @@ if (wl == "amqwp2_2_256_256_64_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_64_85>());
 if (wl == "amqwp2_2_256_256_64_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_64_90>());
-if (wl == "amqwp2_1_256_256_128_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_128_50>());
-if (wl == "amqwp2_1_256_256_128_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_128_60>());
-if (wl == "amqwp2_1_256_256_128_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_128_70>());
-if (wl == "amqwp2_1_256_256_128_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_128_80>());
-if (wl == "amqwp2_1_256_256_128_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_128_85>());
-if (wl == "amqwp2_1_256_256_128_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_128_90>());
 if (wl == "amqwp2_2_256_256_128_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_128_50>());
 if (wl == "amqwp2_2_256_256_128_60")
@@ -623,18 +311,6 @@ if (wl == "amqwp2_2_256_256_128_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_128_85>());
 if (wl == "amqwp2_2_256_256_128_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_128_90>());
-if (wl == "amqwp2_1_256_256_256_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_256_50>());
-if (wl == "amqwp2_1_256_256_256_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_256_60>());
-if (wl == "amqwp2_1_256_256_256_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_256_70>());
-if (wl == "amqwp2_1_256_256_256_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_256_80>());
-if (wl == "amqwp2_1_256_256_256_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_256_85>());
-if (wl == "amqwp2_1_256_256_256_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_256_90>());
 if (wl == "amqwp2_2_256_256_256_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_256_50>());
 if (wl == "amqwp2_2_256_256_256_60")
@@ -647,18 +323,6 @@ if (wl == "amqwp2_2_256_256_256_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_256_85>());
 if (wl == "amqwp2_2_256_256_256_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_256_90>());
-if (wl == "amqwp2_1_256_256_512_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_512_50>());
-if (wl == "amqwp2_1_256_256_512_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_512_60>());
-if (wl == "amqwp2_1_256_256_512_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_512_70>());
-if (wl == "amqwp2_1_256_256_512_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_512_80>());
-if (wl == "amqwp2_1_256_256_512_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_512_85>());
-if (wl == "amqwp2_1_256_256_512_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_256_256_512_90>());
 if (wl == "amqwp2_2_256_256_512_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_512_50>());
 if (wl == "amqwp2_2_256_256_512_60")
@@ -671,18 +335,6 @@ if (wl == "amqwp2_2_256_256_512_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_512_85>());
 if (wl == "amqwp2_2_256_256_512_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_256_256_512_90>());
-if (wl == "amqwp2_1_512_512_8_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_8_50>());
-if (wl == "amqwp2_1_512_512_8_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_8_60>());
-if (wl == "amqwp2_1_512_512_8_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_8_70>());
-if (wl == "amqwp2_1_512_512_8_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_8_80>());
-if (wl == "amqwp2_1_512_512_8_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_8_85>());
-if (wl == "amqwp2_1_512_512_8_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_8_90>());
 if (wl == "amqwp2_2_512_512_8_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_8_50>());
 if (wl == "amqwp2_2_512_512_8_60")
@@ -695,18 +347,6 @@ if (wl == "amqwp2_2_512_512_8_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_8_85>());
 if (wl == "amqwp2_2_512_512_8_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_8_90>());
-if (wl == "amqwp2_1_512_512_16_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_16_50>());
-if (wl == "amqwp2_1_512_512_16_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_16_60>());
-if (wl == "amqwp2_1_512_512_16_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_16_70>());
-if (wl == "amqwp2_1_512_512_16_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_16_80>());
-if (wl == "amqwp2_1_512_512_16_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_16_85>());
-if (wl == "amqwp2_1_512_512_16_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_16_90>());
 if (wl == "amqwp2_2_512_512_16_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_16_50>());
 if (wl == "amqwp2_2_512_512_16_60")
@@ -719,18 +359,6 @@ if (wl == "amqwp2_2_512_512_16_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_16_85>());
 if (wl == "amqwp2_2_512_512_16_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_16_90>());
-if (wl == "amqwp2_1_512_512_32_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_32_50>());
-if (wl == "amqwp2_1_512_512_32_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_32_60>());
-if (wl == "amqwp2_1_512_512_32_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_32_70>());
-if (wl == "amqwp2_1_512_512_32_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_32_80>());
-if (wl == "amqwp2_1_512_512_32_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_32_85>());
-if (wl == "amqwp2_1_512_512_32_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_32_90>());
 if (wl == "amqwp2_2_512_512_32_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_32_50>());
 if (wl == "amqwp2_2_512_512_32_60")
@@ -743,18 +371,6 @@ if (wl == "amqwp2_2_512_512_32_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_32_85>());
 if (wl == "amqwp2_2_512_512_32_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_32_90>());
-if (wl == "amqwp2_1_512_512_64_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_64_50>());
-if (wl == "amqwp2_1_512_512_64_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_64_60>());
-if (wl == "amqwp2_1_512_512_64_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_64_70>());
-if (wl == "amqwp2_1_512_512_64_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_64_80>());
-if (wl == "amqwp2_1_512_512_64_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_64_85>());
-if (wl == "amqwp2_1_512_512_64_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_64_90>());
 if (wl == "amqwp2_2_512_512_64_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_64_50>());
 if (wl == "amqwp2_2_512_512_64_60")
@@ -767,18 +383,6 @@ if (wl == "amqwp2_2_512_512_64_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_64_85>());
 if (wl == "amqwp2_2_512_512_64_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_64_90>());
-if (wl == "amqwp2_1_512_512_128_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_128_50>());
-if (wl == "amqwp2_1_512_512_128_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_128_60>());
-if (wl == "amqwp2_1_512_512_128_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_128_70>());
-if (wl == "amqwp2_1_512_512_128_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_128_80>());
-if (wl == "amqwp2_1_512_512_128_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_128_85>());
-if (wl == "amqwp2_1_512_512_128_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_128_90>());
 if (wl == "amqwp2_2_512_512_128_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_128_50>());
 if (wl == "amqwp2_2_512_512_128_60")
@@ -791,18 +395,6 @@ if (wl == "amqwp2_2_512_512_128_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_128_85>());
 if (wl == "amqwp2_2_512_512_128_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_128_90>());
-if (wl == "amqwp2_1_512_512_256_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_256_50>());
-if (wl == "amqwp2_1_512_512_256_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_256_60>());
-if (wl == "amqwp2_1_512_512_256_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_256_70>());
-if (wl == "amqwp2_1_512_512_256_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_256_80>());
-if (wl == "amqwp2_1_512_512_256_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_256_85>());
-if (wl == "amqwp2_1_512_512_256_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_256_90>());
 if (wl == "amqwp2_2_512_512_256_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_256_50>());
 if (wl == "amqwp2_2_512_512_256_60")
@@ -815,18 +407,6 @@ if (wl == "amqwp2_2_512_512_256_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_256_85>());
 if (wl == "amqwp2_2_512_512_256_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_256_90>());
-if (wl == "amqwp2_1_512_512_512_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_512_50>());
-if (wl == "amqwp2_1_512_512_512_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_512_60>());
-if (wl == "amqwp2_1_512_512_512_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_512_70>());
-if (wl == "amqwp2_1_512_512_512_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_512_80>());
-if (wl == "amqwp2_1_512_512_512_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_512_85>());
-if (wl == "amqwp2_1_512_512_512_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_512_512_512_90>());
 if (wl == "amqwp2_2_512_512_512_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_512_50>());
 if (wl == "amqwp2_2_512_512_512_60")
@@ -839,18 +419,6 @@ if (wl == "amqwp2_2_512_512_512_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_512_85>());
 if (wl == "amqwp2_2_512_512_512_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_512_512_512_90>());
-if (wl == "amqwp2_1_1024_1024_8_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_8_50>());
-if (wl == "amqwp2_1_1024_1024_8_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_8_60>());
-if (wl == "amqwp2_1_1024_1024_8_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_8_70>());
-if (wl == "amqwp2_1_1024_1024_8_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_8_80>());
-if (wl == "amqwp2_1_1024_1024_8_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_8_85>());
-if (wl == "amqwp2_1_1024_1024_8_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_8_90>());
 if (wl == "amqwp2_2_1024_1024_8_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_1024_1024_8_50>());
 if (wl == "amqwp2_2_1024_1024_8_60")
@@ -863,18 +431,6 @@ if (wl == "amqwp2_2_1024_1024_8_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_1024_1024_8_85>());
 if (wl == "amqwp2_2_1024_1024_8_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_1024_1024_8_90>());
-if (wl == "amqwp2_1_1024_1024_16_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_16_50>());
-if (wl == "amqwp2_1_1024_1024_16_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_16_60>());
-if (wl == "amqwp2_1_1024_1024_16_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_16_70>());
-if (wl == "amqwp2_1_1024_1024_16_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_16_80>());
-if (wl == "amqwp2_1_1024_1024_16_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_16_85>());
-if (wl == "amqwp2_1_1024_1024_16_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_16_90>());
 if (wl == "amqwp2_2_1024_1024_16_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_1024_1024_16_50>());
 if (wl == "amqwp2_2_1024_1024_16_60")
@@ -887,18 +443,6 @@ if (wl == "amqwp2_2_1024_1024_16_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_1024_1024_16_85>());
 if (wl == "amqwp2_2_1024_1024_16_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_1024_1024_16_90>());
-if (wl == "amqwp2_1_1024_1024_32_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_32_50>());
-if (wl == "amqwp2_1_1024_1024_32_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_32_60>());
-if (wl == "amqwp2_1_1024_1024_32_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_32_70>());
-if (wl == "amqwp2_1_1024_1024_32_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_32_80>());
-if (wl == "amqwp2_1_1024_1024_32_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_32_85>());
-if (wl == "amqwp2_1_1024_1024_32_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_32_90>());
 if (wl == "amqwp2_2_1024_1024_32_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_1024_1024_32_50>());
 if (wl == "amqwp2_2_1024_1024_32_60")
@@ -911,18 +455,6 @@ if (wl == "amqwp2_2_1024_1024_32_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_1024_1024_32_85>());
 if (wl == "amqwp2_2_1024_1024_32_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_1024_1024_32_90>());
-if (wl == "amqwp2_1_1024_1024_64_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_64_50>());
-if (wl == "amqwp2_1_1024_1024_64_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_64_60>());
-if (wl == "amqwp2_1_1024_1024_64_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_64_70>());
-if (wl == "amqwp2_1_1024_1024_64_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_64_80>());
-if (wl == "amqwp2_1_1024_1024_64_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_64_85>());
-if (wl == "amqwp2_1_1024_1024_64_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_64_90>());
 if (wl == "amqwp2_2_1024_1024_64_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_1024_1024_64_50>());
 if (wl == "amqwp2_2_1024_1024_64_60")
@@ -935,18 +467,6 @@ if (wl == "amqwp2_2_1024_1024_64_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_1024_1024_64_85>());
 if (wl == "amqwp2_2_1024_1024_64_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_1024_1024_64_90>());
-if (wl == "amqwp2_1_1024_1024_128_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_128_50>());
-if (wl == "amqwp2_1_1024_1024_128_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_128_60>());
-if (wl == "amqwp2_1_1024_1024_128_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_128_70>());
-if (wl == "amqwp2_1_1024_1024_128_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_128_80>());
-if (wl == "amqwp2_1_1024_1024_128_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_128_85>());
-if (wl == "amqwp2_1_1024_1024_128_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_128_90>());
 if (wl == "amqwp2_2_1024_1024_128_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_1024_1024_128_50>());
 if (wl == "amqwp2_2_1024_1024_128_60")
@@ -959,18 +479,6 @@ if (wl == "amqwp2_2_1024_1024_128_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_1024_1024_128_85>());
 if (wl == "amqwp2_2_1024_1024_128_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_1024_1024_128_90>());
-if (wl == "amqwp2_1_1024_1024_256_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_256_50>());
-if (wl == "amqwp2_1_1024_1024_256_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_256_60>());
-if (wl == "amqwp2_1_1024_1024_256_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_256_70>());
-if (wl == "amqwp2_1_1024_1024_256_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_256_80>());
-if (wl == "amqwp2_1_1024_1024_256_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_256_85>());
-if (wl == "amqwp2_1_1024_1024_256_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_256_90>());
 if (wl == "amqwp2_2_1024_1024_256_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_1024_1024_256_50>());
 if (wl == "amqwp2_2_1024_1024_256_60")
@@ -983,18 +491,6 @@ if (wl == "amqwp2_2_1024_1024_256_85")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_1024_1024_256_85>());
 if (wl == "amqwp2_2_1024_1024_256_90")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_1024_1024_256_90>());
-if (wl == "amqwp2_1_1024_1024_512_50")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_512_50>());
-if (wl == "amqwp2_1_1024_1024_512_60")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_512_60>());
-if (wl == "amqwp2_1_1024_1024_512_70")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_512_70>());
-if (wl == "amqwp2_1_1024_1024_512_80")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_512_80>());
-if (wl == "amqwp2_1_1024_1024_512_85")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_512_85>());
-if (wl == "amqwp2_1_1024_1024_512_90")
-	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_1_1024_1024_512_90>());
 if (wl == "amqwp2_2_1024_1024_512_50")
 	Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_WP_2_1024_1024_512_50>());
 if (wl == "amqwp2_2_1024_1024_512_60")

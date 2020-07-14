@@ -477,6 +477,16 @@ struct AsyncAlgo {
     typedef UpdateRequestNodeComparer<UpdateRequest> NodeComparer;
     typedef UpdateRequestHasher<UpdateRequest> Hasher;
 	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2> AMQ2;
+    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 1, 1, -128, 128, 64> AMQ2_1_128_128_64;
+    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 1, 2, -128, 128, 32> AMQ2_2_128_128_32;
+    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 2, 2, -128, 128, 32> AMQ2_22_128_128_32;
+    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 1, 2, -128, 128, 16> AMQ2_2_128_128_16;
+    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 1, 2, -128, 128, 64> AMQ2_2_128_128_64;
+    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 2, 2, -128, 128, 64> AMQ2_22_128_128_64;
+    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 1, 2, -128, 128, 128> AMQ2_2_128_128_128;
+    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 1, 1, -256, 2048, 128> AMQ2_1_256_2048_128;
+    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>, 0, 1, 1, 1, -128, 128, 64> AMQ2_1_128_128_64_1_1000_1_1000;
+
 //	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 4, false, void, true, false, push_p, pop_p> AMQ4;
 //	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 8, false, void, true, false, push_p, pop_p> AMQ8;
 //	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 4> AMQ4;
@@ -550,7 +560,7 @@ struct AsyncAlgo {
 #include "AMQChunkMatch32.h"
 
 //#include "AdapTypedefs.h"
-#include "AdapWPTypedefs.h"
+//#include "AdapWPTypedefs.h"
 #include "AdapIfs.h"
 #include "AdapWPIfs.h"
 
@@ -613,6 +623,35 @@ struct AsyncAlgo {
 //
     if (wl == "amq2")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2>());
+
+    if (wl == "amq2_1_128_128_64")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_128_128_64>());
+
+ if (wl == "amq2_2_128_128_64")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_2_128_128_64>());
+
+ if (wl == "amq2_2_128_128_128")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_2_128_128_128>());
+
+ if (wl == "amq2_22_128_128_64")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_22_128_128_64>());
+
+
+ if (wl == "amq2_22_128_128_32")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_22_128_128_32>());
+
+   if (wl == "amq2_2_128_128_32")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_2_128_128_32>());
+
+   if (wl == "amq2_2_128_128_16")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_2_128_128_16>());
+
+
+    if (wl == "amq2_1_128_128_64_1_1000_1_1000")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_128_128_64_1_1000_1_1000>());
+
+    if (wl == "amq2_1_256_2048_128")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_256_2048_128>());
 //    else if (wl == "amq2_0.001_0.001")
 //    else if (wl == "amq2_0.005_0.001")
 //      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_5_1000_1_1000>());

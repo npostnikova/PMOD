@@ -53,7 +53,7 @@ struct LockableHeap {
   }
 
 private:
-  Runtime::LL::SimpleLock<true> _lock;
+  Runtime::LL::PaddedLock<true> _lock;
   //std::atomic<bool> _lock;
 };
 
@@ -89,9 +89,8 @@ template<typename T,
          size_t S = 1, // todo
          size_t F = 1,
          size_t E = 1,
-         int LEFT  = -900,
-         int RIGHT = 900,
-         size_t WINDOW_SIZE = 128>
+         size_t WINDOW_SIZE = 32,
+         size_t PROB = 90>
 class AdaptiveMultiQueue {
 private:
   typedef T value_t;
@@ -107,7 +106,7 @@ private:
   //! Maximum element of type `T`.
   // T maxT;
   //! The number of queues is changed under the mutex.
-  Runtime::LL::SimpleLock<true> adaptLock;
+  Runtime::LL::PaddedLock<Concurrent> adaptLock;
   const size_t maxQNum;
 
   //! Thread local random.
@@ -146,7 +145,8 @@ private:
       }
       std::reverse(popped_v.begin(), popped_v.end());
     }
-    heap->min = heap->heap.min();
+    if (heap->heap.size() > 0)
+      heap->min = heap->heap.min();
     heap->size--;
     heap->unlock();
     reportStat(success, failure, empty);
@@ -178,7 +178,7 @@ private:
   };
 
   //! Number of locked queues.
-  std::atomic<int> suspended = {0};
+  std::atomic<size_t> suspended = {0u};
   //! All the queues are empty. Rarely changed.
   std::atomic<bool> no_work = {false};
   //! Number of empty queues.
@@ -289,7 +289,7 @@ private:
 
   //! Active waiting to avoid using shared data.
   void active_waiting(int iters) {
-    static thread_local std::atomic<int32_t> consumedCPU = { random() % 92001};
+    static thread_local std::atomic<uint32_t> consumedCPU = { random() % 92001};
     int32_t t = consumedCPU;
     for (size_t i = 0; i < iters; i++)
       t += int32_t(t * 0x5DEECE66DLL + 0xBLL + (uint64_t)i and 0xFFFFFFFFFFFFLL);
@@ -348,13 +348,13 @@ public:
   //! Change the concurrency flag.
   template<bool _concurrent>
   struct rethread {
-    typedef AdaptiveMultiQueue<T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, _concurrent, Blocking, PushChange, PopChange, ChunkPop, S, F, E, LEFT, RIGHT, WINDOW_SIZE> type;
+    typedef AdaptiveMultiQueue<T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, _concurrent, Blocking, PushChange, PopChange, ChunkPop, S, F, E, WINDOW_SIZE, PROB> type;
   };
 
   //! Change the type the worklist holds.
   template<typename _T>
   struct retype {
-    typedef AdaptiveMultiQueue<_T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, Concurrent, Blocking, PushChange, PopChange, ChunkPop, S, F, E, LEFT, RIGHT, WINDOW_SIZE> type;
+    typedef AdaptiveMultiQueue<_T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, Concurrent, Blocking, PushChange, PopChange, ChunkPop, S, F, E, WINDOW_SIZE, PROB> type;
   };
 
   //! Push a value onto the queue.
@@ -408,10 +408,11 @@ public:
 
     // mark the heap empty
     removeH->size = 0;
-    // removeH->min = maxT;
 
-    mergeH->size = mergeH->heap.size();
-    mergeH->min = mergeH->heap.min();
+    const size_t newSize = mergeH->heap.size();
+    mergeH->size = newSize;
+    if (newSize > 0)
+      mergeH->min = mergeH->heap.min();
 
     nQ--;
     removeH->unlock();
@@ -444,11 +445,15 @@ public:
     // todo: if empty
     elemsH->heap.divideElems(addH->heap);
 
-    elemsH->size = elemsH->heap.size();
-    elemsH->min = elemsH->heap.min();
+    const size_t elemsSize = elemsH->heap.size();
+    elemsH->size = elemsSize;
+    if (elemsSize > 0)
+      elemsH->min = elemsH->heap.min();
 
-    addH->size = addH->heap.size();
-    addH->min = addH->heap.min();
+    const size_t addSize = addH->heap.size();
+    addH->size = addSize;
+    if (addSize > 0)
+      addH->min = addH->heap.min();
 
     nQ++;
     addH->unlock();
@@ -457,30 +462,63 @@ public:
     adaptLock.unlock();
   }
 
-
   inline void reportStat(size_t s, size_t f, size_t e) {
     static thread_local size_t curQ = 0;
 
-    static const size_t windowSize = WINDOW_SIZE;
-    static thread_local int window[windowSize] = { 0 };
+    static const size_t windowSize = WINDOW_SIZE;  // Galois::Runtime::LL::getTID()
+    static thread_local int window[3 * windowSize] = {0};
     static thread_local size_t statInd = 0;
-    static thread_local int64_t windowSum = 0;
+    static thread_local int64_t windowSumF = 0;
+    static thread_local int64_t windowSumS = 0;
+    static thread_local int64_t windowSumE = 0;
 
     if (curQ != nQ) {
       curQ = nQ;
-      memset(&window, 0, sizeof(int) * windowSize);
-      windowSum = 0;
+      memset(&window, 0, sizeof(int) * windowSize * 3);
+      windowSumF = 0;
+      windowSumS = 0;
+      windowSumE = 0;
       statInd = 0;
     }
-    windowSum -= window[statInd];
-    window[statInd] = f * F + e * E - s * S;
-    windowSum += window[statInd];
-    statInd = (statInd + 1) % windowSize;
 
-    if (windowSum > RIGHT)
+    windowSumF -= window[statInd];
+    window[statInd] = f;
+    windowSumF += f;
+
+    windowSumS -= window[statInd + 1];
+    window[statInd + 1] = s;
+    windowSumS += s;
+
+    windowSumE -= window[statInd + 2];
+    window[statInd + 2] = e;
+    windowSumE += e;
+
+    statInd = (statInd + 3) % (windowSize * 3);
+    const int64_t addSum = windowSumF * F;
+    const int64_t deleteSum = windowSumE * E + windowSumS * S;
+    const double allsum = addSum + deleteSum;
+
+    static const double prob = PROB / 100;
+    if (windowSumF >= windowSize && addSum / allsum > prob) {
+      //std::cout << windowSumS << " " << windowSumF << " " << windowSumE << "  " << addSum / allsum << "   "  << Galois::Runtime::LL::getTID() << std::endl;
       addQueue(curQ);
-    else if (windowSum < LEFT)
+      curQ = nQ;
+
+      memset(&window, 0, sizeof(int) * windowSize * 3);
+      windowSumF = 0;
+      windowSumS = 0;
+      windowSumE = 0;
+      statInd = 0;
+    } else if ((windowSumS + windowSumF) >= windowSize && deleteSum / allsum > prob) {
+      //std::cout << windowSumS << " " << windowSumF << " " << windowSumE << "  " << deleteSum / allsum << "   " << Galois::Runtime::LL::getTID() << std::endl;
       deleteQueue(curQ);
+
+      memset(&window, 0, sizeof(int) * windowSize * 3);
+      windowSumF = 0;
+      windowSumS = 0;
+      windowSumE = 0;
+      statInd = 0;
+    }
   }
 
   //! Push a range onto the queue.
@@ -590,7 +628,7 @@ public:
       }
     }
     static const size_t SLEEPING_ATTEMPTS = 8;
-    const size_t RANDOM_ATTEMPTS = nT == 1 ? 1 : 4;
+    const size_t RANDOM_ATTEMPTS = nT < 4 ? 1 : 4;
 
     size_t failure = 0;
     size_t success = 0;
@@ -656,6 +694,7 @@ public:
               continue;
 
             if (heap_i->size == 0) {
+              empty++;
               heap_i = heap_j;
               local_q = i_ind = j_ind;
             } else if (heap_j->size > 0 && compare(heap_i->min, heap_j->min)) {

@@ -7,6 +7,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <ctime>
+#include <fstream>
 #include <thread>
 #include <random>
 #include <iostream>
@@ -328,6 +329,17 @@ private:
   }
 
 public:
+  static Galois::Statistic* deletedQ;
+  static Galois::Statistic* addedQ;
+  static Galois::Statistic* wantedToDelete;
+  static Galois::Statistic* wantedToAdd;
+  static Galois::Statistic* reportNum;
+
+  void initStatistic(Galois::Statistic*& st, std::string const& name) {
+    if (st == nullptr)
+      st = new Galois::Statistic(name);
+  }
+
   AdaptiveMultiQueue() : nT(Galois::getActiveThreads()), nQ(C * nT), initNQ(nT * C), suspend_array(std::make_unique<CondNode[]>(nT * CondC)), maxQNum(C * nT * 4) {
     //std::atomic_init(&nQ, C * nT); // todo
     heaps = std::make_unique<Runtime::LL::CacheLineStorage<Heap>[]>(maxQNum);
@@ -340,6 +352,42 @@ public:
 //      heaps[i].data.min = maxT;
 //      heaps[i].data.heap.push(heaps[i].data.min);
     }
+    initStatistic(deletedQ, "deletedQ");
+    initStatistic(addedQ, "addedQ");
+    initStatistic(wantedToDelete, "wantedToDelete");
+    initStatistic(wantedToAdd, "wantedToAdd");
+    initStatistic(reportNum, "reportNum");
+  }
+
+  void deleteStatistic(Galois::Statistic*& st, std::ofstream& out) {
+    if (st != nullptr) {
+      out << getStatVal(st) << " ";
+      delete st;
+      st = nullptr;
+    }
+  }
+
+  uint64_t getStatVal(Galois::Statistic* value) {
+    uint64_t stat = 0;
+    for (unsigned x = 0; x < Galois::Runtime::activeThreads; ++x)
+      stat += value->getValue(x);
+    return stat;
+  }
+
+  ~AdaptiveMultiQueue() {
+    std::string result_name;
+    std::ifstream name("result_name");
+    name >> result_name;
+    std::cout << result_name << std::endl;
+    name.close();
+
+    std::ofstream out(result_name, std::ios::app);
+    deleteStatistic(deletedQ, out);
+    deleteStatistic(addedQ, out);
+    deleteStatistic(wantedToDelete, out);
+    deleteStatistic(wantedToAdd, out);
+    deleteStatistic(reportNum, out);
+    out.close();
   }
 
   //! T is the value type of the WL.
@@ -380,6 +428,7 @@ public:
   }
 
   void deleteQueue(size_t expectedNQ) {
+    *wantedToDelete += 1;
     if (!adaptLock.try_lock())
       return;
     size_t curNQ = nQ;
@@ -405,6 +454,7 @@ public:
 //    }
 
     mergeH->heap.pushAllAndClear(removeH->heap);
+    *deletedQ += 1;
 
     // mark the heap empty
     removeH->size = 0;
@@ -422,6 +472,7 @@ public:
   }
 
   void addQueue(size_t expectedNQ) {
+    *wantedToAdd += 1;
     if (!adaptLock.try_lock())
       return;
     size_t curNQ = nQ;
@@ -443,6 +494,7 @@ public:
     addH->lock();
 
     // todo: if empty
+    *addedQ += 1;
     elemsH->heap.divideElems(addH->heap);
 
     const size_t elemsSize = elemsH->heap.size();
@@ -472,6 +524,7 @@ public:
     static thread_local int64_t windowSumS = 0;
     static thread_local int64_t windowSumE = 0;
 
+    *reportNum += 1;
     if (curQ != nQ) {
       curQ = nQ;
       memset(&window, 0, sizeof(int) * windowSize * 3);
@@ -498,9 +551,10 @@ public:
     const int64_t deleteSum = windowSumE * E + windowSumS * S;
     const double allsum = addSum + deleteSum;
 
-    static const double prob = PROB / 100;
+    static const double prob = PROB / 100.0;
     if (windowSumF >= windowSize && addSum / allsum > prob) {
       //std::cout << windowSumS << " " << windowSumF << " " << windowSumE << "  " << addSum / allsum << "   "  << Galois::Runtime::LL::getTID() << std::endl;
+      *reportNum += 1;
       addQueue(curQ);
       curQ = nQ;
 
@@ -511,6 +565,7 @@ public:
       statInd = 0;
     } else if ((windowSumS + windowSumF) >= windowSize && deleteSum / allsum > prob) {
       //std::cout << windowSumS << " " << windowSumF << " " << windowSumE << "  " << deleteSum / allsum << "   " << Galois::Runtime::LL::getTID() << std::endl;
+      *reportNum += 1;
       deleteQueue(curQ);
 
       memset(&window, 0, sizeof(int) * windowSize * 3);
@@ -722,13 +777,14 @@ public:
           heap_i = &heaps[(i_ind + k) % nQ].data;
           if (heap_i->size == 0)
             continue;
-          heap_i->lock();
-          if (heap_i->heap.size() > 0) {
-            local_q = (i_ind + k) % nQ;
-            return extract_min(heap_i, popped_v, success, failure, empty);
-          } else {
-            //empty++; // todo should it be counted
-            heap_i->unlock();
+          if (heap_i->try_lock()) {
+            if (heap_i->heap.size() > 0) {
+              local_q = (i_ind + k) % nQ;
+              return extract_min(heap_i, popped_v, success, failure, empty);
+            } else {
+              //empty++; // todo should it be counted
+              heap_i->unlock();
+            }
           }
         }
       } while (Blocking && empty_queues != nQ);
@@ -746,6 +802,111 @@ public:
     }
   }
 };
+
+
+template<typename T,
+typename Comparer,
+size_t C,
+bool DecreaseKey ,
+typename DecreaseKeyIndexer,
+bool Concurrent,
+bool Blocking,
+typename PushChange,
+typename PopChange,
+size_t ChunkPop,
+size_t S,
+size_t F,
+size_t E,
+size_t WINDOW_SIZE,
+size_t PROB>
+Statistic* AdaptiveMultiQueue<T, Comparer, C,
+  DecreaseKey, DecreaseKeyIndexer, Concurrent,
+  Blocking, PushChange, PopChange, ChunkPop,
+  S, F, E, WINDOW_SIZE, PROB>::deletedQ;
+
+template<typename T,
+typename Comparer,
+size_t C,
+bool DecreaseKey ,
+typename DecreaseKeyIndexer,
+bool Concurrent,
+bool Blocking,
+typename PushChange,
+typename PopChange,
+size_t ChunkPop,
+size_t S,
+size_t F,
+size_t E,
+size_t WINDOW_SIZE,
+size_t PROB>
+Statistic* AdaptiveMultiQueue<T, Comparer, C,
+DecreaseKey, DecreaseKeyIndexer, Concurrent,
+Blocking, PushChange, PopChange, ChunkPop,
+S, F, E, WINDOW_SIZE, PROB>::addedQ;
+
+
+template<typename T,
+typename Comparer,
+size_t C,
+bool DecreaseKey ,
+typename DecreaseKeyIndexer,
+bool Concurrent,
+bool Blocking,
+typename PushChange,
+typename PopChange,
+size_t ChunkPop,
+size_t S,
+size_t F,
+size_t E,
+size_t WINDOW_SIZE,
+size_t PROB>
+Statistic* AdaptiveMultiQueue<T, Comparer, C,
+DecreaseKey, DecreaseKeyIndexer, Concurrent,
+Blocking, PushChange, PopChange, ChunkPop,
+S, F, E, WINDOW_SIZE, PROB>::wantedToDelete;
+
+
+template<typename T,
+typename Comparer,
+size_t C,
+bool DecreaseKey ,
+typename DecreaseKeyIndexer,
+bool Concurrent,
+bool Blocking,
+typename PushChange,
+typename PopChange,
+size_t ChunkPop,
+size_t S,
+size_t F,
+size_t E,
+size_t WINDOW_SIZE,
+size_t PROB>
+Statistic* AdaptiveMultiQueue<T, Comparer, C,
+DecreaseKey, DecreaseKeyIndexer, Concurrent,
+Blocking, PushChange, PopChange, ChunkPop,
+S, F, E, WINDOW_SIZE, PROB>::wantedToAdd;
+
+
+template<typename T,
+typename Comparer,
+size_t C,
+bool DecreaseKey ,
+typename DecreaseKeyIndexer,
+bool Concurrent,
+bool Blocking,
+typename PushChange,
+typename PopChange,
+size_t ChunkPop,
+size_t S,
+size_t F,
+size_t E,
+size_t WINDOW_SIZE,
+size_t PROB>
+Statistic* AdaptiveMultiQueue<T, Comparer, C,
+DecreaseKey, DecreaseKeyIndexer, Concurrent,
+Blocking, PushChange, PopChange, ChunkPop,
+S, F, E, WINDOW_SIZE, PROB>::reportNum;
+
 
 } // namespace WorkList
 } // namespace Galois

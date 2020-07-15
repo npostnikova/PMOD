@@ -334,6 +334,8 @@ public:
   static Galois::Statistic* wantedToDelete;
   static Galois::Statistic* wantedToAdd;
   static Galois::Statistic* reportNum;
+  static Galois::Statistic* oneNumQ;
+  static Galois::Statistic* maxNumQ;
 
   void initStatistic(Galois::Statistic*& st, std::string const& name) {
     if (st == nullptr)
@@ -357,6 +359,8 @@ public:
     initStatistic(wantedToDelete, "wantedToDelete");
     initStatistic(wantedToAdd, "wantedToAdd");
     initStatistic(reportNum, "reportNum");
+    initStatistic(oneNumQ, "oneNumQ");
+    initStatistic(maxNumQ, "maxNumQ");
   }
 
   void deleteStatistic(Galois::Statistic*& st, std::ofstream& out) {
@@ -387,6 +391,8 @@ public:
     deleteStatistic(wantedToDelete, out);
     deleteStatistic(wantedToAdd, out);
     deleteStatistic(reportNum, out);
+    deleteStatistic(oneNumQ, out);
+    deleteStatistic(maxNumQ, out);
     out.close();
   }
 
@@ -456,6 +462,9 @@ public:
     mergeH->heap.pushAllAndClear(removeH->heap);
     *deletedQ += 1;
 
+    if (curNQ == 2)
+      *oneNumQ += 1;
+
     // mark the heap empty
     removeH->size = 0;
 
@@ -496,6 +505,8 @@ public:
     // todo: if empty
     *addedQ += 1;
     elemsH->heap.divideElems(addH->heap);
+    if (curNQ + 1 == maxQNum)
+      *maxNumQ += 1;
 
     const size_t elemsSize = elemsH->heap.size();
     elemsH->size = elemsSize;
@@ -906,6 +917,45 @@ Statistic* AdaptiveMultiQueue<T, Comparer, C,
 DecreaseKey, DecreaseKeyIndexer, Concurrent,
 Blocking, PushChange, PopChange, ChunkPop,
 S, F, E, WINDOW_SIZE, PROB>::reportNum;
+template<typename T,
+typename Comparer,
+size_t C,
+bool DecreaseKey ,
+typename DecreaseKeyIndexer,
+bool Concurrent,
+bool Blocking,
+typename PushChange,
+typename PopChange,
+size_t ChunkPop,
+size_t S,
+size_t F,
+size_t E,
+size_t WINDOW_SIZE,
+size_t PROB>
+Statistic* AdaptiveMultiQueue<T, Comparer, C,
+DecreaseKey, DecreaseKeyIndexer, Concurrent,
+Blocking, PushChange, PopChange, ChunkPop,
+S, F, E, WINDOW_SIZE, PROB>::oneNumQ;
+
+template<typename T,
+typename Comparer,
+size_t C,
+bool DecreaseKey ,
+typename DecreaseKeyIndexer,
+bool Concurrent,
+bool Blocking,
+typename PushChange,
+typename PopChange,
+size_t ChunkPop,
+size_t S,
+size_t F,
+size_t E,
+size_t WINDOW_SIZE,
+size_t PROB>
+Statistic* AdaptiveMultiQueue<T, Comparer, C,
+DecreaseKey, DecreaseKeyIndexer, Concurrent,
+Blocking, PushChange, PopChange, ChunkPop,
+S, F, E, WINDOW_SIZE, PROB>::maxNumQ;
 
 
 } // namespace WorkList

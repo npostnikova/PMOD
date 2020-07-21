@@ -90,8 +90,8 @@ template<typename T,
          size_t S = 1, // todo
          size_t F = 1,
          size_t E = 1,
-         size_t WINDOW_SIZE = 32,
-         size_t PROB = 90>
+         size_t SEGMENT_SIZE = 32,
+         size_t PERCENT = 90>
 class AdaptiveMultiQueue {
 private:
   typedef T value_t;
@@ -102,7 +102,6 @@ private:
   const size_t nT;
   //! Number of queues.
   std::atomic<int> nQ = {0};
-  const size_t initNQ;
   //size_t nQ; // todo
   //! Maximum element of type `T`.
   // T maxT;
@@ -334,7 +333,7 @@ public:
   static Galois::Statistic* wantedToDelete;
   static Galois::Statistic* wantedToAdd;
   static Galois::Statistic* reportNum;
-  static Galois::Statistic* oneNumQ;
+  static Galois::Statistic* minNumQ;
   static Galois::Statistic* maxNumQ;
 
   void initStatistic(Galois::Statistic*& st, std::string const& name) {
@@ -342,30 +341,28 @@ public:
       st = new Galois::Statistic(name);
   }
 
-  AdaptiveMultiQueue() : nT(Galois::getActiveThreads()), nQ(C * nT), initNQ(nT * C), suspend_array(std::make_unique<CondNode[]>(nT * CondC)), maxQNum(C * nT * 4) {
+  AdaptiveMultiQueue() : nT(Galois::getActiveThreads()), nQ(C > 0 ? C * nT : 1), suspend_array(std::make_unique<CondNode[]>(nT * CondC)), maxQNum(nT * 4) {
     //std::atomic_init(&nQ, C * nT); // todo
     heaps = std::make_unique<Runtime::LL::CacheLineStorage<Heap>[]>(maxQNum);
     std::cout << "Queues: " << nQ << std::endl;
 
-//    memset(reinterpret_cast<void *>(&maxT), 0xff, sizeof(maxT));
     for (size_t i = 0; i < maxQNum; i++) {
       heaps[i].data.heap.set_index(i);
-//      heaps[i].data.heap.set_max_val(maxT);
-//      heaps[i].data.min = maxT;
-//      heaps[i].data.heap.push(heaps[i].data.min);
     }
     initStatistic(deletedQ, "deletedQ");
     initStatistic(addedQ, "addedQ");
     initStatistic(wantedToDelete, "wantedToDelete");
     initStatistic(wantedToAdd, "wantedToAdd");
     initStatistic(reportNum, "reportNum");
-    initStatistic(oneNumQ, "oneNumQ");
+    initStatistic(minNumQ, "minNumQ");
     initStatistic(maxNumQ, "maxNumQ");
+    *maxNumQ = nQ;
+    *minNumQ = nQ;
   }
 
   void deleteStatistic(Galois::Statistic*& st, std::ofstream& out) {
     if (st != nullptr) {
-      out << getStatVal(st) << " ";
+      out << getStatVal(st) << "\t";
       delete st;
       st = nullptr;
     }
@@ -391,7 +388,7 @@ public:
     deleteStatistic(wantedToDelete, out);
     deleteStatistic(wantedToAdd, out);
     deleteStatistic(reportNum, out);
-    deleteStatistic(oneNumQ, out);
+    deleteStatistic(minNumQ, out);
     deleteStatistic(maxNumQ, out);
     out.close();
   }
@@ -402,13 +399,13 @@ public:
   //! Change the concurrency flag.
   template<bool _concurrent>
   struct rethread {
-    typedef AdaptiveMultiQueue<T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, _concurrent, Blocking, PushChange, PopChange, ChunkPop, S, F, E, WINDOW_SIZE, PROB> type;
+    typedef AdaptiveMultiQueue<T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, _concurrent, Blocking, PushChange, PopChange, ChunkPop, S, F, E, SEGMENT_SIZE, PERCENT> type;
   };
 
   //! Change the type the worklist holds.
   template<typename _T>
   struct retype {
-    typedef AdaptiveMultiQueue<_T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, Concurrent, Blocking, PushChange, PopChange, ChunkPop, S, F, E, WINDOW_SIZE, PROB> type;
+    typedef AdaptiveMultiQueue<_T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, Concurrent, Blocking, PushChange, PopChange, ChunkPop, S, F, E, SEGMENT_SIZE, PERCENT> type;
   };
 
   //! Push a value onto the queue.
@@ -462,8 +459,7 @@ public:
     mergeH->heap.pushAllAndClear(removeH->heap);
     *deletedQ += 1;
 
-    if (curNQ == 2)
-      *oneNumQ += 1;
+    minNumQ->setMin(curNQ - 1);
 
     // mark the heap empty
     removeH->size = 0;
@@ -505,8 +501,7 @@ public:
     // todo: if empty
     *addedQ += 1;
     elemsH->heap.divideElems(addH->heap);
-    if (curNQ + 1 == maxQNum)
-      *maxNumQ += 1;
+    maxNumQ->setMax(curNQ + 1);
 
     const size_t elemsSize = elemsH->heap.size();
     elemsH->size = elemsSize;
@@ -528,8 +523,7 @@ public:
   inline void reportStat(size_t s, size_t f, size_t e) {
     static thread_local size_t curQ = 0;
 
-    static const size_t windowSize = WINDOW_SIZE;  // Galois::Runtime::LL::getTID()
-    static thread_local int window[3 * windowSize] = {0};
+    static const size_t segmentSize = SEGMENT_SIZE;
     static thread_local size_t statInd = 0;
     static thread_local int64_t windowSumF = 0;
     static thread_local int64_t windowSumS = 0;
@@ -538,48 +532,28 @@ public:
     *reportNum += 1;
     if (curQ != nQ) {
       curQ = nQ;
-      memset(&window, 0, sizeof(int) * windowSize * 3);
       windowSumF = 0;
       windowSumS = 0;
       windowSumE = 0;
       statInd = 0;
     }
 
-    windowSumF -= window[statInd];
-    window[statInd] = f;
     windowSumF += f;
-
-    windowSumS -= window[statInd + 1];
-    window[statInd + 1] = s;
     windowSumS += s;
-
-    windowSumE -= window[statInd + 2];
-    window[statInd + 2] = e;
     windowSumE += e;
 
-    statInd = (statInd + 3) % (windowSize * 3);
-    const int64_t addSum = windowSumF * F;
-    const int64_t deleteSum = windowSumE * E + windowSumS * S;
-    const double allsum = addSum + deleteSum;
+    statInd++;
+    if (statInd >= segmentSize) {
+      const int64_t addSum = windowSumF * F;
+      const int64_t deleteSum = windowSumE * E + windowSumS * S;
+      const double allsum = addSum + deleteSum;
 
-    static const double prob = PROB / 100.0;
-    if (windowSumF >= windowSize && addSum / allsum > prob) {
-      //std::cout << windowSumS << " " << windowSumF << " " << windowSumE << "  " << addSum / allsum << "   "  << Galois::Runtime::LL::getTID() << std::endl;
-      *reportNum += 1;
-      addQueue(curQ);
-      curQ = nQ;
-
-      memset(&window, 0, sizeof(int) * windowSize * 3);
-      windowSumF = 0;
-      windowSumS = 0;
-      windowSumE = 0;
-      statInd = 0;
-    } else if ((windowSumS + windowSumF) >= windowSize && deleteSum / allsum > prob) {
-      //std::cout << windowSumS << " " << windowSumF << " " << windowSumE << "  " << deleteSum / allsum << "   " << Galois::Runtime::LL::getTID() << std::endl;
-      *reportNum += 1;
-      deleteQueue(curQ);
-
-      memset(&window, 0, sizeof(int) * windowSize * 3);
+      static const double percent = PERCENT / 100.0;
+      if (windowSumF >= segmentSize && addSum / allsum > percent) {
+        addQueue(curQ);
+      } else if ((windowSumS + windowSumF) >= segmentSize && deleteSum / allsum > percent) {
+        deleteQueue(curQ);
+      }
       windowSumF = 0;
       windowSumS = 0;
       windowSumE = 0;
@@ -935,7 +909,7 @@ size_t PROB>
 Statistic* AdaptiveMultiQueue<T, Comparer, C,
 DecreaseKey, DecreaseKeyIndexer, Concurrent,
 Blocking, PushChange, PopChange, ChunkPop,
-S, F, E, WINDOW_SIZE, PROB>::oneNumQ;
+S, F, E, WINDOW_SIZE, PROB>::minNumQ;
 
 template<typename T,
 typename Comparer,

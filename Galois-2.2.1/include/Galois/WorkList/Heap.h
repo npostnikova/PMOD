@@ -25,11 +25,6 @@ struct DAryHeap {
 		qInd = index;
 	}
 
-	//! Set value of dummy element for purposes of AdaptiveMultiQueue.
-	void set_max_val(T const& max_val) {
-		MAX_VAL = max_val;
-	}
-
 	//! Return whether the heap is empty.
 	bool empty() {
 		return heap.empty();
@@ -111,16 +106,49 @@ struct DAryHeap {
         newSize++;
       }
     }
-    while (size() != newSize) {
-      heap.pop_back();
-    }
+    // todo
+    heap.erase(heap.begin() + newSize, heap.end());
+//    while (size() != newSize) {
+//      heap.pop_back();
+//    }
     build();
     h.build();
   }
 
+  template <typename Indexer>
+  void divideElems(DAryHeap<T, Compare, D>& h, Indexer const& indexer) {
+    size_t newSize = 0;
+    h.heap.reserve(h.heap.size() + heap.size() / 2);
+    for (size_t i = 0; i < size(); i++) {
+      if (i % 2 != 0) {
+        h.push_back(heap[i]);
+      } else {
+        heap[newSize] = heap[i];
+        newSize++;
+      }
+    }
+    heap.erase(heap.begin() + newSize, heap.end());
+//    while (size() != newSize) {
+//      heap.pop_back();
+//    }
+    build();
+    h.build();
+    for (size_t i = 0; i < h.size(); i++) {
+      if (indexer.get_queue(h.heap[i]) == qInd) {
+        indexer.set_queue(h.heap[i], h.qInd);
+        indexer.set_index(h.heap[i], i);
+      }
+    }
+    for (size_t i = 0; i < size(); i++) {
+      if (indexer.get_queue(heap[i]) == qInd) {
+        indexer.set_index(heap[i], i);
+      }
+    }
+  }
+
   void pushAllAndClear(DAryHeap<T, Compare, D>& fromH) {
 	  auto prevSize = heap.size();
-	  heap.insert(heap.begin(), fromH.heap.begin(), fromH.heap.end());
+	  heap.insert(heap.end(), fromH.heap.begin(), fromH.heap.end());
 	  for (size_t i = prevSize; i < heap.size(); i++) {
 	    sift_up(i);
 	  }
@@ -131,9 +159,22 @@ struct DAryHeap {
 //	  }
 	}
 
+	template <typename Indexer>
+  void pushAllAndClear(DAryHeap<T, Compare, D>& fromH, Indexer const& indexer) {
+    auto prevSize = heap.size();
+    heap.insert(heap.end(), fromH.heap.begin(), fromH.heap.end());
+    for (size_t i = prevSize; i < heap.size(); i++) {
+      if (indexer.get_queue(heap[i]) == fromH.qInd) {
+        indexer.set_queue(heap[i], qInd);
+        indexer.set_index(heap[i], i);
+      }
+      sift_up(indexer, i);
+    }
+    fromH.heap.clear();
+  }
+
 private:
-	T MAX_VAL;
-	size_t qInd = 0;
+	int qInd = 0;
 
 	inline T removeLast() {
 	  auto res = heap.back();
@@ -207,16 +248,16 @@ private:
 	//! Set that the element is not in the heap anymore.
 	template <typename Indexer>
 	void remove_info(Indexer const& indexer, index_t index) {
-		if (heap[index] != MAX_VAL && indexer.get_queue(heap[index]) == qInd) {
+		if (indexer.get_queue(heap[index]) == qInd) {
 			indexer.set_index(heap[index], -1);
-			indexer.set_queue(heap[index], qInd, -1);
+			indexer.set_queue(heap[index], -1);
 		}
 	}
 
 	//! Update position in the `Indexer`.
 	template <typename Indexer>
 	void set_position(Indexer const& indexer, index_t new_pos) {
-		if (heap[new_pos] != MAX_VAL && indexer.get_queue(heap[new_pos]) == qInd)
+		if (indexer.get_queue(heap[new_pos]) == qInd)
 			indexer.set_index(heap[new_pos], new_pos);
 	}
 

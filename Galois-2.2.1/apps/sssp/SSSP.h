@@ -78,6 +78,8 @@ struct UpdateRequestCommon {
 
 struct SNode {
   Dist dist;
+  int qInd = -1;
+  int elemInd = -1;
 //  std::atomic<int> qInd = {-1};
 //  std::atomic<int> elemInd = {-1};
 };

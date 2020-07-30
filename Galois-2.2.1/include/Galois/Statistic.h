@@ -86,12 +86,18 @@ public:
   }
 
   Statistic& setMax(unsigned long v) {
-    *val.getLocal() = std::max(*val.getLocal(), v);
+    if (*val.getLocal() == 0) {
+      *val.getLocal() = v;
+    } else
+      *val.getLocal() = std::max(*val.getLocal(), v);
     return *this;
   }
 
   Statistic& setMin(unsigned long v) {
-    *val.getLocal() = std::min(*val.getLocal(), v);
+    if (*val.getLocal() == 0)
+      *val.getLocal() = v;
+    else
+      *val.getLocal() = std::min(*val.getLocal(), v);
     return *this;
   }
 };

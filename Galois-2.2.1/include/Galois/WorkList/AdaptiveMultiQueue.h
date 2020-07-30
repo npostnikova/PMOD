@@ -29,7 +29,7 @@ struct LockableHeap {
   DAryHeap<T, Comparer, 4> heap;
   // todo: use atomic
   T min;
-  std::atomic<size_t> size = {0}; // atomic? who should update?
+  size_t size = 0; // atomic? who should update?
 
   //! Non-blocking lock.
   inline bool try_lock() {
@@ -323,7 +323,7 @@ private:
   //! The element may be in another heap.
   inline void push_elem(const value_t& val, Heap* heap, size_t q_ind) {
     static DecreaseKeyIndexer indexer;
-    indexer.set_queue(val, -1, q_ind); // fails if the element was added to another queue
+    indexer.cas_queue(val, q_ind, -1); // fails if the element was added to another queue
     heap->heap.push(indexer, val);
   }
 
@@ -349,6 +349,7 @@ public:
     for (size_t i = 0; i < maxQNum; i++) {
       heaps[i].data.heap.set_index(i);
     }
+
     initStatistic(deletedQ, "deletedQ");
     initStatistic(addedQ, "addedQ");
     initStatistic(wantedToDelete, "wantedToDelete");
@@ -362,10 +363,34 @@ public:
 
   void deleteStatistic(Galois::Statistic*& st, std::ofstream& out) {
     if (st != nullptr) {
-      out << getStatVal(st) << "\t";
+      if (st->getStatname().find("min") != std::string::npos) {
+        out << getMinVal(st) << "\t";
+      } else if (st->getStatname().find("max") != std::string::npos) {
+        out << getMaxVal(st) << "\t";
+      } else {
+        out << getStatVal(st) << "\t";
+      }
       delete st;
       st = nullptr;
     }
+  }
+
+
+  uint64_t getMaxVal(Galois::Statistic* value) {
+    uint64_t stat = 0;
+    for (unsigned x = 0; x < Galois::Runtime::activeThreads; ++x)
+      stat = std::max(stat, value->getValue(x));
+    return stat;
+  }
+
+  uint64_t getMinVal(Galois::Statistic* value) {
+    uint64_t stat = SIZE_MAX;
+    for (unsigned x = 0; x < Galois::Runtime::activeThreads; ++x) {
+      if (value->getValue(x) < 1)
+        continue;
+      stat = std::min(stat, value->getValue(x));
+    }
+    return stat;
   }
 
   uint64_t getStatVal(Galois::Statistic* value) {
@@ -456,7 +481,12 @@ public:
 //      mergeH->heap.push(removeH->heap.extractMin());
 //    }
 
-    mergeH->heap.pushAllAndClear(removeH->heap);
+    if constexpr (DecreaseKey) {
+      static DecreaseKeyIndexer indexer;
+      mergeH->heap.pushAllAndClear(removeH->heap, indexer);
+    } else {
+      mergeH->heap.pushAllAndClear(removeH->heap);
+    }
     *deletedQ += 1;
 
     minNumQ->setMin(curNQ - 1);
@@ -500,7 +530,13 @@ public:
 
     // todo: if empty
     *addedQ += 1;
-    elemsH->heap.divideElems(addH->heap);
+
+    if constexpr (DecreaseKey) {
+      static DecreaseKeyIndexer indexer;
+      elemsH->heap.divideElems(addH->heap, indexer);
+    } else {
+      elemsH->heap.divideElems(addH->heap);
+    }
     maxNumQ->setMax(curNQ + 1);
 
     const size_t elemsSize = elemsH->heap.size();
@@ -585,24 +621,24 @@ public:
     while (b != e) {
       if constexpr (DecreaseKey) {
         q_ind = DecreaseKeyIndexer::get_queue(*b);
-        local_q = valid_index(q_ind) ? q_ind : get_push_local(local_q);
-      } else {
-        local_q = get_push_local(local_q);
+        if (valid_index(q_ind)) {
+          local_q = q_ind;
+          heap = &heaps[q_ind].data;
+          heap->lock();
+          goto q_locked;
+        }
       }
+      local_q = get_push_local(local_q);
       heap = &heaps[local_q].data;
 
       while (!heap->try_lock()) {
-        if constexpr (DecreaseKey) {
-          q_ind = DecreaseKeyIndexer::get_queue(*b);
-          local_q = valid_index(q_ind) ? q_ind : rand_heap();
-        } else {
-          local_q = rand_heap();
-        }
+        local_q = rand_heap();
         heap = &heaps[local_q].data;
         failure++;
       }
       success++;
 
+q_locked:
       if (local_q >= nQ) {
         // the queue was "deleted" before we locked it
         heap->unlock();
@@ -629,7 +665,7 @@ public:
         if (heap->heap.size() == 1)
           empty_queues.fetch_sub(1);
       }
-      heap->min = heap->heap.min();
+      heap->min  = heap->heap.min();
       heap->size = heap->heap.size();
       heap->unlock();
     }
@@ -737,7 +773,10 @@ public:
               empty++;
               heap_i = heap_j;
               local_q = i_ind = j_ind;
-            } else if (heap_j->size > 0 && compare(heap_i->min, heap_j->min)) {
+            } else if (heap_j->size == 0) {
+              empty++;
+              local_q = i_ind;
+            } else if (compare(heap_i->min, heap_j->min)) {
               heap_i = heap_j;
               local_q = i_ind = j_ind;
             } else {

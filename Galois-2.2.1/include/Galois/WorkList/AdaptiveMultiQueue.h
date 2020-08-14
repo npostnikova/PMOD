@@ -29,7 +29,7 @@ struct LockableHeap {
   DAryHeap<T, Comparer, 4> heap;
   // todo: use atomic
   T min;
-  size_t size = 0; // atomic? who should update?
+  std::atomic<size_t> size = {0}; // atomic? who should update?
 
   //! Non-blocking lock.
   inline bool try_lock() {
@@ -147,7 +147,7 @@ private:
     }
     if (heap->heap.size() > 0)
       heap->min = heap->heap.min();
-    heap->size--;
+    heap->size.fetch_sub(1, std::memory_order_acq_rel);
     heap->unlock();
     reportStat(success, failure, empty);
     return result;
@@ -323,7 +323,7 @@ private:
   //! The element may be in another heap.
   inline void push_elem(const value_t& val, Heap* heap, size_t q_ind) {
     static DecreaseKeyIndexer indexer;
-    indexer.cas_queue(val, q_ind, -1); // fails if the element was added to another queue
+    // indexer.cas_queue(val, q_ind, -1); // fails if the element was added to another queue
     heap->heap.push(indexer, val);
   }
 
@@ -467,8 +467,8 @@ public:
     size_t idMin = 0;
     size_t szMin = SIZE_MAX;
     for (size_t i = 0; i < curNQ - 1; i++) {
-      if (szMin > heaps[i].data.size) {
-        szMin = heaps[i].data.size;
+      if (szMin > heaps[i].data.size.load(std::memory_order_acquire)) {
+        szMin = heaps[i].data.size.load(std::memory_order_acquire);
         idMin = i;
       }
     }
@@ -492,10 +492,10 @@ public:
     minNumQ->setMin(curNQ - 1);
 
     // mark the heap empty
-    removeH->size = 0;
+    removeH->size.store(0, std::memory_order_release);
 
     const size_t newSize = mergeH->heap.size();
-    mergeH->size = newSize;
+    mergeH->size.store(newSize, std::memory_order_release);
     if (newSize > 0)
       mergeH->min = mergeH->heap.min();
 
@@ -518,8 +518,8 @@ public:
     size_t id = 0;
     size_t szVal = 0;
     for (size_t i = 0; i < curNQ; i++) {
-      if (szVal < heaps[i].data.size) {
-        szVal = heaps[i].data.size;
+      if (szVal < heaps[i].data.size.load(std::memory_order_acquire)) {
+        szVal = heaps[i].data.size.load(std::memory_order_acquire);
         id = i;
       }
     }
@@ -540,12 +540,12 @@ public:
     maxNumQ->setMax(curNQ + 1);
 
     const size_t elemsSize = elemsH->heap.size();
-    elemsH->size = elemsSize;
+    elemsH->size.store(elemsSize, std::memory_order_release);
     if (elemsSize > 0)
       elemsH->min = elemsH->heap.min();
 
     const size_t addSize = addH->heap.size();
-    addH->size = addSize;
+    addH->size.store(addSize, std::memory_order_release);
     if (addSize > 0)
       addH->min = addH->heap.min();
 
@@ -557,6 +557,7 @@ public:
   }
 
   inline void reportStat(size_t s, size_t f, size_t e) {
+    return;
     static thread_local size_t curQ = 0;
 
     static const size_t segmentSize = SEGMENT_SIZE;
@@ -626,6 +627,9 @@ public:
           heap = &heaps[q_ind].data;
           heap->lock();
           goto q_locked;
+//          if (heap->try_lock()) {
+//            goto q_locked;
+//          }
         }
       }
       local_q = get_push_local(local_q);
@@ -646,11 +650,12 @@ q_locked:
       }
       for (size_t cnt = 0; cnt < chunk_size && b != e; cnt++, npush++) {
         if constexpr (DecreaseKey) {
+//          update_elem(*b++, heap);
           auto index = DecreaseKeyIndexer::get_queue(*b);
           if (index == local_q) {
             // the element is in the heap
             update_elem(*b++, heap);
-          } else if (index == -1) {
+          } else if (index == -1 || cnt == 0) {
             // no heaps contain the element
             push_elem(*b++, heap, local_q);
           } else {
@@ -666,7 +671,7 @@ q_locked:
           empty_queues.fetch_sub(1);
       }
       heap->min  = heap->heap.min();
-      heap->size = heap->heap.size();
+      heap->size.store(heap->heap.size(), std::memory_order_release);
       heap->unlock();
     }
     if constexpr (Blocking)
@@ -722,7 +727,7 @@ q_locked:
     if constexpr (ChunkPop > 0) {
       if (local_q < nQ && change >= PopChange::P * (ChunkPop + 1)) {
         heap_i = &heaps[local_q].data;
-        if (heap_i->size != 0) {
+        if (heap_i->size.load(std::memory_order_acquire) != 0) {
           if (try_lock_heap(local_q)) {
             if (heap_i->heap.size() != 0) {
               return extract_min(heap_i, popped_v, 1, 0, 0);
@@ -769,11 +774,11 @@ q_locked:
             if (i_ind == j_ind && nQ > 1)
               continue;
 
-            if (heap_i->size == 0) {
+            if (heap_i->size.load(std::memory_order_acquire) == 0) {
               empty++;
               heap_i = heap_j;
               local_q = i_ind = j_ind;
-            } else if (heap_j->size == 0) {
+            } else if (heap_j->size.load(std::memory_order_acquire) == 0) {
               empty++;
               local_q = i_ind;
             } else if (compare(heap_i->min, heap_j->min)) {
@@ -799,7 +804,7 @@ q_locked:
         }
         for (size_t k = 1; k < nQ; k++) {
           heap_i = &heaps[(i_ind + k) % nQ].data;
-          if (heap_i->size == 0)
+          if (heap_i->size.load(std::memory_order_acquire) == 0)
             continue;
           if (heap_i->try_lock()) {
             if (heap_i->heap.size() > 0) {

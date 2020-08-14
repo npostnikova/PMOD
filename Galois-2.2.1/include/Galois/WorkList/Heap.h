@@ -45,7 +45,9 @@ struct DAryHeap {
 		auto min = heap[0];
 		heap[0] = heap.back();
 		heap.pop_back();
-		sift_down(0);
+		if (heap.size() > 0) {
+      sift_down(0);
+    }
 		return min;
 	}
 
@@ -57,9 +59,11 @@ struct DAryHeap {
 		remove_info(indexer, 0);
 		heap[0] = heap.back();
 		heap.pop_back();
-		sift_down(indexer, 0);
-		return min;
-	}
+		if (heap.size() > 0) {
+      sift_down(indexer, 0);
+    }
+    return min;
+  }
 
 	//! Push the element.
 	void push(T const& val) {
@@ -81,7 +85,13 @@ struct DAryHeap {
 	//! The `indexer` *must* be awared that the element is in the heap.
 	template <typename Indexer>
 	void decrease_key(Indexer const& indexer, T const& val) {
-		auto index = indexer.get_index(val);
+	  auto pair = indexer.get_pair(val);
+	  auto q = pair.first;
+		auto index = pair.second;
+		if (q != qInd) {
+		  push(indexer, val);
+		  return;
+		}
 		if (cmp(heap[index], val)) {
 			heap[index] = val;
 			sift_up(indexer, index);
@@ -108,9 +118,6 @@ struct DAryHeap {
     }
     // todo
     heap.erase(heap.begin() + newSize, heap.end());
-//    while (size() != newSize) {
-//      heap.pop_back();
-//    }
     build();
     h.build();
   }
@@ -128,21 +135,14 @@ struct DAryHeap {
       }
     }
     heap.erase(heap.begin() + newSize, heap.end());
-//    while (size() != newSize) {
-//      heap.pop_back();
-//    }
+
     build();
     h.build();
     for (size_t i = 0; i < h.size(); i++) {
-      if (indexer.get_queue(h.heap[i]) == qInd) {
-        indexer.set_queue(h.heap[i], h.qInd);
-        indexer.set_index(h.heap[i], i);
-      }
+      indexer.set_pair(h.heap[i], h.qInd, i);
     }
     for (size_t i = 0; i < size(); i++) {
-      if (indexer.get_queue(heap[i]) == qInd) {
-        indexer.set_index(heap[i], i);
-      }
+      indexer.set_pair(heap[i], qInd, i);
     }
   }
 
@@ -153,10 +153,6 @@ struct DAryHeap {
 	    sift_up(i);
 	  }
 	  fromH.heap.clear();//erase(fromH.heap.begin(), fromH.heap.end());
-//    heap.reserve(heap.size() + fromH.size());
-//	  while (fromH.size() > 0) {
-//	    push(fromH.removeLast());
-//	  }
 	}
 
 	template <typename Indexer>
@@ -164,10 +160,7 @@ struct DAryHeap {
     auto prevSize = heap.size();
     heap.insert(heap.end(), fromH.heap.begin(), fromH.heap.end());
     for (size_t i = prevSize; i < heap.size(); i++) {
-      if (indexer.get_queue(heap[i]) == fromH.qInd) {
-        indexer.set_queue(heap[i], qInd);
-        indexer.set_index(heap[i], i);
-      }
+     // indexer.set_pair(heap[i],qInd, i); // todo useless?
       sift_up(indexer, i);
     }
     fromH.heap.clear();
@@ -248,17 +241,13 @@ private:
 	//! Set that the element is not in the heap anymore.
 	template <typename Indexer>
 	void remove_info(Indexer const& indexer, index_t index) {
-		if (indexer.get_queue(heap[index]) == qInd) {
-			indexer.set_index(heap[index], -1);
-			indexer.set_queue(heap[index], -1);
-		}
+	  indexer.set_pair(heap[index], -1, 0);
 	}
 
 	//! Update position in the `Indexer`.
 	template <typename Indexer>
 	void set_position(Indexer const& indexer, index_t new_pos) {
-		if (indexer.get_queue(heap[new_pos]) == qInd)
-			indexer.set_index(heap[new_pos], new_pos);
+	  indexer.set_pair(heap[new_pos], qInd, new_pos);
 	}
 
 	//! Sift up the element with provided index.

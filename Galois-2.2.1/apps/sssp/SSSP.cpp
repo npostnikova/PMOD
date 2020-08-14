@@ -296,17 +296,18 @@ struct SerialAlgo {
 template <typename WorkItem>
 struct DecreaseKeyIndexer {
   static int get_queue(WorkItem const& wi) {
-    return wi.n->getData().qInd;
+    return get_pair(wi).first;
   }
 
-  static int get_index(WorkItem const& wi) {
-    return wi.n->getData().elemInd;
+  static void set_pair(WorkItem const& wi, int q, uint32_t ind) {
+    wi.n->getData().index.store((int64_t (ind) << 32) | (uint32_t (q + 1)), std::memory_order_release);
   }
 
-  static bool cas_queue(WorkItem const& wi, int newQ, int expQ) {
-    auto& data = wi.n->getData();
-    return __sync_bool_compare_and_swap(&data.qInd, expQ, newQ);
-    //return data.qInd.compare_exchange_strong(expQ, newQ);
+  static std::pair<int, uint32_t> get_pair(WorkItem const& wi) {
+    auto index = wi.n->getData().index.load(std::memory_order_acquire);
+    static const uint32_t& mask = (1ull << 32) - 1;
+    int q = index & mask;
+    return {q - 1, index >> 32};
   }
 
   static void set_queue(WorkItem const& wi, int newQ) {

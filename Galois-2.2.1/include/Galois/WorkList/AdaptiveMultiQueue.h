@@ -44,7 +44,7 @@ struct LockableHeap {
 //    while (!_lock.compare_exchange_strong(expected, true)) {
 //      expected = false;
 //    }
-     _lock.lock();
+    _lock.lock();
   }
 
   //! Unlocks the queue.
@@ -109,6 +109,11 @@ private:
   Runtime::LL::PaddedLock<Concurrent> adaptLock;
   const size_t maxQNum;
 
+  // todo int?
+  int getNQ() {
+    return nQ.load(std::memory_order_acquire);
+  }
+
   //! Thread local random.
   uint32_t random() {
     static thread_local uint32_t x = generate_random(); // todo
@@ -126,7 +131,7 @@ private:
   }
 
   inline size_t rand_heap() {
-    return random() % nQ;
+    return random() % getNQ();
   }
 
   //! Extracts minimum from the locked heap.
@@ -199,7 +204,7 @@ private:
 
   //! Suspends if the thread is not the last.
   void suspend() {
-    while (empty_queues == nQ) {
+    while (empty_queues == getNQ()) {
       size_t cell_id = rand_suspend_cell();
       if (try_suspend(cell_id)) {
         return;
@@ -243,7 +248,7 @@ private:
     if (suspended_num + 1 == nT) {
       node.cond_mutex.unlock();
       suspended.fetch_sub(1);
-      if (empty_queues < nQ)
+      if (empty_queues < getNQ())
         return true;
       resume_all();
       return true;
@@ -308,7 +313,7 @@ private:
 
   //! Checks whether the index is a valid index of a queue.
   inline bool valid_index(int ind) {
-    return ind >= 0 && ind < nQ;
+    return ind >= 0 && ind < getNQ();
   }
 
   //! Update element if the new value is smaller that the value in the heap.
@@ -357,8 +362,8 @@ public:
     initStatistic(reportNum, "reportNum");
     initStatistic(minNumQ, "minNumQ");
     initStatistic(maxNumQ, "maxNumQ");
-    *maxNumQ = nQ;
-    *minNumQ = nQ;
+    *maxNumQ = getNQ();
+    *minNumQ = getNQ();
   }
 
   void deleteStatistic(Galois::Statistic*& st, std::ofstream& out) {
@@ -450,7 +455,7 @@ public:
 
   size_t get_push_local(size_t old_local) {
     size_t change = random() % PushChange::Q;
-    if (old_local >= nQ || change < PushChange::P)
+    if (old_local >= getNQ() || change < PushChange::P)
       return rand_heap();
     return old_local;
   }
@@ -459,7 +464,7 @@ public:
     *wantedToDelete += 1;
     if (!adaptLock.try_lock())
       return;
-    size_t curNQ = nQ;
+    size_t curNQ = getNQ();
     if (curNQ == 1 || expectedNQ != curNQ) {
       adaptLock.unlock();
       return;
@@ -499,7 +504,7 @@ public:
     if (newSize > 0)
       mergeH->min = mergeH->heap.min();
 
-    nQ--;
+    nQ.fetch_sub(1, std::memory_order_acq_rel);
     removeH->unlock();
     mergeH->unlock();
     // std::cout << ">>>>>>>>>>>>>>>>>>> Deleted: " << nQ << std::endl;
@@ -510,7 +515,7 @@ public:
     *wantedToAdd += 1;
     if (!adaptLock.try_lock())
       return;
-    size_t curNQ = nQ;
+    size_t curNQ = getNQ();
     if (curNQ == maxQNum || expectedNQ != curNQ) {
       adaptLock.unlock();
       return;
@@ -549,7 +554,7 @@ public:
     if (addSize > 0)
       addH->min = addH->heap.min();
 
-    nQ++;
+    nQ.fetch_add(1, std::memory_order_acq_rel);
     addH->unlock();
     elemsH->unlock();
     // std::cout << ">>>>>>>>>>>>>>> Added: " << nQ << std::endl;
@@ -567,8 +572,8 @@ public:
     static thread_local int64_t windowSumE = 0;
 
     *reportNum += 1;
-    if (curQ != nQ) {
-      curQ = nQ;
+    if (curQ != getNQ()) {
+      curQ = getNQ();
       windowSumF = 0;
       windowSumS = 0;
       windowSumE = 0;
@@ -642,8 +647,8 @@ public:
       }
       success++;
 
-q_locked:
-      if (local_q >= nQ) {
+      q_locked:
+      if (local_q >= getNQ()) {
         // the queue was "deleted" before we locked it
         heap->unlock();
         continue;
@@ -682,7 +687,7 @@ q_locked:
 
   bool try_lock_heap(size_t i) {
     if (heaps[i].data.try_lock()) {
-      if (i >= nQ) {
+      if (i >= getNQ()) {
         heaps[i].data.unlock();
         return false;
       }
@@ -725,7 +730,7 @@ q_locked:
     size_t change = random() % PopChange::Q;
 
     if constexpr (ChunkPop > 0) {
-      if (local_q < nQ && change >= PopChange::P * (ChunkPop + 1)) {
+      if (local_q < getNQ() && change >= PopChange::P * (ChunkPop + 1)) {
         heap_i = &heaps[local_q].data;
         if (heap_i->size.load(std::memory_order_acquire) != 0) {
           if (try_lock_heap(local_q)) {
@@ -743,7 +748,7 @@ q_locked:
         }
       }
     } else {
-      if (local_q < nQ && change >= PopChange::P) {
+      if (local_q < getNQ() && change >= PopChange::P) {
         heap_i = &heaps[local_q].data;
         if (try_lock_heap(local_q)) {
           if (heap_i->heap.size() != 0) {
@@ -771,7 +776,7 @@ q_locked:
             j_ind = rand_heap();
             heap_j = &heaps[j_ind].data;
 
-            if (i_ind == j_ind && nQ > 1)
+            if (i_ind == j_ind && getNQ() > 1)
               continue;
 
             if (heap_i->size.load(std::memory_order_acquire) == 0) {
@@ -802,13 +807,14 @@ q_locked:
             heap_i->unlock();
           }
         }
-        for (size_t k = 1; k < nQ; k++) {
-          heap_i = &heaps[(i_ind + k) % nQ].data;
+        size_t curNQ = getNQ();
+        for (size_t k = 1; k < curNQ; k++) {
+          heap_i = &heaps[(i_ind + k) % curNQ].data;
           if (heap_i->size.load(std::memory_order_acquire) == 0)
             continue;
           if (heap_i->try_lock()) {
             if (heap_i->heap.size() > 0) {
-              local_q = (i_ind + k) % nQ;
+              local_q = (i_ind + k) % curNQ;
               return extract_min(heap_i, popped_v, success, failure, empty);
             } else {
               //empty++; // todo should it be counted
@@ -816,14 +822,14 @@ q_locked:
             }
           }
         }
-      } while (Blocking && empty_queues != nQ);
+      } while (Blocking && empty_queues != getNQ());
 
       if constexpr (!Blocking) {
         reportStat(success, failure, empty);
         return result;
       }
       for (size_t k = 0, iters = 32; k < SLEEPING_ATTEMPTS; k++, iters *= 2) {
-        if (empty_queues != nQ || suspended + 1 == nT)
+        if (empty_queues != getNQ() || suspended + 1 == nT) // todo: getNQ?
           break;
         active_waiting(iters);
       }
@@ -849,9 +855,9 @@ size_t E,
 size_t WINDOW_SIZE,
 size_t PROB>
 Statistic* AdaptiveMultiQueue<T, Comparer, C,
-  DecreaseKey, DecreaseKeyIndexer, Concurrent,
-  Blocking, PushChange, PopChange, ChunkPop,
-  S, F, E, WINDOW_SIZE, PROB>::deletedQ;
+DecreaseKey, DecreaseKeyIndexer, Concurrent,
+Blocking, PushChange, PopChange, ChunkPop,
+S, F, E, WINDOW_SIZE, PROB>::deletedQ;
 
 template<typename T,
 typename Comparer,

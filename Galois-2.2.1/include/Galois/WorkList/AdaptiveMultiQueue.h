@@ -53,6 +53,16 @@ struct LockableHeap {
     _lock.unlock();
   }
 
+  inline bool is_locked() {
+    _lock.is_locked();
+  }
+
+  inline bool my_try_lock() {
+    if (!is_locked())
+      return try_lock();
+    return false;
+  }
+
 private:
   Runtime::LL::PaddedLock<true> _lock;
   //std::atomic<bool> _lock;
@@ -117,10 +127,12 @@ private:
   //! Thread local random.
   uint32_t random() {
     static thread_local uint32_t x = generate_random(); // todo
-    x ^= x << 13;
-    x ^= x >> 17;
-    x ^= x << 5;
-    return x;
+    uint32_t local_x = x;
+    local_x ^= local_x << 13;
+    local_x ^= local_x >> 17;
+    local_x ^= local_x << 5;
+    x = local_x;
+    return local_x;
   }
 
   size_t generate_random() {
@@ -152,7 +164,7 @@ private:
     }
     if (heap->heap.size() > 0)
       heap->min = heap->heap.min();
-    heap->size.fetch_sub(1, std::memory_order_acq_rel);
+    heap->size.store(heap->heap.size(), std::memory_order_release);
     heap->unlock();
     reportStat(success, failure, empty);
     return result;
@@ -326,7 +338,7 @@ private:
 
   //! Add element to the locked heap with index q_ind.
   //! The element may be in another heap.
-  inline void push_elem(const value_t& val, Heap* heap, size_t q_ind) {
+  inline void push_elem(const value_t& val, Heap* heap) {
     static DecreaseKeyIndexer indexer;
     // indexer.cas_queue(val, q_ind, -1); // fails if the element was added to another queue
     heap->heap.push(indexer, val);
@@ -446,7 +458,7 @@ public:
     do {
       q_ind = rand_heap();
       heap = &heaps[q_ind].data;
-    } while (!heap->try_lock());
+    } while (!heap->my_try_lock());
 
     heap->heap.push(val);
     heap->min = heap->heap.min();
@@ -562,6 +574,7 @@ public:
   }
 
   inline void reportStat(size_t s, size_t f, size_t e) {
+    // *reportNum += 1;
     return;
     static thread_local size_t curQ = 0;
 
@@ -571,7 +584,6 @@ public:
     static thread_local int64_t windowSumS = 0;
     static thread_local int64_t windowSumE = 0;
 
-    *reportNum += 1;
     if (curQ != getNQ()) {
       curQ = getNQ();
       windowSumF = 0;
@@ -616,7 +628,7 @@ public:
     // local queue
     static thread_local size_t local_q = rand_heap();
 
-    size_t q_ind = 0;
+    size_t indexToLock = 0;
     int npush = 0;
     Heap* heap = nullptr;
 
@@ -626,10 +638,9 @@ public:
 
     while (b != e) {
       if constexpr (DecreaseKey) {
-        q_ind = DecreaseKeyIndexer::get_queue(*b);
-        if (valid_index(q_ind)) {
-          local_q = q_ind;
-          heap = &heaps[q_ind].data;
+        indexToLock = DecreaseKeyIndexer::get_queue(*b);
+        if (valid_index(indexToLock)) {
+          heap = &heaps[indexToLock].data;
           heap->lock();
           goto q_locked;
 //          if (heap->try_lock()) {
@@ -637,12 +648,12 @@ public:
 //          }
         }
       }
-      local_q = get_push_local(local_q);
-      heap = &heaps[local_q].data;
+      indexToLock = get_push_local(local_q);
+      heap = &heaps[indexToLock].data;
 
-      while (!heap->try_lock()) {
-        local_q = rand_heap();
-        heap = &heaps[local_q].data;
+      while (!heap->my_try_lock()) {
+        indexToLock = rand_heap();
+        heap = &heaps[indexToLock].data;
         failure++;
       }
       success++;
@@ -657,12 +668,12 @@ public:
         if constexpr (DecreaseKey) {
 //          update_elem(*b++, heap);
           auto index = DecreaseKeyIndexer::get_queue(*b);
-          if (index == local_q) {
+          if (index == indexToLock) {
             // the element is in the heap
             update_elem(*b++, heap);
           } else if (index == -1 || cnt == 0) {
             // no heaps contain the element
-            push_elem(*b++, heap, local_q);
+            push_elem(*b++, heap);
           } else {
             // need to change heap
             break;
@@ -675,18 +686,19 @@ public:
         if (heap->heap.size() == 1)
           empty_queues.fetch_sub(1);
       }
-      heap->min  = heap->heap.min();
+      heap->min = heap->heap.min();
       heap->size.store(heap->heap.size(), std::memory_order_release);
       heap->unlock();
     }
     if constexpr (Blocking)
       resume(resume_num(npush));
     reportStat(success, failure, empty);
+    local_q = indexToLock;
     return npush;
   }
 
   bool try_lock_heap(size_t i) {
-    if (heaps[i].data.try_lock()) {
+    if (heaps[i].data.my_try_lock()) {
       if (i >= getNQ()) {
         heaps[i].data.unlock();
         return false;
@@ -763,11 +775,14 @@ public:
       }
     }
 
+    size_t curNQ;
+    size_t indexToLock;
     while (true) {
       if constexpr (Blocking) {
         if (no_work) return result;
       }
       do {
+        curNQ = getNQ();
         for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
           while (true) {
             i_ind = rand_heap();
@@ -776,48 +791,48 @@ public:
             j_ind = rand_heap();
             heap_j = &heaps[j_ind].data;
 
-            if (i_ind == j_ind && getNQ() > 1)
+            if (i_ind == j_ind && curNQ > 1)
               continue;
 
             if (heap_i->size.load(std::memory_order_acquire) == 0) {
               empty++;
               heap_i = heap_j;
-              local_q = i_ind = j_ind;
+              indexToLock = j_ind;
             } else if (heap_j->size.load(std::memory_order_acquire) == 0) {
               empty++;
-              local_q = i_ind;
+              indexToLock = i_ind;
             } else if (compare(heap_i->min, heap_j->min)) {
               heap_i = heap_j;
-              local_q = i_ind = j_ind;
+              indexToLock = j_ind;
             } else {
-              local_q = i_ind;
+              indexToLock = i_ind;
             }
-            if (try_lock_heap(local_q))
+            if (try_lock_heap(indexToLock))
               break;
             else
               failure++;
           }
           success++;
 
-
           if (heap_i->heap.size() != 0) {
+            local_q = indexToLock;
             return extract_min(heap_i, popped_v, success, failure, empty);
           } else {
             empty++;
             heap_i->unlock();
           }
         }
-        size_t curNQ = getNQ();
-        for (size_t k = 1; k < curNQ; k++) {
-          heap_i = &heaps[(i_ind + k) % curNQ].data;
+        for (size_t k = 0; k < curNQ; k++) {
+          if (k == indexToLock) continue;
+          heap_i = &heaps[k].data;
           if (heap_i->size.load(std::memory_order_acquire) == 0)
             continue;
-          if (heap_i->try_lock()) {
+          if (heap_i->my_try_lock()) {
             if (heap_i->heap.size() > 0) {
-              local_q = (i_ind + k) % curNQ;
+              local_q = k;
               return extract_min(heap_i, popped_v, success, failure, empty);
             } else {
-              //empty++; // todo should it be counted
+              //empty++; todo should it be counted
               heap_i->unlock();
             }
           }

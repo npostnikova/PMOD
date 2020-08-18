@@ -58,6 +58,7 @@ public:
   void lock() const { Lock.data.lock(); }
   bool try_lock() const { return Lock.data.try_lock(); }
   void unlock() const { Lock.data.unlock(); }
+  bool is_locked() const { Lock.data.is_locked(); }
   friend void LockPairOrdered(PaddedLock<true>& L1, PaddedLock<true>& L2);
   friend bool TryLockPairOrdered(PaddedLock<true>& L1, PaddedLock<true>& L2);
   friend void UnLockPairOrdered(PaddedLock<true>& L1, PaddedLock<true>& L2);
@@ -69,6 +70,7 @@ public:
   void lock() const {}
   bool try_lock() const { return true; }
   void unlock() const {}
+  bool is_locked() const { return true; } // todo: true?
 };
 
 }

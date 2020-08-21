@@ -43,6 +43,7 @@
 #include "StableIterator.h"
 #include "AdaptiveMultiQueue.h"
 #include "AMQ_WP.h"
+#include "StealingMultiQueue.h"
 
 namespace Galois {
 /**

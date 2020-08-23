@@ -308,30 +308,34 @@ public:
 
     const size_t RANDOM_ATTEMPTS = nQ > 2 ? 4 : 0;
     if (heaps[tId].data.isEmpty()) {
-      for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
-        auto randH = rand_heap();
-        if (randH == tId) continue;
-        auto stolen = heaps[randH].data.steal();
-        if (!heaps[randH].data.isUsed(stolen)) {
-          return stolen;
+      if (nQ > 1) {
+        for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
+          auto randH = rand_heap();
+          if (randH == tId) continue;
+          auto stolen = heaps[randH].data.steal();
+          if (!heaps[randH].data.isUsed(stolen)) {
+            return stolen;
+          }
         }
-      }
-      for (size_t i = 0; i < nQ; i++) {
-        if (i == tId) continue;
-        auto stolen = heaps[i].data.steal();
-        if (!heaps[i].data.isUsed(stolen)) {
-          return stolen;
+        for (size_t i = 0; i < nQ; i++) {
+          if (i == tId) continue;
+          auto stolen = heaps[i].data.steal();
+          if (!heaps[i].data.isUsed(stolen)) {
+            return stolen;
+          }
         }
       }
       return result;
     } else {
       // our heap is not empty
-      size_t change = random() % StealProb::Q;
-      if (change < StealProb::P) {
-        auto randH = rand_heap();
-        auto stolen = heaps[randH].data.steal();
-        if (!heaps[randH].data.isUsed(stolen)) {
-          return stolen;
+      if (nQ > 1) {
+        size_t change = random() % StealProb::Q;
+        if (change < StealProb::P) {
+          auto randH = rand_heap();
+          auto stolen = heaps[randH].data.steal();
+          if (!heaps[randH].data.isUsed(stolen)) {
+            return stolen;
+          }
         }
       }
       auto extracted = heaps[tId].data.extractMin();

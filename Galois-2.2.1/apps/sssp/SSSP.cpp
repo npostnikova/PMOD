@@ -680,6 +680,15 @@ struct AsyncAlgo {
     typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 0, true, DecreaseKeyIndexer<UpdateRequest>, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 3, 1, 32, 80> AMQ0_131_32_80_DK;
     typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 1, true, DecreaseKeyIndexer<UpdateRequest>, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 3, 1, 32, 80> AMQ1_131_32_80_DK;
 
+    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 1, true, DecreaseKeyIndexer<UpdateRequest>, true, false, Prob <5, 1000>, Prob <1, 100>> AMQ2_5_1000_1_100;
+    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 1, true, DecreaseKeyIndexer<UpdateRequest>, true, false, Prob <5, 1000>, Prob <5, 1000>> AMQ2_5_1000_5_1000;
+
+    if (wl == "amq2_5_1000_1_100")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_5_1000_1_100>());
+
+    if (wl == "amq2_5_1000_5_1000")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_5_1000_5_1000>());
+
 
     if (wl == "amq2")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2>());

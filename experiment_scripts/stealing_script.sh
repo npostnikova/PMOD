@@ -1,49 +1,182 @@
-$APP $GRAPH_PATH -wl=smq_1_10 -t=1
-$APP $GRAPH_PATH -wl=smq_1_10 -t=2
-$APP $GRAPH_PATH -wl=smq_1_10 -t=4
-$APP $GRAPH_PATH -wl=smq_1_10 -t=8
-$APP $GRAPH_PATH -wl=smq_1_10 -t=16
-$APP $GRAPH_PATH -wl=smq_1_10 -t=32
-$APP $GRAPH_PATH -wl=smq_1_10 -t=64
-$APP $GRAPH_PATH -wl=smq_1_25 -t=1
-$APP $GRAPH_PATH -wl=smq_1_25 -t=2
-$APP $GRAPH_PATH -wl=smq_1_25 -t=4
-$APP $GRAPH_PATH -wl=smq_1_25 -t=8
-$APP $GRAPH_PATH -wl=smq_1_25 -t=16
-$APP $GRAPH_PATH -wl=smq_1_25 -t=32
-$APP $GRAPH_PATH -wl=smq_1_25 -t=64
-$APP $GRAPH_PATH -wl=smq_1_64 -t=1
-$APP $GRAPH_PATH -wl=smq_1_64 -t=2
-$APP $GRAPH_PATH -wl=smq_1_64 -t=4
-$APP $GRAPH_PATH -wl=smq_1_64 -t=8
-$APP $GRAPH_PATH -wl=smq_1_64 -t=16
-$APP $GRAPH_PATH -wl=smq_1_64 -t=32
-$APP $GRAPH_PATH -wl=smq_1_64 -t=64
-$APP $GRAPH_PATH -wl=smq_1_100 -t=1
-$APP $GRAPH_PATH -wl=smq_1_100 -t=2
-$APP $GRAPH_PATH -wl=smq_1_100 -t=4
-$APP $GRAPH_PATH -wl=smq_1_100 -t=8
-$APP $GRAPH_PATH -wl=smq_1_100 -t=16
-$APP $GRAPH_PATH -wl=smq_1_100 -t=32
-$APP $GRAPH_PATH -wl=smq_1_100 -t=64
-$APP $GRAPH_PATH -wl=smq_1_256 -t=1
-$APP $GRAPH_PATH -wl=smq_1_256 -t=2
-$APP $GRAPH_PATH -wl=smq_1_256 -t=4
-$APP $GRAPH_PATH -wl=smq_1_256 -t=8
-$APP $GRAPH_PATH -wl=smq_1_256 -t=16
-$APP $GRAPH_PATH -wl=smq_1_256 -t=32
-$APP $GRAPH_PATH -wl=smq_1_256 -t=64
-$APP $GRAPH_PATH -wl=smq_1_1000 -t=1
-$APP $GRAPH_PATH -wl=smq_1_1000 -t=2
-$APP $GRAPH_PATH -wl=smq_1_1000 -t=4
-$APP $GRAPH_PATH -wl=smq_1_1000 -t=8
-$APP $GRAPH_PATH -wl=smq_1_1000 -t=16
-$APP $GRAPH_PATH -wl=smq_1_1000 -t=32
-$APP $GRAPH_PATH -wl=smq_1_1000 -t=64
-$APP $GRAPH_PATH -wl=smq_1_10000 -t=1
-$APP $GRAPH_PATH -wl=smq_1_10000 -t=2
-$APP $GRAPH_PATH -wl=smq_1_10000 -t=4
-$APP $GRAPH_PATH -wl=smq_1_10000 -t=8
-$APP $GRAPH_PATH -wl=smq_1_10000 -t=16
-$APP $GRAPH_PATH -wl=smq_1_10000 -t=32
-$APP $GRAPH_PATH -wl=smq_1_10000 -t=64
+$APP $GRAPH_PATH -wl=smq_1_4 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_4 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_4 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_4 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_4 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_4 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_4 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_4 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_4 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_4 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_4 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_4 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_4 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_4 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_4 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_4 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_4 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_4 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_4 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_4 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_4 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_8 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_16 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_32 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_64 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_128 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=smq_1_256 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=obim -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=adap-obim -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2_5_1000_1_100 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2_5_1000_5_1000 -t=1 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=obim -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=adap-obim -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2_5_1000_1_100 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2_5_1000_5_1000 -t=2 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=obim -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=adap-obim -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2_5_1000_1_100 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2_5_1000_5_1000 -t=4 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=obim -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=adap-obim -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2_5_1000_1_100 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2_5_1000_5_1000 -t=8 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=obim -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=adap-obim -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2_5_1000_1_100 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2_5_1000_5_1000 -t=16 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=obim -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=adap-obim -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2_5_1000_1_100 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2_5_1000_5_1000 -t=32 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=obim -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=adap-obim -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2_5_1000_1_100 -t=64 -resultFile=${RES}
+$APP $GRAPH_PATH -wl=amq2_5_1000_5_1000 -t=64 -resultFile=${RES}

@@ -142,12 +142,16 @@ struct StealDAryHeap {
 	//! Push the element.
 	void push(T const& val) {
     auto curMin = loadMin();
-    if (isUsed(curMin) || cmp(curMin, val)) {
+
+    if (!isUsed(curMin) && cmp(curMin, val)) {
       auto exchanged = min.exchange(val, std::memory_order_acq_rel);
       if (isUsed(exchanged)) return;
       else pushHelper(exchanged);
     } else {
       pushHelper(val);
+      if (isUsed(curMin)) {
+        min.store(extractMinLocally(), std::memory_order_release);
+      }
     }
 	}
 

@@ -342,13 +342,26 @@ public:
       if (nQ > 1) {
         size_t change = random() % StealProb::Q;
         if (change < StealProb::P) {
-          auto randH = rand_heap();
-          auto stolen = heaps[randH].data.steal();
-          if (!heaps[randH].data.isUsed(stolen)) {
-            return stolen;
+          // we try to steal
+          auto randId = rand_heap();
+          Heap* randH = &heaps[randId].data;
+          auto randMin = randH->getMin();
+          if (randH->isUsed(randMin)) {
+            goto extract_locally;
+          }
+          Heap* localH = &heaps[tId].data;
+          auto localMin = localH->getMin();
+          if (localH->isUsed(localMin)) {
+            localMin = localH->updateMin();
+          }
+          if (randH->isUsed(localMin) || compare(localMin, randMin)) {
+            auto stolen = randH->steal();
+            if (!randH->isUsed(stolen))
+              return stolen;
           }
         }
       }
+      extract_locally:
       auto extracted = heaps[tId].data.extractMin();
       if (!heaps[tId].data.isUsed(extracted))
         return extracted;

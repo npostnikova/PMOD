@@ -343,7 +343,7 @@ public:
         size_t change = random() % StealProb::Q;
         if (change < StealProb::P) {
           // we try to steal
-          auto randId = rand_heap();
+          auto randId = (tId + 1 +  (random() % (nQ - 1))) % nQ;
           Heap* randH = &heaps[randId].data;
           auto randMin = randH->getMin();
           if (randH->isUsed(randMin)) {

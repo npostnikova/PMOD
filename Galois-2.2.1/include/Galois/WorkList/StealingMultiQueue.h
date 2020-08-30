@@ -77,8 +77,8 @@ struct StealDAryHeap {
   template <typename Indexer>
   T extractMinLocally(Indexer const& indexer) {
     auto minVal = heap[0];
-    heap[0] = heap.back();
     remove_info(indexer, 0);
+    heap[0] = heap.back();
     heap.pop_back();
     if (heap.size() > 0) {
       sift_down(indexer, 0);
@@ -231,6 +231,16 @@ struct StealDAryHeap {
     }
 	}
 
+	size_t inOurQueue = 0;
+	size_t inAnotherQueue = 0;
+	size_t notInQeues = 0;
+
+	~StealDAryHeap() {
+	  std::cout << "Found in our queue: " << inOurQueue << std::endl;
+	  std::cout << "Found in another queue: " << inAnotherQueue << std::endl;
+	  std::cout << "Not in queues: " << notInQeues << std::endl;
+	}
+
   template <typename Indexer>
   void push(Indexer const& indexer, T const& val) {
     auto curMin = getMin();
@@ -240,6 +250,11 @@ struct StealDAryHeap {
     auto index = position.second;
 
     if (queue != qInd) {
+      if (queue == -1) {
+        notInQeues++;
+      } else {
+        inAnotherQueue++;
+      }
       if (!isUsed(curMin) && cmp(curMin, val)) {
         auto exchanged = min.exchange(val, std::memory_order_acq_rel);
         if (isUsed(exchanged)) return;
@@ -252,6 +267,7 @@ struct StealDAryHeap {
         }
       }
     } else {
+      inOurQueue++;
       if (cmp(heap[index], val)) {
         heap[index] = val;
         sift_up(indexer, index);
@@ -448,13 +464,13 @@ public:
   //! Change the concurrency flag.
   template<bool _concurrent>
   struct rethread {
-    typedef StealingMultiQueue<T, Comparer, StealProb, _concurrent> type;
+    typedef StealingMultiQueue<T, Comparer, StealProb, _concurrent, DecreaseKey, Indexer> type;
   };
 
   //! Change the type the worklist holds.
   template<typename _T>
   struct retype {
-    typedef StealingMultiQueue<_T, Comparer, StealProb, Concurrent> type;
+    typedef StealingMultiQueue<_T, Comparer, StealProb, Concurrent, DecreaseKey, Indexer> type;
   };
 
   template<typename RangeTy>

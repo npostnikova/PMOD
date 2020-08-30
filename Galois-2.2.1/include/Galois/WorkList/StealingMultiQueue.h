@@ -53,6 +53,12 @@ struct StealDAryHeap {
 //	std::atomic<bool> empty = {true };
 	Compare cmp;
 
+	size_t qInd;
+
+	void set_id(size_t id) {
+	  qInd = id;
+	}
+
 	StealDAryHeap(): min(usedT) {
     //memset(reinterpret_cast<void*>(&usedT), 0xff, sizeof(usedT));
     //min.store(usedT, std::memory_order_release);
@@ -76,8 +82,24 @@ struct StealDAryHeap {
 		return min.load(std::memory_order_acquire);
 	}
 
-  T steal() {
-    return min.exchange(usedT, std::memory_order_acquire);
+	T steal() {
+	  return min.exchange(usedT, std::memory_order_acq_rel);
+	}
+
+	template <typename Indexer>
+  T steal(Indexer const& indexer) {
+	  while (true) {
+      auto wantToSteal = getMin();
+
+      if (isUsed(wantToSteal))
+        return wantToSteal;
+
+      remove_info_by_val(indexer, wantToSteal);
+      auto changeVal = usedT; // non const reference is needed
+      min.compare_exchange_strong(wantToSteal, changeVal, std::memory_order_acq_rel, std::memory_order_acq_rel);
+      if (changeVal == wantToSteal)
+        return wantToSteal;
+    }
   }
 
 
@@ -93,9 +115,19 @@ struct StealDAryHeap {
     return minVal;
   }
 
-  T loadMin() {
-	  return min.load(std::memory_order_acquire);
-	}
+  template <typename Indexer>
+  T extractMinLocally(Indexer const& indexer) {
+    auto minVal = heap[0];
+    heap[0] = heap.back();
+    remove_info(indexer, 0);
+    heap.pop_back();
+    if (heap.size() > 0) {
+      sift_down(indexer, 0);
+    } else {
+      localEmpty.store(true, std::memory_order_release);
+    }
+    return minVal;
+  }
 
 	// When current min is stolen
 	T updateMin() {
@@ -105,10 +137,18 @@ struct StealDAryHeap {
 	  return min;
 	}
 
+	template <typename Indexer>
+  T updateMin(Indexer const& indexer) {
+    if (heap.size() == 0) return usedT;
+    auto val = extractMinLocally(indexer);
+    min.store(val, std::memory_order_release);
+    return min;
+  }
+
 	T extractMin() {
 	  if (heap.size() > 0) {
 	    auto secondMin = extractMinLocally();
-	    if (isUsed(loadMin())) {
+	    if (isUsed(getMin())) {
 	      if (heap.size() > 0) {
 	        auto thirdMin = extractMinLocally();
 	        min.store(thirdMin, std::memory_order_release);
@@ -132,6 +172,37 @@ struct StealDAryHeap {
 	  }
 	}
 
+	template <typename Indexer>
+  T extractMin(Indexer const& indexer) {
+    if (heap.size() > 0) {
+      auto secondMin = extractMinLocally(indexer);
+      if (isUsed(getMin())) {
+        if (heap.size() > 0) {
+          auto thirdMin = extractMinLocally(indexer);
+          set_position_min(indexer,thirdMin);
+          min.store(thirdMin, std::memory_order_release);
+        } else {
+          // No elements for other threads
+        }
+        return secondMin;
+      } else {
+        auto firstMin = min.exchange(secondMin, std::memory_order_acq_rel);
+        remove_info_by_val(indexer, firstMin);
+        if (isUsed(firstMin)) {
+          // somebody took the element
+          if (heap.size() > 0) return extractMinLocally(indexer);
+          return secondMin; // todo or optional as we have nothing to do
+        } else {
+          // min was not stolen
+          return firstMin;
+        }
+      }
+    } else {
+      return steal(indexer);
+    }
+  }
+
+
 	void pushHelper(T const& val) {
     index_t index = heap.size();
     heap.push_back({val});
@@ -139,9 +210,18 @@ struct StealDAryHeap {
     if (heap.size() == 1) localEmpty.store(false, std::memory_order_release);
 	}
 
+  template <typename Indexer>
+  void pushHelper(Indexer const& indexer, T const& val) {
+    index_t index = heap.size();
+    heap.push_back({val});
+    sift_up(indexer, index);
+    if (heap.size() == 1)
+      localEmpty.store(false, std::memory_order_release);
+  }
+
 	//! Push the element.
 	void push(T const& val) {
-    auto curMin = loadMin();
+    auto curMin = getMin();
 
     if (!isUsed(curMin) && cmp(curMin, val)) {
       auto exchanged = min.exchange(val, std::memory_order_acq_rel);
@@ -154,6 +234,67 @@ struct StealDAryHeap {
       }
     }
 	}
+
+  template <typename Indexer>
+  void push(Indexer const& indexer, T const& val) {
+    auto curMin = getMin();
+
+    auto position = indexer.get_pair(val);
+    auto queue = position.first;
+    auto index = position.second;
+
+    if (queue != qInd) {
+      if (!isUsed(curMin) && cmp(curMin, val)) {
+        auto exchanged = min.exchange(val, std::memory_order_acq_rel);
+        if (isUsed(exchanged)) return;
+        else pushHelper(indexer, exchanged);
+      } else {
+        pushHelper(indexer, val);
+        if (isUsed(curMin)) {
+          auto minFromHeap = extractMinLocally(indexer);
+          min.store(minFromHeap, std::memory_order_release);
+          set_position_min(indexer, minFromHeap);
+        }
+      }
+    } else if (index == 0) {
+        // it's min
+        auto minVal = getMin();
+        if (isUsed(minVal)) {
+          pushHelper(indexer, val);
+          auto minFromHeap = extractMinLocally(indexer);
+          min.store(minFromHeap, std::memory_order_release);
+          set_position_min(indexer, minFromHeap);
+        } else if (cmp(minVal, val)) {
+          // though the element can be marked as removed in the indexer
+          min.store(val, std::memory_order_release);
+        }
+    } else {
+      index--; // i-th element in the heap has index i + 1
+      if (cmp(heap[index], val)) {
+        heap[index] = val;
+        sift_up(indexer, index);
+      }
+    }
+  }
+
+  //! Set that the element is not in the heap anymore.
+  template <typename Indexer>
+  void remove_info(Indexer const& indexer, index_t index) {
+    indexer.set_pair(heap[index], -1, 0);
+  }
+
+  template <typename Indexer>
+  void remove_info_by_val(Indexer const& indexer, T const& val) {
+    indexer.set_pair(val, -1, 0);
+  }
+
+  template <typename Indexer>
+  void remove_info_min(Indexer const& indexer) {
+	  auto minVal = getMin();
+	  if (!isUsed(minVal)) {
+      indexer.set_pair(minVal, -1, 0);
+    }
+  }
 
   void build() {
     // D * index + 1 is the first child
@@ -214,6 +355,18 @@ private:
 		}
 	}
 
+  template <typename Indexer>
+  void sift_down(Indexer const& indexer, index_t index) {
+    auto smallest_child = get_smallest_child(index);
+    while (smallest_child && cmp(heap[index], heap[smallest_child.get()])) {
+      swap(index, smallest_child.get());
+      set_position(indexer, index);
+      index = smallest_child.get();
+      smallest_child = get_smallest_child(index);
+    }
+    set_position(indexer, index);
+  }
+
 	//! Sift up the element with provided index.
 	index_t sift_up(index_t index) {
 		Galois::optional<index_t> parent = get_parent(index);
@@ -226,7 +379,32 @@ private:
 		return index;
 	}
 
-	void push_back(T const& val) {
+  template <typename Indexer>
+  index_t sift_up(Indexer const& indexer, index_t index) {
+    Galois::optional<index_t> parent = get_parent(index);
+
+    while (parent && cmp(heap[parent.get()], heap[index])) {
+      swap(index, parent.get());
+      set_position(indexer, index);
+      index = parent.get();
+      parent = get_parent(index);
+    }
+    set_position(indexer, index);
+    return index;
+  }
+
+  template <typename Indexer>
+  void set_position(Indexer const& indexer, index_t new_pos) {
+    indexer.set_pair(heap[new_pos], qInd, new_pos + 1);
+  }
+
+  template <typename Indexer>
+  void set_position_min(Indexer const& indexer, T const& val) {
+    indexer.set_pair(val, qInd, 0);
+  }
+
+
+  void push_back(T const& val) {
 	  heap.push_back(val);
 	}
 };
@@ -238,7 +416,13 @@ struct SProb {
   static const size_t Q = QV;
 };
 
-template<typename T, typename Comparer, typename StealProb = SProb<0, 1>, bool Concurrent = true>
+template<typename T,
+         typename Comparer,
+         typename StealProb = SProb<0, 1>,
+         bool Concurrent = true,
+         bool DecreaseKey = false,
+         typename Indexer = void
+         >
 class StealingMultiQueue {
 
 private:
@@ -271,6 +455,9 @@ public:
   StealingMultiQueue() : nQ(Galois::getActiveThreads()) {
     memset(reinterpret_cast<void*>(&Heap::usedT), 0xff, sizeof(Heap::usedT));
     heaps = std::make_unique<Galois::Runtime::LL::CacheLineStorage<Heap>[]>(nQ);
+    for (size_t i = 0; i < nQ; i++) {
+      heaps[i].data.set_id(i);
+    }
     std::cout << "Queues: " << nQ << std::endl;
   }
 
@@ -304,9 +491,17 @@ public:
     static thread_local size_t tId = Galois::Runtime::LL::getTID(); // todo bounds? can be changed?
     Heap* heap = &heaps[tId].data;
     int npush = 0;
-    while (b != e) {
-      heap->push(*b++);
-      npush++;
+    if constexpr (DecreaseKey) {
+      static Indexer indexer;
+      while (b != e) {
+        heap->push(indexer, *b++);
+        npush++;
+      }
+    } else {
+      while (b != e) {
+        heap->push(*b++);
+        npush++;
+      }
     }
     return npush;
   }
@@ -314,59 +509,113 @@ public:
   Galois::optional<T> pop() {
     static thread_local size_t tId = Galois::Runtime::LL::getTID(); // todo bounds? can be changed?
 
-
     Galois::optional<T> result;
 
-    const size_t RANDOM_ATTEMPTS = nQ > 2 ? 4 : 0;
-    if (heaps[tId].data.isEmpty()) {
-      if (nQ > 1) {
-        for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
-          auto randH = rand_heap();
-          if (randH == tId) continue;
-          auto stolen = heaps[randH].data.steal();
-          if (!heaps[randH].data.isUsed(stolen)) {
-            return stolen;
-          }
-        }
-        for (size_t i = 0; i < nQ; i++) {
-          if (i == tId) continue;
-          auto stolen = heaps[i].data.steal();
-          if (!heaps[i].data.isUsed(stolen)) {
-            return stolen;
-          }
-        }
-      }
-      return result;
-    } else {
-      // our heap is not empty
-      if (nQ > 1) {
-        size_t change = random() % StealProb::Q;
-        if (change < StealProb::P) {
-          // we try to steal
-          auto randId = (tId + 1 +  (random() % (nQ - 1))) % nQ;
-          Heap* randH = &heaps[randId].data;
-          auto randMin = randH->getMin();
-          if (randH->isUsed(randMin)) {
-            goto extract_locally;
-          }
-          Heap* localH = &heaps[tId].data;
-          auto localMin = localH->getMin();
-          if (localH->isUsed(localMin)) {
-            localMin = localH->updateMin();
-          }
-          if (randH->isUsed(localMin) || compare(localMin, randMin)) {
-            auto stolen = randH->steal();
-            if (!randH->isUsed(stolen))
+    if constexpr (DecreaseKey) {
+      static Indexer indexer;
+      const size_t RANDOM_ATTEMPTS = nQ > 2 ? 4 : 0;
+      if (heaps[tId].data.isEmpty()) {
+        if (nQ > 1) {
+          for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
+            auto randH = rand_heap();
+            if (randH == tId) continue;
+            auto stolen = heaps[randH].data.steal(indexer);
+            if (!heaps[randH].data.isUsed(stolen)) {
               return stolen;
+            }
+          }
+          for (size_t i = 0; i < nQ; i++) {
+            if (i == tId) continue;
+            auto stolen = heaps[i].data.steal(indexer);
+            if (!heaps[i].data.isUsed(stolen)) {
+              return stolen;
+            }
           }
         }
+        return result;
+      } else {
+        // our heap is not empty
+        if (nQ > 1) {
+          size_t change = random() % StealProb::Q;
+          if (change < StealProb::P) {
+            // we try to steal
+            auto randId = (tId + 1 + (random() % (nQ - 1))) % nQ;
+            Heap *randH = &heaps[randId].data;
+            auto randMin = randH->getMin();
+            if (randH->isUsed(randMin)) {
+              goto extract_locally_dk;
+            }
+            Heap *localH = &heaps[tId].data;
+            auto localMin = localH->getMin();
+            if (localH->isUsed(localMin)) {
+              localMin = localH->updateMin(indexer);
+            }
+            if (randH->isUsed(localMin) || compare(localMin, randMin)) {
+              auto stolen = randH->steal(indexer);
+              if (!randH->isUsed(stolen))
+                return stolen;
+            }
+          }
+        }
+        extract_locally_dk:
+        auto extracted = heaps[tId].data.extractMin(indexer);
+        if (!heaps[tId].data.isUsed(extracted))
+          return extracted;
+        return result;
+        //}
       }
-      extract_locally:
-      auto extracted = heaps[tId].data.extractMin();
-      if (!heaps[tId].data.isUsed(extracted))
-        return extracted;
-      return result;
-      //}
+    } else {
+      const size_t RANDOM_ATTEMPTS = nQ > 2 ? 4 : 0;
+      if (heaps[tId].data.isEmpty()) {
+        if (nQ > 1) {
+          for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
+            auto randH = rand_heap();
+            if (randH == tId) continue;
+            auto stolen = heaps[randH].data.steal();
+            if (!heaps[randH].data.isUsed(stolen)) {
+              return stolen;
+            }
+          }
+          for (size_t i = 0; i < nQ; i++) {
+            if (i == tId) continue;
+            auto stolen = heaps[i].data.steal();
+            if (!heaps[i].data.isUsed(stolen)) {
+              return stolen;
+            }
+          }
+        }
+        return result;
+      } else {
+        // our heap is not empty
+        if (nQ > 1) {
+          size_t change = random() % StealProb::Q;
+          if (change < StealProb::P) {
+            // we try to steal
+            auto randId = (tId + 1 + (random() % (nQ - 1))) % nQ;
+            Heap *randH = &heaps[randId].data;
+            auto randMin = randH->getMin();
+            if (randH->isUsed(randMin)) {
+              goto extract_locally;
+            }
+            Heap *localH = &heaps[tId].data;
+            auto localMin = localH->getMin();
+            if (localH->isUsed(localMin)) {
+              localMin = localH->updateMin();
+            }
+            if (randH->isUsed(localMin) || compare(localMin, randMin)) {
+              auto stolen = randH->steal();
+              if (!randH->isUsed(stolen))
+                return stolen;
+            }
+          }
+        }
+        extract_locally:
+        auto extracted = heaps[tId].data.extractMin();
+        if (!heaps[tId].data.isUsed(extracted))
+          return extracted;
+        return result;
+        //}
+      }
     }
   }
 };

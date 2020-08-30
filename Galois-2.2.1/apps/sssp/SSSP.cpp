@@ -603,10 +603,10 @@ struct AsyncAlgo {
 //#include "FixedWindowTypedefs.h"
 
 #include "StealingTypedefs.h"
-#include "Stealingx2Typedefs.h"
+#include "StealingDKTypedefs.h"
 
 #include "StealingIfs.h"
-#include "Stealingx2Ifs.h"
+#include "StealingDKIfs.h"
 
 #include "AdapIfs.h"
 #include "FixedWindowIfs.h"

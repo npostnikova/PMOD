@@ -30,7 +30,7 @@ struct StealDAryHeap {
   }
 
   bool isEmpty() {
-    return min.load(std::memory_order_acquire) == usedT && localEmpty.load(std::memory_order_acquire);
+    return min.load(std::memory_order_relaxed) == usedT && localEmpty.load(std::memory_order_acquire);
   }
 
   bool isUsed(T const& element) {
@@ -38,7 +38,7 @@ struct StealDAryHeap {
   }
 
   T getMin() {
-    return min.load(std::memory_order_acquire);
+    return min.load(std::memory_order_relaxed);
   }
 
   T steal() {
@@ -93,7 +93,7 @@ struct StealDAryHeap {
     if (heap.size() == 0) return usedT;
     auto val = extractMinLocally();
     min.store(val, std::memory_order_release);
-    return min;
+    return val;
   }
 
 //	template <typename Indexer>
@@ -110,7 +110,7 @@ struct StealDAryHeap {
     if (heap.size() == 0) return usedT;
     auto val = extractMinLocally(indexer);
     min.store(val, std::memory_order_release);
-    return min;
+    return val;
   }
 
   T extractMin() {

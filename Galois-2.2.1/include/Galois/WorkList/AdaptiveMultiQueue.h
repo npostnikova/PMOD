@@ -673,6 +673,10 @@ public:
             update_elem(*b++, heap);
           } else if (index == -1 || cnt == 0) {
             // no heaps contain the element
+            if (index == -1)
+              heap->heap.notInQeues++;
+            else
+              heap->heap.inAnotherQueue;
             push_elem(*b++, heap);
           } else {
             // need to change heap

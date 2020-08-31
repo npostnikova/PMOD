@@ -6,44 +6,44 @@
 #include <vector>
 
 template<typename T = int,
-				 typename Compare = std::greater<int>,
-				 size_t D = 4>
+         typename Compare = std::greater<int>,
+         size_t D = 4>
 struct StealDAryHeap {
-	typedef size_t index_t;
+  typedef size_t index_t;
 
-	std::vector<T> heap;
-	std::atomic<T> min;
-	static T usedT;
-	std::atomic<bool> localEmpty = {true};
+  std::vector<T> heap;
+  std::atomic<T> min;
+  static T usedT;
+  std::atomic<bool> localEmpty = {true};
 //	std::atomic<bool> empty = {true };
-	Compare cmp;
+  Compare cmp;
 
-	size_t qInd;
+  size_t qInd;
 
-	void set_id(size_t id) {
-	  qInd = id;
-	}
+  void set_id(size_t id) {
+    qInd = id;
+  }
 
-	StealDAryHeap(): min(usedT) {
+  StealDAryHeap(): min(usedT) {
     //memset(reinterpret_cast<void*>(&usedT), 0xff, sizeof(usedT));
     //min.store(usedT, std::memory_order_release);
-	}
+  }
 
-	bool isEmpty() {
-	  return min.load(std::memory_order_acquire) == usedT && localEmpty.load(std::memory_order_acquire);
-	}
+  bool isEmpty() {
+    return min.load(std::memory_order_acquire) == usedT && localEmpty.load(std::memory_order_acquire);
+  }
 
-	bool isUsed(T const& element) {
-	  return element == usedT;
-	}
+  bool isUsed(T const& element) {
+    return element == usedT;
+  }
 
-	T getMin() {
-		return min.load(std::memory_order_acquire);
-	}
+  T getMin() {
+    return min.load(std::memory_order_acquire);
+  }
 
-	T steal() {
-	  return min.exchange(usedT, std::memory_order_acq_rel);
-	}
+  T steal() {
+    return min.exchange(usedT, std::memory_order_acq_rel);
+  }
 
 //	template <typename Indexer>
 //  T steal(Indexer const& indexer) {
@@ -88,13 +88,13 @@ struct StealDAryHeap {
     return minVal;
   }
 
-	// When current min is stolen
-	T updateMin() {
-	  if (heap.size() == 0) return usedT;
-	  auto val = extractMinLocally();
-	  min.store(val, std::memory_order_release);
-	  return min;
-	}
+  // When current min is stolen
+  T updateMin() {
+    if (heap.size() == 0) return usedT;
+    auto val = extractMinLocally();
+    min.store(val, std::memory_order_release);
+    return min;
+  }
 
 //	template <typename Indexer>
 //  T updateMin(Indexer const& indexer) {
@@ -113,32 +113,41 @@ struct StealDAryHeap {
     return min;
   }
 
-	T extractMin() {
-	  if (heap.size() > 0) {
-	    auto secondMin = extractMinLocally();
-	    if (isUsed(getMin())) {
-	      if (heap.size() > 0) {
-	        auto thirdMin = extractMinLocally();
-	        min.store(thirdMin, std::memory_order_release);
-	      } else {
-	        // No elements for other threads
-	      }
-	      return secondMin;
-	    } else {
-	      auto firstMin = min.exchange(secondMin, std::memory_order_acq_rel);
-	      if (isUsed(firstMin)) {
-	        // somebody took the element
-	        if (heap.size() > 0) return extractMinLocally();
-	        return usedT; // todo or optional as we have nothing to do
-	      } else {
-	        // min was not stolen
-	        return firstMin;
-	      }
-	    }
-	  } else {
-	    return steal();
-	  }
-	}
+  T extractMin() {
+    if (heap.size() > 0) {
+      auto secondMin = extractMinLocally();
+      auto firstMin = min.exchange(secondMin, std::memory_order_acq_rel);
+      if (isUsed(firstMin)) {
+        return heap.size() > 0 ? extractMinLocally() : usedT;
+      }
+      return firstMin;
+    } else {
+      // No elements in the heap, just take min if we can
+      return steal();
+    }
+  }
+
+//	    if (isUsed(getMin())) {
+//	      if (heap.size() > 0) {
+//	        auto thirdMin = extractMinLocally();
+//	        min.store(thirdMin, std::memory_order_release);
+//	      } else {
+//	        // No elements for other threads
+//	      }
+//	      return secondMin;
+//	    } else {
+//	      auto firstMin = min.exchange(secondMin, std::memory_order_acq_rel);
+//	      if (isUsed(firstMin)) {
+//	        // somebody took the element
+//	        if (heap.size() > 0)
+//	          return extractMinLocally();
+//	        return usedT;
+//	      } else {
+//	        // min was not stolen
+//	        return firstMin;
+//	      }
+//	    }
+
 
 //	template <typename Indexer>
 //  T extractMin(Indexer const& indexer) {
@@ -174,37 +183,23 @@ struct StealDAryHeap {
   T extractMin(Indexer const& indexer) {
     if (heap.size() > 0) {
       auto secondMin = extractMinLocally(indexer);
-      if (isUsed(getMin())) {
-        if (heap.size() > 0) {
-          auto thirdMin = extractMinLocally(indexer);
-          min.store(thirdMin, std::memory_order_release);
-        } else {
-          // No elements left for min
-        }
-        return secondMin;
-      } else {
-        auto firstMin = min.exchange(secondMin, std::memory_order_acq_rel);
-        if (isUsed(firstMin)) {
-          // somebody took the element
-          if (heap.size() > 0) return extractMinLocally(indexer);
-          return usedT; // todo or optional as we have nothing to do
-        } else {
-          // min was not stolen
-          return firstMin;
-        }
+      auto firstMin = min.exchange(secondMin, std::memory_order_acq_rel);
+      if (isUsed(firstMin)) {
+        return heap.size() > 0 ? extractMinLocally(indexer) : usedT;
       }
+      return firstMin;
     } else {
+      // No elements in the heap, just take min if we can
       return steal();
     }
   }
 
-
-	void pushHelper(T const& val) {
+  void pushHelper(T const& val) {
     index_t index = heap.size();
     heap.push_back({val});
     sift_up(index);
     if (heap.size() == 1) localEmpty.store(false, std::memory_order_release);
-	}
+  }
 
   template <typename Indexer>
   void pushHelper(Indexer const& indexer, T const& val) {
@@ -215,8 +210,8 @@ struct StealDAryHeap {
       localEmpty.store(false, std::memory_order_release);
   }
 
-	//! Push the element.
-	void push(T const& val) {
+  //! Push the element.
+  void push(T const& val) {
     auto curMin = getMin();
 
     if (!isUsed(curMin) && cmp(curMin, val)) {
@@ -229,17 +224,17 @@ struct StealDAryHeap {
         min.store(extractMinLocally(), std::memory_order_release);
       }
     }
-	}
+  }
 
-	size_t inOurQueue = 0;
-	size_t inAnotherQueue = 0;
-	size_t notInQeues = 0;
+  size_t inOurQueue = 0;
+  size_t inAnotherQueue = 0;
+  size_t notInQeues = 0;
 
-	~StealDAryHeap() {
-	  std::cout << "Found in our queue: " << inOurQueue << std::endl;
-	  std::cout << "Found in another queue: " << inAnotherQueue << std::endl;
-	  std::cout << "Not in queues: " << notInQeues << std::endl;
-	}
+  ~StealDAryHeap() {
+    std::cout << "Found in our queue: " << inOurQueue << std::endl;
+    std::cout << "Found in another queue: " << inAnotherQueue << std::endl;
+    std::cout << "Not in queues: " << notInQeues << std::endl;
+  }
 
   template <typename Indexer>
   void push(Indexer const& indexer, T const& val) {
@@ -303,55 +298,55 @@ struct StealDAryHeap {
 
 private:
 
-	void swap(index_t  i, index_t j) {
-		T t = heap[i];
-		heap[i] = heap[j];
-		heap[j] = t;
-	}
+  void swap(index_t  i, index_t j) {
+    T t = heap[i];
+    heap[i] = heap[j];
+    heap[j] = t;
+  }
 
-	//! Check whether the index of the root passed.
-	bool is_root(index_t index) {
-		return index == 0;
-	}
+  //! Check whether the index of the root passed.
+  bool is_root(index_t index) {
+    return index == 0;
+  }
 
-	//! Check whether the index is not out of bounds.
-	bool is_valid_index(index_t index) {
-		return index >= 0 && index < heap.size();
-	}
+  //! Check whether the index is not out of bounds.
+  bool is_valid_index(index_t index) {
+    return index >= 0 && index < heap.size();
+  }
 
-	//! Get index of the parent.
-	Galois::optional<index_t> get_parent(index_t index) {
-		if (!is_root(index) && is_valid_index(index)) {
-			return (index - 1) / D;
-		}
-		return Galois::optional<index_t>();
-	}
+  //! Get index of the parent.
+  Galois::optional<index_t> get_parent(index_t index) {
+    if (!is_root(index) && is_valid_index(index)) {
+      return (index - 1) / D;
+    }
+    return Galois::optional<index_t>();
+  }
 
-	//! Get index of the smallest (due `Comparator`) child.
-	Galois::optional<index_t> get_smallest_child(index_t index) {
-		if (!is_valid_index(D * index + 1)) {
-			return Galois::optional<index_t>();
-		}
-		index_t smallest = D * index + 1;
-		for (size_t k = 2; k <= D; k++) {
-			index_t k_child = D * index + k;
-			if (!is_valid_index(k_child))
-				break;
-			if (cmp(heap[smallest], heap[k_child]))
-				smallest = k_child;
-		}
-		return smallest;
-	}
+  //! Get index of the smallest (due `Comparator`) child.
+  Galois::optional<index_t> get_smallest_child(index_t index) {
+    if (!is_valid_index(D * index + 1)) {
+      return Galois::optional<index_t>();
+    }
+    index_t smallest = D * index + 1;
+    for (size_t k = 2; k <= D; k++) {
+      index_t k_child = D * index + k;
+      if (!is_valid_index(k_child))
+        break;
+      if (cmp(heap[smallest], heap[k_child]))
+        smallest = k_child;
+    }
+    return smallest;
+  }
 
-	//! Sift down without decrease key info update.
-	void sift_down(index_t index) {
-		auto smallest_child = get_smallest_child(index);
-		while (smallest_child && cmp(heap[index], heap[smallest_child.get()])) {
-			swap(index, smallest_child.get());
-			index = smallest_child.get();
-			smallest_child = get_smallest_child(index);
-		}
-	}
+  //! Sift down without decrease key info update.
+  void sift_down(index_t index) {
+    auto smallest_child = get_smallest_child(index);
+    while (smallest_child && cmp(heap[index], heap[smallest_child.get()])) {
+      swap(index, smallest_child.get());
+      index = smallest_child.get();
+      smallest_child = get_smallest_child(index);
+    }
+  }
 
   template <typename Indexer>
   void sift_down(Indexer const& indexer, index_t index) {
@@ -365,17 +360,17 @@ private:
     set_position(indexer, index);
   }
 
-	//! Sift up the element with provided index.
-	index_t sift_up(index_t index) {
-		Galois::optional<index_t> parent = get_parent(index);
+  //! Sift up the element with provided index.
+  index_t sift_up(index_t index) {
+    Galois::optional<index_t> parent = get_parent(index);
 
-		while (parent && cmp(heap[parent.get()], heap[index])) {
-			swap(index, parent.get());
-			index = parent.get();
-			parent = get_parent(index);
-		}
-		return index;
-	}
+    while (parent && cmp(heap[parent.get()], heap[index])) {
+      swap(index, parent.get());
+      index = parent.get();
+      parent = get_parent(index);
+    }
+    return index;
+  }
 
   template <typename Indexer>
   index_t sift_up(Indexer const& indexer, index_t index) {
@@ -403,8 +398,8 @@ private:
 
 
   void push_back(T const& val) {
-	  heap.push_back(val);
-	}
+    heap.push_back(val);
+  }
 };
 
 
@@ -422,7 +417,6 @@ template<typename T,
          typename Indexer = void
          >
 class StealingMultiQueue {
-
 private:
   typedef StealDAryHeap<T, Comparer, 4> Heap;
   std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<Heap>[]> heaps;

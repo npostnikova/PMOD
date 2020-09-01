@@ -14,7 +14,6 @@ struct StealDAryHeap {
   std::vector<T> heap;
   std::atomic<T> min;
   static T usedT;
-  std::atomic<bool> localEmpty = {true};
 //	std::atomic<bool> empty = {true };
   Compare cmp;
 
@@ -27,10 +26,6 @@ struct StealDAryHeap {
   StealDAryHeap(): min(usedT) {
     //memset(reinterpret_cast<void*>(&usedT), 0xff, sizeof(usedT));
     //min.store(usedT, std::memory_order_release);
-  }
-
-  bool isEmpty() {
-    return min.load(std::memory_order_acquire) == usedT && localEmpty.load(std::memory_order_acquire);
   }
 
   bool isUsed(T const& element) {
@@ -68,8 +63,6 @@ struct StealDAryHeap {
     heap.pop_back();
     if (heap.size() > 0) {
       sift_down(0);
-    } else {
-      localEmpty.store(true, std::memory_order_release);
     }
     return minVal;
   }
@@ -82,8 +75,6 @@ struct StealDAryHeap {
     heap.pop_back();
     if (heap.size() > 0) {
       sift_down(indexer, 0);
-    } else {
-      localEmpty.store(true, std::memory_order_release);
     }
     return minVal;
   }
@@ -198,7 +189,6 @@ struct StealDAryHeap {
     index_t index = heap.size();
     heap.push_back({val});
     sift_up(index);
-    if (heap.size() == 1) localEmpty.store(false, std::memory_order_release);
   }
 
   template <typename Indexer>
@@ -206,8 +196,6 @@ struct StealDAryHeap {
     index_t index = heap.size();
     heap.push_back({val});
     sift_up(indexer, index);
-    if (heap.size() == 1)
-      localEmpty.store(false, std::memory_order_release);
   }
 
   //! Push the element.

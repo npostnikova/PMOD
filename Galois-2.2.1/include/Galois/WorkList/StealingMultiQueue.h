@@ -493,38 +493,16 @@ public:
 
     if constexpr (DecreaseKey) {
       static Indexer indexer;
-      const size_t RANDOM_ATTEMPTS = nQ > 2 ? 4 : 0;
-      if (heaps[tId].data.isEmpty()) {
-        if (nQ > 1) {
-          for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
-            auto randH = rand_heap();
-            if (randH == tId) continue;
-            auto stolen = heaps[randH].data.steal();
-            if (!heaps[randH].data.isUsed(stolen)) {
-              return stolen;
-            }
-          }
-          for (size_t i = 0; i < nQ; i++) {
-            if (i == tId) continue;
-            auto stolen = heaps[i].data.steal();
-            if (!heaps[i].data.isUsed(stolen)) {
-              return stolen;
-            }
-          }
-        }
-        return result;
-      } else {
-        // our heap is not empty
-        if (nQ > 1) {
-          size_t change = random() % StealProb::Q;
-          if (change < StealProb::P) {
-            // we try to steal
-            auto randId = (tId + 1 + (random() % (nQ - 1))) % nQ;
-            Heap *randH = &heaps[randId].data;
-            auto randMin = randH->getMin();
-            if (randH->isUsed(randMin)) {
-              goto extract_locally_dk;
-            }
+      if (nQ > 1) {
+        size_t change = random() % StealProb::Q;
+        if (change < StealProb::P) {
+          // we try to steal
+          auto randId = (tId + 1 + (random() % (nQ - 1))) % nQ;
+          Heap *randH = &heaps[randId].data;
+          auto randMin = randH->getMin();
+          if (randH->isUsed(randMin)) {
+            // steal is not successfull
+          } else {
             Heap *localH = &heaps[tId].data;
             auto localMin = localH->getMin();
             if (localH->isUsed(localMin)) {
@@ -537,46 +515,40 @@ public:
             }
           }
         }
-        extract_locally_dk:
-        auto extracted = heaps[tId].data.extractMin(indexer);
-        if (!heaps[tId].data.isUsed(extracted))
-          return extracted;
-        return result;
-        //}
       }
-    } else {
+      auto minVal = heaps[tId].data.extractMin(indexer);
+      if (!heaps[tId].data.isUsed(minVal))
+        return minVal;
+      // our heap is empty
+      if (nQ == 1)
+        return result; // empty optional
       const size_t RANDOM_ATTEMPTS = nQ > 2 ? 4 : 0;
-      if (heaps[tId].data.isEmpty()) {
-        if (nQ > 1) {
-          for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
-            auto randH = rand_heap();
-            if (randH == tId) continue;
-            auto stolen = heaps[randH].data.steal();
-            if (!heaps[randH].data.isUsed(stolen)) {
-              return stolen;
-            }
-          }
-          for (size_t i = 0; i < nQ; i++) {
-            if (i == tId) continue;
-            auto stolen = heaps[i].data.steal();
-            if (!heaps[i].data.isUsed(stolen)) {
-              return stolen;
-            }
-          }
+      for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
+        auto randH = rand_heap();
+        if (randH == tId) continue;
+        auto stolen = heaps[randH].data.steal();
+        if (!heaps[randH].data.isUsed(stolen)) {
+          return stolen;
         }
-        return result;
-      } else {
-        // our heap is not empty
-        if (nQ > 1) {
-          size_t change = random() % StealProb::Q;
-          if (change < StealProb::P) {
-            // we try to steal
-            auto randId = (tId + 1 + (random() % (nQ - 1))) % nQ;
-            Heap *randH = &heaps[randId].data;
-            auto randMin = randH->getMin();
-            if (randH->isUsed(randMin)) {
-              goto extract_locally;
-            }
+      }
+      for (size_t i = 0; i < nQ; i++) {
+        if (i == tId) continue;
+        auto stolen = heaps[i].data.steal();
+        if (!heaps[i].data.isUsed(stolen))
+          return stolen;
+      }
+      return result;
+    } else {
+      if (nQ > 1) {
+        size_t change = random() % StealProb::Q;
+        if (change < StealProb::P) {
+          // we try to steal
+          auto randId = (tId + 1 + (random() % (nQ - 1))) % nQ;
+          Heap *randH = &heaps[randId].data;
+          auto randMin = randH->getMin();
+          if (randH->isUsed(randMin)) {
+            // steal is not successfull
+          } else {
             Heap *localH = &heaps[tId].data;
             auto localMin = localH->getMin();
             if (localH->isUsed(localMin)) {
@@ -589,16 +561,33 @@ public:
             }
           }
         }
-        extract_locally:
-        auto extracted = heaps[tId].data.extractMin();
-        if (!heaps[tId].data.isUsed(extracted))
-          return extracted;
+      }
+      auto minVal = heaps[tId].data.extractMin();
+      if (!heaps[tId].data.isUsed(minVal))
+        return minVal;
+      // our heap is empty
+      if (nQ == 1) // nobody to steal from
         return result;
-        //}
+
+      const size_t RANDOM_ATTEMPTS = nQ > 2 ? 4 : 0;
+      for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
+        auto randH = rand_heap();
+        if (randH == tId) continue;
+        auto stolen = heaps[randH].data.steal();
+        if (!heaps[randH].data.isUsed(stolen)) {
+          return stolen;
+        }
+      }
+      for (size_t i = 0; i < nQ; i++) {
+        if (i == tId) continue;
+        auto stolen = heaps[i].data.steal();
+        if (!heaps[i].data.isUsed(stolen))
+          return stolen;
       }
     }
   }
 };
+
 
 template<typename T, typename Comparer, typename StealProb = SProb<0, 1>, bool Concurrent = true>
 class StealingDoubleQueue {

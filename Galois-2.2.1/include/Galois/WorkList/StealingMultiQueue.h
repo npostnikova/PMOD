@@ -214,6 +214,29 @@ struct StealDAryHeap {
     }
   }
 
+  template <typename Iter>
+  int pushRange(Iter b, Iter e) {
+    if (b == e)
+      return 0;
+
+    int npush = 0;
+
+    while (b != e) {
+      npush++;
+      pushHelper(*b++);
+    }
+
+    auto curMin = getMin();
+    if (!isUsed(curMin) && cmp(curMin, heap[0])) {
+      auto exchanged = min.exchange(extractMinLocally(), std::memory_order_acq_rel);
+      if (!isUsed(exchanged))
+        pushHelper(exchanged);
+    } else if (isUsed(curMin)) {
+      min.store(extractMinLocally(), std::memory_order_release);
+    }
+    return npush;
+  }
+
   size_t inOurQueue = 0;
   size_t inAnotherQueue = 0;
   size_t notInQeues = 0;
@@ -223,6 +246,48 @@ struct StealDAryHeap {
     std::cout << "Found in another queue: " << inAnotherQueue << std::endl;
     std::cout << "Not in queues: " << notInQeues << std::endl;
   }
+
+  template <typename Indexer, typename Iter>
+  int pushRange(Indexer const& indexer, Iter b, Iter e) {
+    if (b == e) return 0;
+
+    int npush = 0;
+
+    while (b != e) {
+      npush++;
+      auto position = indexer.get_pair(*b);
+      auto queue = position.first;
+      auto index = position.second;
+
+      if (queue != qInd) {
+        if (queue == -1) {
+          notInQeues++;
+        } else {
+          inAnotherQueue++;
+        }
+        pushHelper(indexer, *b++);
+      } else {
+        inOurQueue++;
+        if (cmp(heap[index], *b)) {
+          heap[index] = *b++;
+          sift_up(indexer, index);
+        }
+      }
+    }
+    auto curMin = getMin();
+    if (!isUsed(curMin) && cmp(curMin, heap[0])) {
+      auto exchanged = min.exchange(extractMinLocally(indexer), std::memory_order_acq_rel);
+      if (!isUsed(exchanged))
+        pushHelper(indexer, exchanged);
+    } else {
+      if (isUsed(curMin)) {
+        auto minFromHeap = extractMinLocally(indexer);
+        min.store(minFromHeap, std::memory_order_release);
+      }
+    }
+    return npush;
+  }
+
 
   template <typename Indexer>
   void push(Indexer const& indexer, T const& val) {
@@ -470,20 +535,20 @@ public:
   int push(Iter b, Iter e) {
     static thread_local size_t tId = Galois::Runtime::LL::getTID(); // todo bounds? can be changed?
     Heap* heap = &heaps[tId].data;
-    int npush = 0;
     if constexpr (DecreaseKey) {
       static Indexer indexer;
-      while (b != e) {
-        heap->push(indexer, *b++);
-        npush++;
-      }
+      return heap->pushRange(indexer, b, e);
+//      while (b != e) {
+//        heap->push(indexer, *b++);
+//        npush++;
+//      }
     } else {
-      while (b != e) {
-        heap->push(*b++);
-        npush++;
-      }
+      return heap->pushRange(b, e);
+//      while (b != e) {
+//        heap->push(*b++);
+//        npush++;
+//      }
     }
-    return npush;
   }
 
   Galois::optional<T> pop() {
@@ -584,6 +649,7 @@ public:
         if (!heaps[i].data.isUsed(stolen))
           return stolen;
       }
+      return result;
     }
   }
 };
@@ -655,6 +721,7 @@ public:
     static thread_local size_t qId = tId * 2;
     Heap* heap = &heaps[qId].data;
     int npush = 0;
+    heap->push(b, e);
     while (b != e) {
       heap->push(*b++);
       npush++;

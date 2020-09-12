@@ -81,6 +81,26 @@ struct SNode {
   Dist dist;
   Coord x;
   Coord y;
+
+  std::atomic<uint64_t> index = {0};
+};
+
+template <typename WorkItem>
+struct DecreaseKeyIndexer {
+  static int get_queue(WorkItem const& wi) {
+    return get_pair(wi).first;
+  }
+
+  static void set_pair(WorkItem const& wi, int q, uint32_t ind) {
+    wi.n->getData().index.store((int64_t (ind) << 32) | (uint32_t (q + 1)), std::memory_order_release);
+  }
+
+  static std::pair<int, uint32_t> get_pair(WorkItem const& wi) {
+    auto index = wi.n->getData().index.load(std::memory_order_acquire);
+    static const uint32_t& mask = (1ull << 32) - 1;
+    int q = index & mask;
+    return {q - 1, index >> 32};
+  }
 };
 
 template<typename Graph>

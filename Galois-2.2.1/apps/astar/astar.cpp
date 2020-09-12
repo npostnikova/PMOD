@@ -94,6 +94,9 @@ static cll::opt<Algo> algo("algo", cll::desc("Choose an algorithm:"),
       clEnumValEnd), cll::init(Algo::asyncWithCas));
 static cll::opt<std::string> worklistname("wl", cll::desc("Worklist to use"), cll::value_desc("worklist"), cll::init("obim"));
 
+static cll::opt<std::string> resultFileName("resultFile", cll::desc("Result file name for amq experiment"), cll::init("result.txt"));
+
+
 static const bool trackWork = true;
 static Galois::Statistic* BadWork;
 static Galois::Statistic* WLEmptyWork;
@@ -101,6 +104,7 @@ static Galois::Statistic* nBad;
 static Galois::Statistic* nEmpty;
 static Galois::Statistic* nOverall;
 static Galois::Statistic* nEdgesProcessed;
+static Galois::Statistic* nNodesProcessed;
 template<typename Graph>
 struct not_visited {
   Graph& g;
@@ -516,6 +520,7 @@ struct AsyncAlgo {
       }
       return;
     }
+    *nNodesProcessed += 1;
     //std::cout<<"Dist: "<<(unsigned int)*sdist<<" heuristic "<<heu_val<<" req.w: "<<req.w<<" \n";
     for (typename Graph::edge_iterator ii = graph.edge_begin(req.n, flag), ei = graph.edge_end(req.n, flag); ii != ei; ++ii) {
       if (req.w-heu_val != (unsigned int)(*sdist)) {
@@ -645,6 +650,13 @@ struct AsyncAlgo {
         graph.out_edges(source, Galois::MethodFlag::NONE).end(),
         InitialProcess(this, graph, initial, graph.getData(source)));
     std::string wl = worklistname;
+
+#include "StealingTypedefs.h"
+#include "StealingDKTypedefs.h"
+
+#include "StealingIfs.h"
+#include "StealingDKIfs.h"
+
     if (wl == "obim")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<OBIM>());
     else if (wl == "adap-obim")
@@ -709,8 +721,8 @@ struct AsyncAlgo {
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<kLSM16k>());
     else if (wl == "klsm4m")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<kLSM4m>());
-    else
-      std::cerr << "No work list!" << "\n";
+//    else
+//      std::cerr << "No work list!" << "\n";
   }
 };
 
@@ -886,6 +898,13 @@ void run(bool prealloc = true) {
   }
 }
 
+uint64_t getStatVal(Galois::Statistic* value) {
+  uint64_t stat = 0;
+  for (unsigned x = 0; x < Galois::Runtime::activeThreads; ++x)
+    stat += value->getValue(x);
+  return stat;
+}
+
 int main(int argc, char **argv) {
   Galois::StatManager statManager;
   LonestarStart(argc, argv, name, desc, url);
@@ -897,6 +916,7 @@ int main(int argc, char **argv) {
     nEmpty = new Galois::Statistic("nEmpty");
     nOverall = new Galois::Statistic("nOverall");
     nEdgesProcessed = new Galois::Statistic("nEdgesProcessed");
+    nNodesProcessed = new Galois::Statistic("nNodesProcessed");
   }
 
   Galois::StatTimer T("TotalTime");
@@ -921,12 +941,18 @@ int main(int argc, char **argv) {
   T.stop();
 
   if (trackWork) {
+    std::string wl = worklistname;
+    std::ofstream nodes(resultFileName, std::ios::app);
+    nodes << wl << " " << getStatVal(nNodesProcessed) << " " << Galois::Runtime::activeThreads << std::endl;
+    nodes.close();
+
     delete BadWork;
     delete WLEmptyWork;
     delete nBad;
     delete nEmpty;
     delete nOverall;
     delete nEdgesProcessed;
+    delete nNodesProcessed;
   }
 
   return 0;

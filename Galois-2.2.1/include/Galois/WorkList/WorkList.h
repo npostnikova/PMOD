@@ -63,6 +63,8 @@ namespace Galois {
 namespace WorkList {
 namespace { // don't pollute the symbol table with the example
 
+using namespace smq;
+
 // Worklists may not be copied.
 // Worklists should be default instantiatable
 // All classes (should) conform to:

@@ -5,6 +5,10 @@
 #include <cstdlib>
 #include <vector>
 
+#include "StealingQueue.h"
+
+namespace smq {
+
 template<typename T = int,
          typename Compare = std::greater<int>,
          size_t D = 4>
@@ -463,15 +467,16 @@ struct SProb {
 };
 
 template<typename T,
-         typename Comparer,
-         typename StealProb = SProb<0, 1>,
-         bool Concurrent = true,
-         bool DecreaseKey = false,
-         typename Indexer = void
-         >
+typename Comparer,
+typename StealProb = SProb<0, 1>,
+bool Concurrent = true,
+bool DecreaseKey = false,
+typename Indexer = void,
+typename Container = StealDAryHeap<T, Comparer, 4>
+>
 class StealingMultiQueue {
 private:
-  typedef StealDAryHeap<T, Comparer, 4> Heap;
+  typedef Container Heap;
   std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<Heap>[]> heaps;
   Comparer compare;
   const size_t nQ;
@@ -511,13 +516,13 @@ public:
   //! Change the concurrency flag.
   template<bool _concurrent>
   struct rethread {
-    typedef StealingMultiQueue<T, Comparer, StealProb, _concurrent, DecreaseKey, Indexer> type;
+    typedef StealingMultiQueue<T, Comparer, StealProb, _concurrent, DecreaseKey, Indexer, Container> type;
   };
 
   //! Change the type the worklist holds.
   template<typename _T>
   struct retype {
-    typedef StealingMultiQueue<_T, Comparer, StealProb, Concurrent, DecreaseKey, Indexer> type;
+    typedef StealingMultiQueue<_T, Comparer, StealProb, Concurrent, DecreaseKey, Indexer, Container> type;
   };
 
   template<typename RangeTy>
@@ -813,5 +818,6 @@ typename Compare,
 size_t D>
 T StealDAryHeap<T, Compare, D>::usedT;
 
+}
 
 #endif //GALOIS_STEALINGMULTIQUEUE_H

@@ -86,6 +86,24 @@ enum DetAlgo {
   disjoint
 };
 
+#ifdef _WIN32
+
+#include <intrin.h>
+uint64_t rdtsc(){
+    return __rdtsc();
+}
+
+//  Linux/GCC
+#else
+
+uint64_t rdtsc(){
+  unsigned int lo,hi;
+  __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
+  return ((uint64_t)hi << 32) | lo;
+}
+
+#endif
+
 namespace cll = llvm::cl;
 static cll::opt<std::string> filename(cll::Positional, cll::desc("<input graph>"), cll::Required);
 static cll::opt<std::string> transposeGraphName("graphTranspose", cll::desc("Transpose of input graph"));
@@ -305,10 +323,13 @@ struct AsyncAlgo {
   struct WorkItem{
     GNode first;
     Dist second;
+    uint64_t time;
 
-    WorkItem(const GNode& N, Dist W): first(N), second(W) {}
 
-    WorkItem(): first(), second(0) {}
+    WorkItem(const GNode& N, Dist W): first(N), second(W), time(0) {}
+    WorkItem(const GNode& N, Dist W, uint64_t time): first(N), second(W), time(time) {}
+
+    WorkItem(): first(), second(0), time(0) {}
 
     unsigned int operator() () const {
       return second;
@@ -335,6 +356,13 @@ struct AsyncAlgo {
   struct Comparer: public std::binary_function<const WorkItem&, const WorkItem&, unsigned> {
     unsigned operator()(const WorkItem& x, const WorkItem& y) const {
       return x.second > y.second;
+    }
+  };
+
+
+  struct ComparerFIFO: public std::binary_function<const WorkItem&, const WorkItem&, unsigned> {
+    unsigned operator()(const WorkItem& x, const WorkItem& y) const {
+      return x.time > y.time;
     }
   };
 
@@ -381,7 +409,7 @@ struct AsyncAlgo {
           if ((unsigned int)oldDist <= newDist)
             break;
           if (__sync_bool_compare_and_swap(&ddata.dist, oldDist, newDist | (oldDist & 0xffffffff00000000ul))) {
-            ctx.push(WorkItem(dst, newDist + 1));
+            ctx.push(WorkItem(dst, newDist + 1, rdtsc()));
             break;
           }
         }
@@ -414,13 +442,22 @@ struct AsyncAlgo {
 
   void operator()(Graph& graph, const GNode& source) const {
     using namespace Galois::WorkList;
-//    typedef dChunkedFIFO<CHUNK_SIZE> dChunk;
-//    typedef dVisChunkedFIFO<64> visChunk;
-//    typedef dChunkedPTFIFO<1> noChunk;
-//    typedef ChunkedFIFO<64> globChunk;
-//    typedef ChunkedFIFO<1> globNoChunk;
-//    typedef OrderedByIntegerMetric<Indexer,dChunk> OBIM;
-//    typedef AdaptiveOrderedByIntegerMetric<Indexer, dChunk, 0, true, false, CHUNK_SIZE> ADAPOBIM;
+    typedef dChunkedFIFO<CHUNK_SIZE> dChunk;
+    typedef dVisChunkedFIFO<64> visChunk;
+    typedef dChunkedPTFIFO<1> noChunk;
+    typedef ChunkedFIFO<64> globChunk;
+    typedef ChunkedFIFO<1> globNoChunk;
+    typedef OrderedByIntegerMetric<Indexer,dChunk> OBIM;
+    typedef AdaptiveOrderedByIntegerMetric<Indexer, dChunk, 0, true, false, CHUNK_SIZE> ADAPOBIM;
+    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 4>, true> SMQ_1_4;
+    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 8>, true> SMQ_1_8;
+    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 16>, true> SMQ_1_16;
+    typedef StealingMultiQueue<WorkItem, ComparerFIFO, Prob<1, 4>, true, false, void, smq::StealingQueue<WorkItem, ComparerFIFO>> SMQ_1_4_qfifo;
+    typedef StealingMultiQueue<WorkItem, ComparerFIFO, Prob<1, 8>, true, false, void, smq::StealingQueue<WorkItem, ComparerFIFO>> SMQ_1_8_qfifo;
+    typedef StealingMultiQueue<WorkItem, ComparerFIFO, Prob<1, 16>, true, false, void, smq::StealingQueue<WorkItem, ComparerFIFO>> SMQ_1_16_qfifo;
+    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 4>, true, false, void, smq::StealingQueue<WorkItem, Comparer>> SMQ_1_4_q;
+    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 8>, true, false, void, smq::StealingQueue<WorkItem, Comparer>> SMQ_1_8_q;
+    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 16>, true, false, void, smq::StealingQueue<WorkItem, Comparer>> SMQ_1_16_q;
 //    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2> AMQ2;
 //    typedef OrderedByIntegerMetric<Indexer,dChunkedLIFO<64>> OBIM_LIFO;
 //    typedef OrderedByIntegerMetric<Indexer,dChunk, 4> OBIM_BLK4;
@@ -460,11 +497,29 @@ struct AsyncAlgo {
     if (wl.find("obim") == std::string::npos)
       stepShift = 0;
     std::cout << "INFO: Using delta-step of " << (1 << stepShift) << "\n";
-//    if (wl == "obim")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM>());
-//    else if (wl == "adap-obim")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<ADAPOBIM>());
-//    else if (wl == "adap-mq2")
+    if (wl == "obim")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM>());
+    else if (wl == "adap-obim")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<ADAPOBIM>());
+    else if (wl == "smq_1_4")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_1_4>());
+    else if (wl == "smq_1_8")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_1_8>());
+    else if (wl == "smq_1_16")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_1_16>());
+    else if (wl == "smq_1_4_q")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_1_4_q>());
+    else if (wl == "smq_1_8_q")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_1_8_q>());
+    else if (wl == "smq_1_16_q")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_1_16_q>());
+    else if (wl == "smq_1_4_qfifo")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_1_4_qfifo>());
+    else if (wl == "smq_1_8_qfifo")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_1_8_qfifo>());
+    else if (wl == "smq_1_16_qfifo")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_1_16_qfifo>());
+    //    else if (wl == "adap-mq2")
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<AMQ2>());
 //    else if (wl == "slobim")
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SLOBIM>());
@@ -958,7 +1013,7 @@ int main(int argc, char **argv) {
   if (trackWork) {
     std::string wl = worklistname;
     std::ofstream nodes(amqResultFile, std::ios::app);
-    nodes << wl << " " << getStatVal(nNodesProcessed) << std::endl;
+    nodes << wl << " " << getStatVal(nNodesProcessed) << " " << Galois::Runtime::activeThreads << std::endl;
     nodes.close();
 
     delete BadWork;

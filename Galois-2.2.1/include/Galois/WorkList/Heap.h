@@ -25,9 +25,9 @@ struct DAryHeap {
   size_t notInQeues = 0;
 
   ~DAryHeap() {
-    std::cout << "Found in the queue: " << inTheQueue << std::endl;
-    std::cout << "Found in another queue: " << inAnotherQueue << std::endl;
-    std::cout << "Not in queues: " << notInQeues << std::endl;
+//    std::cout << "Found in the queue: " << inTheQueue << std::endl;
+//    std::cout << "Found in another queue: " << inAnotherQueue << std::endl;
+//    std::cout << "Not in queues: " << notInQeues << std::endl;
   }
 
   //! Set index of the queue.
@@ -181,7 +181,7 @@ struct DAryHeap {
     fromH.heap.clear();
   }
 
-private:
+// todo private: remove cause i do some shit
   int qInd = 0;
 
   inline T removeLast() {

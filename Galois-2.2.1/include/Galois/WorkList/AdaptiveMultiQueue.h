@@ -24,32 +24,31 @@ namespace WorkList {
  * @tparam Comparer callable defining ordering for objects of type `T`.
  * Its `operator()` returns `true` iff the first argument should follow the second one.
  */
-template <typename  T, typename Comparer>
+
+static const bool AMQ_DEBUG = false;
+
+template <typename  T, typename Comparer, size_t D = 4, typename Prior = unsigned long>
 struct LockableHeap {
   DAryHeap<T, Comparer, 4> heap;
   // todo: use atomic
-  T min;
-  std::atomic<size_t> size = {0}; // atomic? who should update?
+  std::atomic<Prior> min;
+  std::atomic<size_t> size;
+  static T usedT;
+
+  LockableHeap() : min(usedT.prior()), size(0) {}
 
   //! Non-blocking lock.
   inline bool try_lock() {
-//    bool expected = false;
-//    return _lock.compare_exchange_strong(expected, true);
     return _lock.try_lock();
   }
 
   //! Blocking lock.
   inline void lock() {
-//    bool expected = false;
-//    while (!_lock.compare_exchange_strong(expected, true)) {
-//      expected = false;
-//    }
     _lock.lock();
   }
 
   //! Unlocks the queue.
   inline void unlock() {
-    //_lock = false;
     _lock.unlock();
   }
 
@@ -57,16 +56,47 @@ struct LockableHeap {
     _lock.is_locked();
   }
 
-  inline bool my_try_lock() {
-    if (!is_locked())
-      return try_lock();
-    return false;
+  Prior getMin() {
+    return min.load(std::memory_order_acquire);
+  }
+
+  void writeMin(Prior value = usedT.prior()) {
+    return min.store(value, std::memory_order_release);
+  }
+
+  void updateMin() {
+    return min.store(
+    heap.size() > 0 ? heap.min().prior() : usedT.prior(),
+    std::memory_order_release
+    );
+  }
+
+  static bool isUsed(T const& value) {
+    return value == usedT;
+  }
+
+  static bool isUsedMin(Prior const& value) {
+    return value == usedT.prior();
+  }
+
+  size_t getSize() {
+    return size.load(std::memory_order_acquire);
+  }
+
+  void updateSize() {
+    return size.store(heap.size(), std::memory_order_release);
   }
 
 private:
   Runtime::LL::PaddedLock<true> _lock;
-  //std::atomic<bool> _lock;
 };
+
+
+
+template<typename T,
+typename Compare,
+size_t D, typename Prior>
+T LockableHeap<T, Compare, D, Prior>::usedT;
 
 // Probability P / Q
 template <size_t PV, size_t QV>
@@ -88,31 +118,34 @@ Prob<1, 1> oneProb;
  * @tparam Concurrent if the implementation should be concurrent
  */
 template<typename T,
-         typename Comparer,
-         size_t C = 2,
-         bool DecreaseKey = false,
-         typename DecreaseKeyIndexer = void,
-         bool Concurrent = true,
-         bool Blocking = false,
-         typename PushChange = Prob<1, 1>,
-         typename PopChange  = Prob<1, 1>,
-         size_t ChunkPop = 0,
-         size_t S = 1, // todo
-         size_t F = 1,
-         size_t E = 1,
-         size_t SEGMENT_SIZE = 32,
-         size_t PERCENT = 90>
+typename Comparer,
+size_t C = 2,
+bool DecreaseKey = false,
+typename DecreaseKeyIndexer = void,
+bool Concurrent = true,
+bool Blocking = false,
+typename PushChange = Prob<1, 1>,
+typename PopChange  = Prob<1, 1>,
+typename Numa = Prob<2, 1>,
+typename Prior = unsigned long,
+size_t ChunkPop = 0,
+size_t S = 1, // todo
+size_t F = 1,
+size_t E = 1,
+size_t SEGMENT_SIZE = 32,
+size_t PERCENT = 90>
 class AdaptiveMultiQueue {
 private:
   typedef T value_t;
-  typedef LockableHeap<T, Comparer> Heap;
+  typedef LockableHeap<T, Comparer, 4, Prior> Heap;
   std::unique_ptr<Runtime::LL::CacheLineStorage<Heap>[]> heaps;
   Comparer compare;
   //! Total number of threads.
   const size_t nT;
   //! Number of queues.
-  std::atomic<int> nQ = {0};
-  //size_t nQ; // todo
+//  const int nQ;
+  std::atomic<int> nQ = {0}; // todo atomic for adaptive!!!
+
   //! Maximum element of type `T`.
   // T maxT;
   //! The number of queues is changed under the mutex.
@@ -126,7 +159,7 @@ private:
 
   //! Thread local random.
   uint32_t random() {
-    static thread_local uint32_t x = generate_random(); // todo
+    static thread_local uint32_t x = generate_random() + 1; // todo
     uint32_t local_x = x;
     local_x ^= local_x << 13;
     local_x ^= local_x >> 17;
@@ -142,29 +175,78 @@ private:
     return distribution(generator);
   }
 
+
+  const size_t socketSize = 24;
+  size_t node1Cnt() {
+    size_t res = 0;
+    if (nT > socketSize) {
+      res += socketSize;
+      if (socketSize * 2 < nT) {
+        res += std::min(nT, socketSize * 3) - socketSize * 2;
+      }
+      return res;
+    } else {
+      return nT;
+    }
+  }
+
+  size_t node2Cnt() {
+    return nT - node1Cnt();
+  }
+
+  size_t is1Node(size_t tId) {
+    return tId < socketSize || (tId >= socketSize * 2 && tId < socketSize * 3);
+  }
+
+  size_t is2Node(size_t tId) {
+    return !is1Node(tId);
+  }
+
+
+  size_t map1Node(size_t qId) {
+    if (qId < socketSize * C) {
+      return qId;
+    }
+    return qId + socketSize * C;
+  }
+
+  size_t map2Node(size_t qId) {
+    if (qId < socketSize * C) {
+      return qId + socketSize * C;
+    }
+    return qId + socketSize * 2 * C;
+  }
+
   inline size_t rand_heap() {
     return random() % getNQ();
+    static thread_local size_t tId = Galois::Runtime::LL::getTID();
+    static const size_t LOCAL_W = Numa::P;
+    static const size_t OTHER_W = Numa::Q;
+
+    size_t isFirst = is1Node(tId);
+    size_t localCnt = isFirst ? node1Cnt() : node2Cnt();
+    size_t otherCnt = nT - localCnt;
+    const size_t Q = localCnt * LOCAL_W * C + otherCnt * OTHER_W * C;
+    const size_t r = random() % Q;
+    if (r < localCnt * LOCAL_W * C) {
+      // we are stealing from our node
+      auto qId = r / LOCAL_W;
+      return isFirst ? map1Node(qId) : map2Node(qId);
+    } else {
+      auto qId = (r - localCnt * LOCAL_W * C) / OTHER_W;
+      return isFirst ? map2Node(qId) : map1Node(qId);
+    }
   }
 
   //! Extracts minimum from the locked heap.
-  Galois::optional<value_t> extract_min(Heap* heap, std::vector<value_t>& popped_v, size_t success, size_t failure, size_t empty) {
+  Galois::optional<value_t> extract_min(Heap* heap, size_t success, size_t failure, size_t empty) {
     auto result = getMin(heap);
-    if constexpr (Blocking) {
-      if (heap->heap.size() == 0) {
-        empty_queues++;
-      }
+
+    heap->updateMin();
+    heap->updateSize();
+    if (heap->heap.empty()) {
+      empty_queues.fetch_add(1, std::memory_order_acq_rel);
     }
-    if constexpr (ChunkPop > 0) {
-      for (size_t i = 0; i < ChunkPop; i++) {
-        if (heap->heap.size() > 1) {
-          popped_v.push_back(getMin(heap));
-        } else break;
-      }
-      std::reverse(popped_v.begin(), popped_v.end());
-    }
-    if (heap->heap.size() > 0)
-      heap->min = heap->heap.min();
-    heap->size.store(heap->heap.size(), std::memory_order_release);
     heap->unlock();
     reportStat(success, failure, empty);
     return result;
@@ -231,7 +313,8 @@ private:
   //! Resumes at most cnt threads.
   void resume(size_t cnt = 1) {
     if (suspended <= 0) return;
-    for (size_t i = 0; i < suspend_size() && cnt != 0; i++) {
+    auto r = random() % suspend_size();
+    for (size_t i = r; i < r + 8 && i < suspend_size() && cnt != 0; i++) {
       if (try_resume(i))
         cnt--;
     }
@@ -256,10 +339,12 @@ private:
       node.cond_mutex.unlock();
       return false;
     }
-    auto suspended_num = suspended.fetch_add(1);
+    auto suspended_num = suspended.fetch_add(1, std::memory_order_acq_rel);
+    *suspendedNum += 1;
     if (suspended_num + 1 == nT) {
       node.cond_mutex.unlock();
-      suspended.fetch_sub(1);
+      suspended.fetch_sub(1, std::memory_order_acq_rel);
+      *resumedNum += 1;
       if (empty_queues < getNQ())
         return true;
       resume_all();
@@ -269,7 +354,7 @@ private:
     std::unique_lock<std::mutex> lk(node.cond_mutex, std::adopt_lock);
     node.cond_var.wait(lk, [&node] { return node.state == CondNode::RESUMED; });
     node.state = CondNode::FREE;
-    lk.unlock();
+    // lk.unlock();
     return true;
   }
 
@@ -287,7 +372,8 @@ private:
     std::lock_guard<std::mutex> guard(node.cond_mutex, std::adopt_lock);
     node.state = CondNode::RESUMED;
     node.cond_var.notify_one();
-    suspended.fetch_sub(1);
+    suspended.fetch_sub(1, std::memory_order_acq_rel);
+    *resumedNum += 1;
     return true;
   }
 
@@ -298,7 +384,8 @@ private:
       return;
     std::lock_guard<std::mutex> guard(node.cond_mutex);
     if (node.state == CondNode::SUSPENDED) {
-      suspended.fetch_sub(1);
+      suspended.fetch_sub(1, std::memory_order_acq_rel);
+      *resumedNum += 1;
       node.state = CondNode::RESUMED;
       node.cond_var.notify_all();
     }
@@ -352,18 +439,59 @@ public:
   static Galois::Statistic* reportNum;
   static Galois::Statistic* minNumQ;
   static Galois::Statistic* maxNumQ;
+  static Galois::Statistic* suspendedNum;
+  static Galois::Statistic* resumedNum;
 
   void initStatistic(Galois::Statistic*& st, std::string const& name) {
     if (st == nullptr)
       st = new Galois::Statistic(name);
   }
 
-  AdaptiveMultiQueue() : nT(Galois::getActiveThreads()), nQ(C > 0 ? C * nT : 1), suspend_array(std::make_unique<CondNode[]>(nT * CondC)), maxQNum(nT * 4) {
+  enum DebugVectors {
+    maxSizeDebugPush,
+    minSizeDebugPush,
+    failedNumDebugPush,
+    successNumDebugPush,
+    emptyNumDebugPop,
+    failedNumDebugPop,
+    successNumDebugPop,
+//
+//    elementsInQDebugPop,
+//    elementsInQDebugPush,
+
+    mockLast
+
+  };
+
+  std::vector<std::string> debugVectorNames = {
+      "maxSizePush",
+      "minSizePush",
+      "failedNumDebugPush",
+      "successNumDebugPush",
+      "emptyNumDebugPop",
+      "failedNumDebugPop",
+      "successNumDebugPop",
+  };
+
+  std::vector<std::vector<std::vector<int>>> debugInfo;
+
+
+
+  AdaptiveMultiQueue() : nT(Galois::getActiveThreads()),
+                         nQ(1), // C * nT/*C > 0 ? C * nT :*/ ),
+                         suspend_array(std::make_unique<CondNode[]>(nT * CondC)),
+                         maxQNum(C * nT * 4),
+                         debugInfo(mockLast, std::vector<std::vector<int>>(nT, std::vector<int>()))
+                         {
     //std::atomic_init(&nQ, C * nT); // todo
-    heaps = std::make_unique<Runtime::LL::CacheLineStorage<Heap>[]>(maxQNum);
+    memset(reinterpret_cast<void*>(&Heap::usedT), 0xff, sizeof(Heap::usedT));
+
+    heaps = std::make_unique<Runtime::LL::CacheLineStorage<Heap>[]>(C * nT * 4);
+
+
     std::cout << "Queues: " << nQ << std::endl;
 
-    for (size_t i = 0; i < maxQNum; i++) {
+    for (size_t i = 0; i < C * nT * 4; i++) {
       heaps[i].data.heap.set_index(i);
     }
 
@@ -374,6 +502,8 @@ public:
     initStatistic(reportNum, "reportNum");
     initStatistic(minNumQ, "minNumQ");
     initStatistic(maxNumQ, "maxNumQ");
+    initStatistic(suspendedNum, "suspendedNum");
+    initStatistic(resumedNum, "resumedNum");
     *maxNumQ = getNQ();
     *minNumQ = getNQ();
   }
@@ -418,13 +548,13 @@ public:
   }
 
   ~AdaptiveMultiQueue() {
-    std::string result_name;
-    std::ifstream name("result_name");
-    name >> result_name;
-    std::cout << result_name << std::endl;
-    name.close();
+//    std::string result_name;
+//    std::ifstream name("result_name");
+//    name >> result_name;
+//    std::cout << result_name << std::endl;
+//    name.close();
 
-    std::ofstream out(result_name, std::ios::app);
+    std::ofstream out("amq_stats.txt" /*result_name*/, std::ios::app);
     deleteStatistic(deletedQ, out);
     deleteStatistic(addedQ, out);
     deleteStatistic(wantedToDelete, out);
@@ -432,7 +562,44 @@ public:
     deleteStatistic(reportNum, out);
     deleteStatistic(minNumQ, out);
     deleteStatistic(maxNumQ, out);
+    deleteStatistic(suspendedNum, out);
+    deleteStatistic(resumedNum, out);
+    out << std::endl;
     out.close();
+
+    if constexpr (AMQ_DEBUG) {
+//      auto tId = Galois::Runtime::LL::getTID();
+      std::string suffix =
+      "_C_" + std::to_string(C) +
+      "_nT_" + std::to_string(nT) +
+      "_nQ_" + std::to_string(nQ);
+      std::ofstream pushF("pushStats" + suffix);
+      pushF << "tId,success,failure,minQ,maxQ" << std::endl;
+      for (int tId = 0; tId < nT; tId++) {
+        for (size_t i = 0; i < debugInfo[successNumDebugPush][tId].size(); i++) {
+          pushF << tId;
+          for (DebugVectors eId: {successNumDebugPush, failedNumDebugPush, minSizeDebugPush, maxSizeDebugPush}) {
+            pushF << "," << debugInfo[(int) eId][tId][i];
+          }
+          pushF << std::endl;
+        }
+      }
+      pushF.close();
+
+      std::ofstream popF("popStats" + suffix);
+      popF << "tId,success,failure,empty" << std::endl;
+
+      for (int tId = 0; tId < nT; tId++) {
+        for (size_t i = 0; i < debugInfo[successNumDebugPop][tId].size(); i++) {
+          popF << tId;
+          for (DebugVectors eId: {successNumDebugPop, failedNumDebugPop, emptyNumDebugPop}) {
+            popF << "," << debugInfo[(int) eId][tId][i];
+          }
+          popF << std::endl;
+        }
+      }
+      popF.close();
+    }
   }
 
   //! T is the value type of the WL.
@@ -441,13 +608,13 @@ public:
   //! Change the concurrency flag.
   template<bool _concurrent>
   struct rethread {
-    typedef AdaptiveMultiQueue<T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, _concurrent, Blocking, PushChange, PopChange, ChunkPop, S, F, E, SEGMENT_SIZE, PERCENT> type;
+    typedef AdaptiveMultiQueue<T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, _concurrent, Blocking, PushChange, PopChange, Numa, Prior, ChunkPop, S, F, E, SEGMENT_SIZE, PERCENT> type;
   };
 
   //! Change the type the worklist holds.
   template<typename _T>
   struct retype {
-    typedef AdaptiveMultiQueue<_T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, Concurrent, Blocking, PushChange, PopChange, ChunkPop, S, F, E, SEGMENT_SIZE, PERCENT> type;
+    typedef AdaptiveMultiQueue<_T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, Concurrent, Blocking, PushChange, PopChange, Numa, Prior, ChunkPop, S, F, E, SEGMENT_SIZE, PERCENT> type;
   };
 
   //! Push a value onto the queue.
@@ -458,10 +625,11 @@ public:
     do {
       q_ind = rand_heap();
       heap = &heaps[q_ind].data;
-    } while (!heap->my_try_lock());
+    } while (!heap->try_lock());
 
     heap->heap.push(val);
-    heap->min = heap->heap.min();
+    heap->min.store(heap->heap.min().prior(), std::memory_order_release);
+    heap->updateSize();
     heap->unlock();
   }
 
@@ -484,8 +652,9 @@ public:
     size_t idMin = 0;
     size_t szMin = SIZE_MAX;
     for (size_t i = 0; i < curNQ - 1; i++) {
-      if (szMin > heaps[i].data.size.load(std::memory_order_acquire)) {
-        szMin = heaps[i].data.size.load(std::memory_order_acquire);
+      auto curSize = heaps[i].data.size.load(std::memory_order_acquire);
+      if (szMin > curSize) {
+        szMin = curSize;
         idMin = i;
       }
     }
@@ -494,29 +663,35 @@ public:
     Heap* removeH = &heaps[curNQ - 1].data;
     removeH->lock();
 //    while (removeH->heap.size() > 0) {
-//      // todo: fix for decrease key
-//      mergeH->heap.push(removeH->heap.extractMin());
+////      // todo: fix for decrease key
+//      mergeH->heap.push(removeH->heap.extractMin()); // todo dont need to change min everytime
 //    }
 
-    if constexpr (DecreaseKey) {
-      static DecreaseKeyIndexer indexer;
-      mergeH->heap.pushAllAndClear(removeH->heap, indexer);
-    } else {
-      mergeH->heap.pushAllAndClear(removeH->heap);
-    }
+//    if constexpr (DecreaseKey) {
+//      static DecreaseKeyIndexer indexer;
+//      mergeH->heap.pushAllAndClear(removeH->heap, indexer);
+//    } else {
+    bool wasEmptyRemove = removeH->heap.empty();
+    bool wasEmptyMerge = mergeH->heap.empty();
+    mergeH->heap.pushAllAndClear(removeH->heap);
+//    }
     *deletedQ += 1;
 
     minNumQ->setMin(curNQ - 1);
 
     // mark the heap empty
-    removeH->size.store(0, std::memory_order_release);
+//    removeH->size.store(0, std::memory_order_release);
 
     const size_t newSize = mergeH->heap.size();
     mergeH->size.store(newSize, std::memory_order_release);
-    if (newSize > 0)
-      mergeH->min = mergeH->heap.min();
 
-    nQ.fetch_sub(1, std::memory_order_acq_rel);
+    if (newSize > 0)
+      mergeH->writeMin(mergeH->getMin());
+    removeH->writeMin();
+
+    if (wasEmptyRemove) empty_queues.fetch_sub(1, std::memory_order_acq_rel);
+    nQ.store(curNQ - 1, std::memory_order_release);
+    if (wasEmptyMerge && !wasEmptyRemove) empty_queues.fetch_sub(1, std::memory_order_acq_rel);
     removeH->unlock();
     mergeH->unlock();
     // std::cout << ">>>>>>>>>>>>>>>>>>> Deleted: " << nQ << std::endl;
@@ -535,8 +710,9 @@ public:
     size_t id = 0;
     size_t szVal = 0;
     for (size_t i = 0; i < curNQ; i++) {
-      if (szVal < heaps[i].data.size.load(std::memory_order_acquire)) {
-        szVal = heaps[i].data.size.load(std::memory_order_acquire);
+      auto curVal = heaps[i].data.size.load(std::memory_order_acquire);
+      if (szVal < curVal) {
+        szVal = curVal;
         id = i;
       }
     }
@@ -548,6 +724,7 @@ public:
     // todo: if empty
     *addedQ += 1;
 
+    bool wasEmpty = elemsH->heap.empty();
     if constexpr (DecreaseKey) {
       static DecreaseKeyIndexer indexer;
       elemsH->heap.divideElems(addH->heap, indexer);
@@ -556,17 +733,18 @@ public:
     }
     maxNumQ->setMax(curNQ + 1);
 
-    const size_t elemsSize = elemsH->heap.size();
-    elemsH->size.store(elemsSize, std::memory_order_release);
-    if (elemsSize > 0)
-      elemsH->min = elemsH->heap.min();
+    elemsH->updateSize();
+    elemsH->updateMin();
 
-    const size_t addSize = addH->heap.size();
-    addH->size.store(addSize, std::memory_order_release);
-    if (addSize > 0)
-      addH->min = addH->heap.min();
+    addH->updateSize();
+    addH->updateMin();
 
-    nQ.fetch_add(1, std::memory_order_acq_rel);
+    nQ.store(curNQ + 1, std::memory_order_release);
+
+    if (!wasEmpty) {
+      if (elemsH->heap.empty()) empty_queues.fetch_add(1, std::memory_order_acq_rel);
+    }
+    if (addH->heap.empty()) empty_queues.fetch_add(1, std::memory_order_acq_rel);
     addH->unlock();
     elemsH->unlock();
     // std::cout << ">>>>>>>>>>>>>>> Added: " << nQ << std::endl;
@@ -574,9 +752,19 @@ public:
   }
 
   inline void reportStat(size_t s, size_t f, size_t e) {
-    // *reportNum += 1;
-    return;
+    *reportNum += 1;
     static thread_local size_t curQ = 0;
+
+    if constexpr (AMQ_DEBUG) {
+      // pop is here
+      static thread_local size_t tId = Galois::Runtime::LL::getTID();
+
+      debugInfo[successNumDebugPop][tId].push_back(s);
+      debugInfo[failedNumDebugPop][tId].push_back(f);
+      debugInfo[emptyNumDebugPop][tId].push_back(e);
+      return;
+    }
+
 
     static const size_t segmentSize = SEGMENT_SIZE;
     static thread_local size_t statInd = 0;
@@ -615,20 +803,33 @@ public:
     }
   }
 
+
+  size_t numToPush(size_t limit) {
+    // todo min is one as we trow a coin a least ones to get the local queue
+    for (size_t i = 1; i < limit; i++) {
+      if ((random() % PushChange::Q) < PopChange::P) {
+        return i;
+      }
+    }
+    return limit;
+  }
+
   //! Push a range onto the queue.
   template<typename Iter>
   unsigned int push(Iter b, Iter e) {
+    if (b == e) return 0;
     if constexpr (Blocking) {
       // Adapt to Galois abort policy.
       if (no_work)
         no_work = false;
     }
-    const size_t chunk_size = 8;
+//    const size_t chunk_size = 8;
 
     // local queue
-    static thread_local size_t local_q = rand_heap();
+    static thread_local size_t tId = Galois::Runtime::LL::getTID();
+    static thread_local size_t local_q = 0; // is1Node(tId) ? map1Node(random() % (C * node1Cnt())): map2Node(random() % (C * node2Cnt()));
 
-    size_t indexToLock = 0;
+
     int npush = 0;
     Heap* heap = nullptr;
 
@@ -636,81 +837,75 @@ public:
     size_t success = 0;
     size_t empty   = 0; // empty doesn't matter in push
 
-    while (b != e) {
-      if constexpr (DecreaseKey) {
-        indexToLock = DecreaseKeyIndexer::get_queue(*b);
-        if (valid_index(indexToLock)) {
-          heap = &heaps[indexToLock].data;
-          heap->lock();
-          goto q_locked;
-//          if (heap->try_lock()) {
-//            goto q_locked;
-//          }
-        }
-      }
-      indexToLock = get_push_local(local_q);
-      heap = &heaps[indexToLock].data;
 
-      while (!heap->my_try_lock()) {
-        indexToLock = rand_heap();
-        heap = &heaps[indexToLock].data;
-        failure++;
+    int total = std::distance(b, e);
+    size_t toLock = local_q;
+
+    size_t maxSize = 0;
+    size_t minSize = SIZE_MAX;
+
+    while (b != e) {
+      auto batchSize = numToPush(total);
+      heap = &heaps[toLock].data;
+
+      while (true) {
+        while (!heap->try_lock()) {
+          toLock = rand_heap();
+          heap = &heaps[toLock].data;
+          failure++;
+        }
+        if (heap->heap.qInd >= getNQ()) {
+          heap->unlock();
+          toLock = rand_heap();
+          heap = &heaps[toLock].data;
+          continue;
+        } else {
+          break;
+        }
       }
       success++;
-
-      q_locked:
-      if (local_q >= getNQ()) {
-        // the queue was "deleted" before we locked it
-        heap->unlock();
-        continue;
-      }
-      for (size_t cnt = 0; cnt < chunk_size && b != e; cnt++, npush++) {
-        if constexpr (DecreaseKey) {
-//          update_elem(*b++, heap);
-          auto index = DecreaseKeyIndexer::get_queue(*b);
-          if (index == indexToLock) {
-            // the element is in the heap
-            update_elem(*b++, heap);
-          } else if (index == -1 || cnt == 0) {
-            // no heaps contain the element
-            if (index == -1)
-              heap->heap.notInQeues++;
-            else
-              heap->heap.inAnotherQueue;
-            push_elem(*b++, heap);
-          } else {
-            // need to change heap
-            break;
-          }
-        } else {
-          heap->heap.push(*b++);
-        }
-      }
       if constexpr (Blocking) {
-        if (heap->heap.size() == 1)
-          empty_queues.fetch_sub(1);
+        if (heap->heap.empty())
+          empty_queues.fetch_sub(1, std::memory_order_acq_rel);
       }
-      heap->min = heap->heap.min();
-      heap->size.store(heap->heap.size(), std::memory_order_release);
+
+      maxSize = std::max(maxSize, heap->heap.size());
+      minSize = std::min(minSize, heap->heap.size());
+
+      for (size_t i = 0; i < batchSize; i++) {
+        heap->heap.push(*b++);
+        npush++;
+        total--;
+      }
+
+      heap->updateMin(); //min.store(heap->heap.min().prior(), std::memory_order_release);
+      heap->updateSize();
       heap->unlock();
+      if (total > 0) {
+        toLock = rand_heap();
+      }
     }
-    if constexpr (Blocking)
-      resume(resume_num(npush));
+    // TODO NUMA
+//    if (!(is1Node(tId) ^ is1Node(toLock / C))) {
+//      local_q = toLock;
+//    }
+
+    local_q = toLock;
+
+    if constexpr (Blocking) {
+      if (maxSize > 50)
+        resume(1); // TODO BLIN not always
+    }
+    if constexpr (AMQ_DEBUG) {
+      debugInfo[maxSizeDebugPush][tId].push_back(maxSize);
+      debugInfo[minSizeDebugPush][tId].push_back(minSize);
+      debugInfo[successNumDebugPush][tId].push_back(success);
+      debugInfo[failedNumDebugPush][tId].push_back(failure);
+    }
     reportStat(success, failure, empty);
-    local_q = indexToLock;
     return npush;
   }
 
-  bool try_lock_heap(size_t i) {
-    if (heaps[i].data.my_try_lock()) {
-      if (i >= getNQ()) {
-        heaps[i].data.unlock();
-        return false;
-      }
-      return true;
-    }
-    return false;
-  }
 
   //! Push initial range onto the queue.
   //! Called with the same b and e on each thread.
@@ -719,74 +914,46 @@ public:
     auto rp = range.local_pair();
     return push(rp.first, rp.second);
   }
+
+  bool isFirstLess(Prior const& v1, Prior const& v2) {
+    if (Heap::isUsedMin(v1)) {
+      return false;
+    }
+    if (Heap::isUsedMin(v2)) {
+      return true;
+    }
+    return v1 < v2;
+  }
+
   //! Pop a value from the queue.
   Galois::optional<value_type> pop() {
-    static thread_local std::vector<value_type> popped_v;
-    if constexpr (ChunkPop > 0) {
-      if (!popped_v.empty()) {
-        auto ret = popped_v.back();
-        popped_v.pop_back();
-        return ret;
-      }
-    }
+    static thread_local size_t tId = Galois::Runtime::LL::getTID();
+
+
     static const size_t SLEEPING_ATTEMPTS = 8;
-    const size_t RANDOM_ATTEMPTS = nT < 4 ? 1 : 4;
+    const size_t RANDOM_ATTEMPTS = 4;// nT < 4 ? 1 : 4;
 
     size_t failure = 0;
     size_t success = 0;
     size_t empty   = 0;
 
-    static thread_local size_t local_q = rand_heap();
     Galois::optional<value_type> result;
     Heap* heap_i = nullptr;
     Heap* heap_j = nullptr;
     size_t i_ind = 0;
     size_t j_ind = 0;
 
-    size_t change = random() % PopChange::Q;
-
-    if constexpr (ChunkPop > 0) {
-      if (local_q < getNQ() && change >= PopChange::P * (ChunkPop + 1)) {
-        heap_i = &heaps[local_q].data;
-        if (heap_i->size.load(std::memory_order_acquire) != 0) {
-          if (try_lock_heap(local_q)) {
-            if (heap_i->heap.size() != 0) {
-              return extract_min(heap_i, popped_v, 1, 0, 0);
-            }
-            heap_i->unlock();
-            success++;
-            empty++;
-          } else {
-            failure++;
-          }
-        } else {
-          empty++;
-        }
-      }
-    } else {
-      if (local_q < getNQ() && change >= PopChange::P) {
-        heap_i = &heaps[local_q].data;
-        if (try_lock_heap(local_q)) {
-          if (heap_i->heap.size() != 0) {
-            return extract_min(heap_i, popped_v, 1, 0, 0);
-          }
-          heap_i->unlock();
-          empty++;
-          success++;
-        } else {
-          failure++;
-        }
-      }
-    }
+    Prior i_min = 0;
+    Prior j_min = 0;
 
     size_t curNQ;
-    size_t indexToLock;
+    size_t indexToLock = -1;
     while (true) {
       if constexpr (Blocking) {
         if (no_work) return result;
       }
+//      curNQ = getNQ();
       do {
-        curNQ = getNQ();
         for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
           while (true) {
             i_ind = rand_heap();
@@ -795,52 +962,52 @@ public:
             j_ind = rand_heap();
             heap_j = &heaps[j_ind].data;
 
-            if (i_ind == j_ind && curNQ > 1)
+            if (i_ind == j_ind && getNQ() > 1)
               continue;
 
-            if (heap_i->size.load(std::memory_order_acquire) == 0) {
-              empty++;
-              heap_i = heap_j;
-              indexToLock = j_ind;
-            } else if (heap_j->size.load(std::memory_order_acquire) == 0) {
-              empty++;
-              indexToLock = i_ind;
-            } else if (compare(heap_i->min, heap_j->min)) {
-              heap_i = heap_j;
-              indexToLock = j_ind;
-            } else {
-              indexToLock = i_ind;
+            i_min = heap_i->getMin();
+            j_min = heap_j->getMin();
+            if (isFirstLess(j_min, i_min)) {
+              std::swap(i_ind, j_ind);
+              std::swap(i_min, j_min);
+              std::swap(heap_i, heap_j);
             }
-            if (try_lock_heap(indexToLock))
+            indexToLock = i_ind;
+
+            if (i_ind != j_ind && Heap::isUsedMin(j_min)) {
+              empty++;
+            }
+            if (Heap::isUsedMin(i_min)) {
+              empty++;
               break;
+            }
+            if (heap_i->try_lock()) {
+              if (heap_i->heap.qInd >= getNQ()) {// invalid index
+                heap_i->unlock();
+                continue;
+              }
+              success++;
+              break;
+            }
             else
               failure++;
           }
-          success++;
+          if (Heap::isUsedMin(i_min)) {
+            continue;
+          }
 
-          if (heap_i->heap.size() != 0) {
-            local_q = indexToLock;
-            return extract_min(heap_i, popped_v, success, failure, empty);
+          if (!heap_i->heap.empty()) {
+            return extract_min(heap_i, success, failure, empty);
           } else {
             empty++;
             heap_i->unlock();
           }
         }
-        for (size_t k = 0; k < curNQ; k++) {
-          if (k == indexToLock) continue;
-          heap_i = &heaps[k].data;
-          if (heap_i->size.load(std::memory_order_acquire) == 0)
-            continue;
-          if (heap_i->my_try_lock()) {
-            if (heap_i->heap.size() > 0) {
-              local_q = k;
-              return extract_min(heap_i, popped_v, success, failure, empty);
-            } else {
-              //empty++; todo should it be counted
-              heap_i->unlock();
-            }
-          }
-        }
+//        for (size_t k = 0, iters = 32; k < SLEEPING_ATTEMPTS; k++, iters *= 2) {
+//          if (empty_queues == getNQ() || suspended + 1 == nT) // todo: getNQ?
+//            break;
+//          active_waiting(iters);
+//        }
       } while (Blocking && empty_queues != getNQ());
 
       if constexpr (!Blocking) {
@@ -852,7 +1019,9 @@ public:
           break;
         active_waiting(iters);
       }
-      suspend();
+      if (empty_queues == getNQ()) {
+        suspend();
+      }
     }
   }
 };
@@ -867,6 +1036,8 @@ bool Concurrent,
 bool Blocking,
 typename PushChange,
 typename PopChange,
+typename Numa,
+typename Prior,
 size_t ChunkPop,
 size_t S,
 size_t F,
@@ -875,7 +1046,7 @@ size_t WINDOW_SIZE,
 size_t PROB>
 Statistic* AdaptiveMultiQueue<T, Comparer, C,
 DecreaseKey, DecreaseKeyIndexer, Concurrent,
-Blocking, PushChange, PopChange, ChunkPop,
+Blocking, PushChange, PopChange, Numa, Prior, ChunkPop,
 S, F, E, WINDOW_SIZE, PROB>::deletedQ;
 
 template<typename T,
@@ -887,6 +1058,8 @@ bool Concurrent,
 bool Blocking,
 typename PushChange,
 typename PopChange,
+typename Numa,
+typename Prior,
 size_t ChunkPop,
 size_t S,
 size_t F,
@@ -895,7 +1068,7 @@ size_t WINDOW_SIZE,
 size_t PROB>
 Statistic* AdaptiveMultiQueue<T, Comparer, C,
 DecreaseKey, DecreaseKeyIndexer, Concurrent,
-Blocking, PushChange, PopChange, ChunkPop,
+Blocking, PushChange, PopChange, Numa, Prior, ChunkPop,
 S, F, E, WINDOW_SIZE, PROB>::addedQ;
 
 
@@ -908,6 +1081,8 @@ bool Concurrent,
 bool Blocking,
 typename PushChange,
 typename PopChange,
+typename Numa,
+typename Prior,
 size_t ChunkPop,
 size_t S,
 size_t F,
@@ -916,7 +1091,7 @@ size_t WINDOW_SIZE,
 size_t PROB>
 Statistic* AdaptiveMultiQueue<T, Comparer, C,
 DecreaseKey, DecreaseKeyIndexer, Concurrent,
-Blocking, PushChange, PopChange, ChunkPop,
+Blocking, PushChange, PopChange, Numa, Prior, ChunkPop,
 S, F, E, WINDOW_SIZE, PROB>::wantedToDelete;
 
 
@@ -929,6 +1104,8 @@ bool Concurrent,
 bool Blocking,
 typename PushChange,
 typename PopChange,
+typename Numa,
+typename Prior,
 size_t ChunkPop,
 size_t S,
 size_t F,
@@ -937,7 +1114,7 @@ size_t WINDOW_SIZE,
 size_t PROB>
 Statistic* AdaptiveMultiQueue<T, Comparer, C,
 DecreaseKey, DecreaseKeyIndexer, Concurrent,
-Blocking, PushChange, PopChange, ChunkPop,
+Blocking, PushChange, PopChange, Numa, Prior, ChunkPop,
 S, F, E, WINDOW_SIZE, PROB>::wantedToAdd;
 
 
@@ -950,6 +1127,8 @@ bool Concurrent,
 bool Blocking,
 typename PushChange,
 typename PopChange,
+typename Numa,
+typename Prior,
 size_t ChunkPop,
 size_t S,
 size_t F,
@@ -958,7 +1137,7 @@ size_t WINDOW_SIZE,
 size_t PROB>
 Statistic* AdaptiveMultiQueue<T, Comparer, C,
 DecreaseKey, DecreaseKeyIndexer, Concurrent,
-Blocking, PushChange, PopChange, ChunkPop,
+Blocking, PushChange, PopChange, Numa, Prior, ChunkPop,
 S, F, E, WINDOW_SIZE, PROB>::reportNum;
 template<typename T,
 typename Comparer,
@@ -969,6 +1148,8 @@ bool Concurrent,
 bool Blocking,
 typename PushChange,
 typename PopChange,
+typename Numa,
+typename Prior,
 size_t ChunkPop,
 size_t S,
 size_t F,
@@ -977,7 +1158,7 @@ size_t WINDOW_SIZE,
 size_t PROB>
 Statistic* AdaptiveMultiQueue<T, Comparer, C,
 DecreaseKey, DecreaseKeyIndexer, Concurrent,
-Blocking, PushChange, PopChange, ChunkPop,
+Blocking, PushChange, PopChange, Numa, Prior, ChunkPop,
 S, F, E, WINDOW_SIZE, PROB>::minNumQ;
 
 template<typename T,
@@ -989,6 +1170,8 @@ bool Concurrent,
 bool Blocking,
 typename PushChange,
 typename PopChange,
+typename Numa,
+typename Prior,
 size_t ChunkPop,
 size_t S,
 size_t F,
@@ -997,8 +1180,51 @@ size_t WINDOW_SIZE,
 size_t PROB>
 Statistic* AdaptiveMultiQueue<T, Comparer, C,
 DecreaseKey, DecreaseKeyIndexer, Concurrent,
-Blocking, PushChange, PopChange, ChunkPop,
+Blocking, PushChange, PopChange, Numa, Prior, ChunkPop,
 S, F, E, WINDOW_SIZE, PROB>::maxNumQ;
+template<typename T,
+typename Comparer,
+size_t C,
+bool DecreaseKey ,
+typename DecreaseKeyIndexer,
+bool Concurrent,
+bool Blocking,
+typename PushChange,
+typename PopChange,
+typename Numa,
+typename Prior,
+size_t ChunkPop,
+size_t S,
+size_t F,
+size_t E,
+size_t WINDOW_SIZE,
+size_t PROB>
+Statistic* AdaptiveMultiQueue<T, Comparer, C,
+DecreaseKey, DecreaseKeyIndexer, Concurrent,
+Blocking, PushChange, PopChange, Numa, Prior, ChunkPop,
+S, F, E, WINDOW_SIZE, PROB>::suspendedNum;
+
+template<typename T,
+typename Comparer,
+size_t C,
+bool DecreaseKey ,
+typename DecreaseKeyIndexer,
+bool Concurrent,
+bool Blocking,
+typename PushChange,
+typename PopChange,
+typename Numa,
+typename Prior,
+size_t ChunkPop,
+size_t S,
+size_t F,
+size_t E,
+size_t WINDOW_SIZE,
+size_t PROB>
+Statistic* AdaptiveMultiQueue<T, Comparer, C,
+DecreaseKey, DecreaseKeyIndexer, Concurrent,
+Blocking, PushChange, PopChange, Numa, Prior, ChunkPop,
+S, F, E, WINDOW_SIZE, PROB>::resumedNum;
 
 
 } // namespace WorkList

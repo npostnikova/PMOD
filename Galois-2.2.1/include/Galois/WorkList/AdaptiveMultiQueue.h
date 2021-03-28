@@ -7,6 +7,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <ctime>
+#include <filesystem>
 #include <fstream>
 #include <thread>
 #include <random>
@@ -116,6 +117,17 @@ Prob<1, 1> oneProb;
  * @tparam DecreaseKeyIndexer indexer for decrease key operation
  * @tparam C parameter for queues number
  * @tparam Concurrent if the implementation should be concurrent
+ * @tparam Blocking if the implementation should be blocking
+ * @tparam PushChange probability of changing the local queue for push
+ * @tparam PopChange probability of changing the local queue for pop
+ * @tparam Numa weights for choosing same/not same NUMA node
+ * @tparam Prior type which is used for task priority
+ * @tparam S weight for success event
+ * @tparam F weight for failure event
+ * @tparam E weight for empty event
+ * @tparam SEGMENT_SIZE number of reported events needed for adaptivity changes
+ * @tparam PERCENT proportion of events to make the decision on adaptivity changes
+ * @tparam RESUME_SIZE number of elements in the queue which signal resume is needed
  */
 template<typename T,
 typename Comparer,
@@ -128,12 +140,13 @@ typename PushChange = Prob<1, 1>,
 typename PopChange  = Prob<1, 1>,
 typename Numa = Prob<2, 1>,
 typename Prior = unsigned long,
-size_t ChunkPop = 0,
 size_t S = 1, // todo
 size_t F = 1,
 size_t E = 1,
 size_t SEGMENT_SIZE = 32,
-size_t PERCENT = 90>
+size_t PERCENT = 90,
+size_t RESUME_SIZE = SEGMENT_SIZE
+>
 class AdaptiveMultiQueue {
 private:
   typedef T value_t;
@@ -511,11 +524,11 @@ public:
   void deleteStatistic(Galois::Statistic*& st, std::ofstream& out) {
     if (st != nullptr) {
       if (st->getStatname().find("min") != std::string::npos) {
-        out << getMinVal(st) << "\t";
+        out << "," << getMinVal(st);
       } else if (st->getStatname().find("max") != std::string::npos) {
-        out << getMaxVal(st) << "\t";
+        out << "," << getMaxVal(st);
       } else {
-        out << getStatVal(st) << "\t";
+        out << "," << getStatVal(st);
       }
       delete st;
       st = nullptr;
@@ -553,8 +566,14 @@ public:
 //    name >> result_name;
 //    std::cout << result_name << std::endl;
 //    name.close();
-
-    std::ofstream out("amq_stats.txt" /*result_name*/, std::ios::app);
+    auto exists = std::filesystem::exists("amq_stats.csv");
+    std::ofstream out("amq_stats.csv" /*result_name*/, std::ios::app);
+    if (!exists) {
+      out << "threads,pushQ,popQ,s,f,e,segment_size,percent,resume_size,deleted,added,wantedToDelete," <<
+      "wantedToAdd,reportNum,minQ,maxQ,suspendedNum,resumedNum" << std::endl;
+    }
+    out << nT << "," << PushChange::Q << "," << PopChange::Q << "," << S << "," << F << ","
+    << E << "," << SEGMENT_SIZE << "," << PERCENT << "," << RESUME_SIZE;
     deleteStatistic(deletedQ, out);
     deleteStatistic(addedQ, out);
     deleteStatistic(wantedToDelete, out);
@@ -608,13 +627,13 @@ public:
   //! Change the concurrency flag.
   template<bool _concurrent>
   struct rethread {
-    typedef AdaptiveMultiQueue<T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, _concurrent, Blocking, PushChange, PopChange, Numa, Prior, ChunkPop, S, F, E, SEGMENT_SIZE, PERCENT> type;
+    typedef AdaptiveMultiQueue<T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, _concurrent, Blocking, PushChange, PopChange, Numa, Prior, S, F, E, SEGMENT_SIZE, PERCENT, RESUME_SIZE> type;
   };
 
   //! Change the type the worklist holds.
   template<typename _T>
   struct retype {
-    typedef AdaptiveMultiQueue<_T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, Concurrent, Blocking, PushChange, PopChange, Numa, Prior, ChunkPop, S, F, E, SEGMENT_SIZE, PERCENT> type;
+    typedef AdaptiveMultiQueue<_T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, Concurrent, Blocking, PushChange, PopChange, Numa, Prior, S, F, E, SEGMENT_SIZE, PERCENT, RESUME_SIZE> type;
   };
 
   //! Push a value onto the queue.
@@ -803,9 +822,9 @@ public:
     }
   }
 
-
+  // Throw a coin until the queue should be changed.
+  // At least one.
   size_t numToPush(size_t limit) {
-    // todo min is one as we trow a coin a least ones to get the local queue
     for (size_t i = 1; i < limit; i++) {
       if ((random() % PushChange::Q) < PopChange::P) {
         return i;
@@ -823,41 +842,40 @@ public:
       if (no_work)
         no_work = false;
     }
-//    const size_t chunk_size = 8;
 
-    // local queue
     static thread_local size_t tId = Galois::Runtime::LL::getTID();
-    static thread_local size_t local_q = 0; // is1Node(tId) ? map1Node(random() % (C * node1Cnt())): map2Node(random() % (C * node2Cnt()));
-
+    // local queue
+    static thread_local size_t local_q = 0;  // only one queue in the beginning
+    // todo: for numa is1Node(tId) ? map1Node(random() % (C * node1Cnt())): map2Node(random() % (C * node2Cnt()));
 
     int npush = 0;
     Heap* heap = nullptr;
+    int total = std::distance(b, e);
+    size_t qToLock = local_q;
 
+    // Statistics
     size_t failure = 0;
     size_t success = 0;
     size_t empty   = 0; // empty doesn't matter in push
-
-
-    int total = std::distance(b, e);
-    size_t toLock = local_q;
 
     size_t maxSize = 0;
     size_t minSize = SIZE_MAX;
 
     while (b != e) {
       auto batchSize = numToPush(total);
-      heap = &heaps[toLock].data;
+      heap = &heaps[qToLock].data;
 
       while (true) {
         while (!heap->try_lock()) {
-          toLock = rand_heap();
-          heap = &heaps[toLock].data;
+          qToLock = rand_heap();
+          heap = &heaps[qToLock].data;
           failure++;
         }
         if (heap->heap.qInd >= getNQ()) {
+          // The queue was deleted
           heap->unlock();
-          toLock = rand_heap();
-          heap = &heaps[toLock].data;
+          qToLock = rand_heap();
+          heap = &heaps[qToLock].data;
           continue;
         } else {
           break;
@@ -877,24 +895,25 @@ public:
         npush++;
         total--;
       }
-
-      heap->updateMin(); //min.store(heap->heap.min().prior(), std::memory_order_release);
+      heap->updateMin();
       heap->updateSize();
       heap->unlock();
       if (total > 0) {
-        toLock = rand_heap();
+        qToLock = rand_heap();
       }
     }
-    // TODO NUMA
-//    if (!(is1Node(tId) ^ is1Node(toLock / C))) {
-//      local_q = toLock;
+//    TODO: NUMA
+//    if (!(is1Node(tId) ^ is1Node(qToLock / C))) {
+//      local_q = qToLock;
 //    }
-
-    local_q = toLock;
+    local_q = qToLock;
 
     if constexpr (Blocking) {
-      if (maxSize > 50)
-        resume(1); // TODO BLIN not always
+      if (maxSize >= RESUME_SIZE) {
+        // todo: is there a need to resume more than one?
+        // todo: is there a need to add a new queue immediately?
+        resume(1);
+      }
     }
     if constexpr (AMQ_DEBUG) {
       debugInfo[maxSizeDebugPush][tId].push_back(maxSize);
@@ -929,7 +948,6 @@ public:
   Galois::optional<value_type> pop() {
     static thread_local size_t tId = Galois::Runtime::LL::getTID();
 
-
     static const size_t SLEEPING_ATTEMPTS = 8;
     const size_t RANDOM_ATTEMPTS = 4;// nT < 4 ? 1 : 4;
 
@@ -942,17 +960,16 @@ public:
     Heap* heap_j = nullptr;
     size_t i_ind = 0;
     size_t j_ind = 0;
-
     Prior i_min = 0;
     Prior j_min = 0;
 
     size_t curNQ;
     size_t indexToLock = -1;
+    size_t blocking_iters = 32;
     while (true) {
       if constexpr (Blocking) {
         if (no_work) return result;
       }
-//      curNQ = getNQ();
       do {
         for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
           while (true) {
@@ -972,7 +989,6 @@ public:
               std::swap(i_min, j_min);
               std::swap(heap_i, heap_j);
             }
-            indexToLock = i_ind;
 
             if (i_ind != j_ind && Heap::isUsedMin(j_min)) {
               empty++;
@@ -982,15 +998,14 @@ public:
               break;
             }
             if (heap_i->try_lock()) {
-              if (heap_i->heap.qInd >= getNQ()) {// invalid index
+              if (heap_i->heap.qInd >= getNQ()) {
+                // The queue was deleted
                 heap_i->unlock();
                 continue;
               }
               success++;
               break;
-            }
-            else
-              failure++;
+            } else failure++;
           }
           if (Heap::isUsedMin(i_min)) {
             continue;
@@ -1003,24 +1018,20 @@ public:
             heap_i->unlock();
           }
         }
-//        for (size_t k = 0, iters = 32; k < SLEEPING_ATTEMPTS; k++, iters *= 2) {
-//          if (empty_queues == getNQ() || suspended + 1 == nT) // todo: getNQ?
-//            break;
-//          active_waiting(iters);
-//        }
+        if constexpr (Blocking) {
+          active_waiting(blocking_iters);
+          blocking_iters *= 2;
+        }
       } while (Blocking && empty_queues != getNQ());
 
-      if constexpr (!Blocking) {
-        reportStat(success, failure, empty);
+      reportStat(success, failure, empty);
+      if constexpr (Blocking) {
+        active_waiting(random() % 128 + 32);
+        if (empty_queues == getNQ()) {
+          suspend();
+        }
+      } else {
         return result;
-      }
-      for (size_t k = 0, iters = 32; k < SLEEPING_ATTEMPTS; k++, iters *= 2) {
-        if (empty_queues != getNQ() || suspended + 1 == nT) // todo: getNQ?
-          break;
-        active_waiting(iters);
-      }
-      if (empty_queues == getNQ()) {
-        suspend();
       }
     }
   }
@@ -1038,16 +1049,16 @@ typename PushChange,
 typename PopChange,
 typename Numa,
 typename Prior,
-size_t ChunkPop,
 size_t S,
 size_t F,
 size_t E,
 size_t WINDOW_SIZE,
-size_t PROB>
+size_t PROB,
+size_t RESUME_SIZE>
 Statistic* AdaptiveMultiQueue<T, Comparer, C,
 DecreaseKey, DecreaseKeyIndexer, Concurrent,
-Blocking, PushChange, PopChange, Numa, Prior, ChunkPop,
-S, F, E, WINDOW_SIZE, PROB>::deletedQ;
+Blocking, PushChange, PopChange, Numa, Prior,
+S, F, E, WINDOW_SIZE, PROB, RESUME_SIZE>::deletedQ;
 
 template<typename T,
 typename Comparer,
@@ -1060,39 +1071,16 @@ typename PushChange,
 typename PopChange,
 typename Numa,
 typename Prior,
-size_t ChunkPop,
 size_t S,
 size_t F,
 size_t E,
 size_t WINDOW_SIZE,
-size_t PROB>
+size_t PROB,
+size_t RESUME_SIZE>
 Statistic* AdaptiveMultiQueue<T, Comparer, C,
 DecreaseKey, DecreaseKeyIndexer, Concurrent,
-Blocking, PushChange, PopChange, Numa, Prior, ChunkPop,
-S, F, E, WINDOW_SIZE, PROB>::addedQ;
-
-
-template<typename T,
-typename Comparer,
-size_t C,
-bool DecreaseKey ,
-typename DecreaseKeyIndexer,
-bool Concurrent,
-bool Blocking,
-typename PushChange,
-typename PopChange,
-typename Numa,
-typename Prior,
-size_t ChunkPop,
-size_t S,
-size_t F,
-size_t E,
-size_t WINDOW_SIZE,
-size_t PROB>
-Statistic* AdaptiveMultiQueue<T, Comparer, C,
-DecreaseKey, DecreaseKeyIndexer, Concurrent,
-Blocking, PushChange, PopChange, Numa, Prior, ChunkPop,
-S, F, E, WINDOW_SIZE, PROB>::wantedToDelete;
+Blocking, PushChange, PopChange, Numa, Prior,
+S, F, E, WINDOW_SIZE, PROB, RESUME_SIZE>::addedQ;
 
 
 template<typename T,
@@ -1106,16 +1094,16 @@ typename PushChange,
 typename PopChange,
 typename Numa,
 typename Prior,
-size_t ChunkPop,
 size_t S,
 size_t F,
 size_t E,
 size_t WINDOW_SIZE,
-size_t PROB>
+size_t PROB,
+size_t RESUME_SIZE>
 Statistic* AdaptiveMultiQueue<T, Comparer, C,
 DecreaseKey, DecreaseKeyIndexer, Concurrent,
-Blocking, PushChange, PopChange, Numa, Prior, ChunkPop,
-S, F, E, WINDOW_SIZE, PROB>::wantedToAdd;
+Blocking, PushChange, PopChange, Numa, Prior,
+S, F, E, WINDOW_SIZE, PROB, RESUME_SIZE>::wantedToDelete;
 
 
 template<typename T,
@@ -1129,37 +1117,17 @@ typename PushChange,
 typename PopChange,
 typename Numa,
 typename Prior,
-size_t ChunkPop,
 size_t S,
 size_t F,
 size_t E,
 size_t WINDOW_SIZE,
-size_t PROB>
+size_t PROB,
+size_t RESUME_SIZE>
 Statistic* AdaptiveMultiQueue<T, Comparer, C,
 DecreaseKey, DecreaseKeyIndexer, Concurrent,
-Blocking, PushChange, PopChange, Numa, Prior, ChunkPop,
-S, F, E, WINDOW_SIZE, PROB>::reportNum;
-template<typename T,
-typename Comparer,
-size_t C,
-bool DecreaseKey ,
-typename DecreaseKeyIndexer,
-bool Concurrent,
-bool Blocking,
-typename PushChange,
-typename PopChange,
-typename Numa,
-typename Prior,
-size_t ChunkPop,
-size_t S,
-size_t F,
-size_t E,
-size_t WINDOW_SIZE,
-size_t PROB>
-Statistic* AdaptiveMultiQueue<T, Comparer, C,
-DecreaseKey, DecreaseKeyIndexer, Concurrent,
-Blocking, PushChange, PopChange, Numa, Prior, ChunkPop,
-S, F, E, WINDOW_SIZE, PROB>::minNumQ;
+Blocking, PushChange, PopChange, Numa, Prior,
+S, F, E, WINDOW_SIZE, PROB, RESUME_SIZE>::wantedToAdd;
+
 
 template<typename T,
 typename Comparer,
@@ -1172,37 +1140,16 @@ typename PushChange,
 typename PopChange,
 typename Numa,
 typename Prior,
-size_t ChunkPop,
 size_t S,
 size_t F,
 size_t E,
 size_t WINDOW_SIZE,
-size_t PROB>
+size_t PROB,
+size_t RESUME_SIZE>
 Statistic* AdaptiveMultiQueue<T, Comparer, C,
 DecreaseKey, DecreaseKeyIndexer, Concurrent,
-Blocking, PushChange, PopChange, Numa, Prior, ChunkPop,
-S, F, E, WINDOW_SIZE, PROB>::maxNumQ;
-template<typename T,
-typename Comparer,
-size_t C,
-bool DecreaseKey ,
-typename DecreaseKeyIndexer,
-bool Concurrent,
-bool Blocking,
-typename PushChange,
-typename PopChange,
-typename Numa,
-typename Prior,
-size_t ChunkPop,
-size_t S,
-size_t F,
-size_t E,
-size_t WINDOW_SIZE,
-size_t PROB>
-Statistic* AdaptiveMultiQueue<T, Comparer, C,
-DecreaseKey, DecreaseKeyIndexer, Concurrent,
-Blocking, PushChange, PopChange, Numa, Prior, ChunkPop,
-S, F, E, WINDOW_SIZE, PROB>::suspendedNum;
+Blocking, PushChange, PopChange, Numa, Prior,
+S, F, E, WINDOW_SIZE, PROB, RESUME_SIZE>::reportNum;
 
 template<typename T,
 typename Comparer,
@@ -1215,16 +1162,82 @@ typename PushChange,
 typename PopChange,
 typename Numa,
 typename Prior,
-size_t ChunkPop,
 size_t S,
 size_t F,
 size_t E,
 size_t WINDOW_SIZE,
-size_t PROB>
+size_t PROB,
+size_t RESUME_SIZE>
 Statistic* AdaptiveMultiQueue<T, Comparer, C,
 DecreaseKey, DecreaseKeyIndexer, Concurrent,
-Blocking, PushChange, PopChange, Numa, Prior, ChunkPop,
-S, F, E, WINDOW_SIZE, PROB>::resumedNum;
+Blocking, PushChange, PopChange, Numa, Prior,
+S, F, E, WINDOW_SIZE, PROB, RESUME_SIZE>::minNumQ;
+
+template<typename T,
+typename Comparer,
+size_t C,
+bool DecreaseKey ,
+typename DecreaseKeyIndexer,
+bool Concurrent,
+bool Blocking,
+typename PushChange,
+typename PopChange,
+typename Numa,
+typename Prior,
+size_t S,
+size_t F,
+size_t E,
+size_t WINDOW_SIZE,
+size_t PROB,
+size_t RESUME_SIZE>
+Statistic* AdaptiveMultiQueue<T, Comparer, C,
+DecreaseKey, DecreaseKeyIndexer, Concurrent,
+Blocking, PushChange, PopChange, Numa, Prior,
+S, F, E, WINDOW_SIZE, PROB, RESUME_SIZE>::maxNumQ;
+
+template<typename T,
+typename Comparer,
+size_t C,
+bool DecreaseKey ,
+typename DecreaseKeyIndexer,
+bool Concurrent,
+bool Blocking,
+typename PushChange,
+typename PopChange,
+typename Numa,
+typename Prior,
+size_t S,
+size_t F,
+size_t E,
+size_t WINDOW_SIZE,
+size_t PROB,
+size_t RESUME_SIZE>
+Statistic* AdaptiveMultiQueue<T, Comparer, C,
+DecreaseKey, DecreaseKeyIndexer, Concurrent,
+Blocking, PushChange, PopChange, Numa, Prior,
+S, F, E, WINDOW_SIZE, PROB, RESUME_SIZE>::suspendedNum;
+
+template<typename T,
+typename Comparer,
+size_t C,
+bool DecreaseKey ,
+typename DecreaseKeyIndexer,
+bool Concurrent,
+bool Blocking,
+typename PushChange,
+typename PopChange,
+typename Numa,
+typename Prior,
+size_t S,
+size_t F,
+size_t E,
+size_t WINDOW_SIZE,
+size_t PROB,
+size_t RESUME_SIZE>
+Statistic* AdaptiveMultiQueue<T, Comparer, C,
+DecreaseKey, DecreaseKeyIndexer, Concurrent,
+Blocking, PushChange, PopChange, Numa, Prior,
+S, F, E, WINDOW_SIZE, PROB, RESUME_SIZE>::resumedNum;
 
 
 } // namespace WorkList

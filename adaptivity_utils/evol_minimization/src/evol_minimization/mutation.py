@@ -20,7 +20,10 @@ class Individual:
         return self.params_vals == other.params_vals
 
     def __hash__(self):
-        return hash(frozenset(self.params_vals.items()))
+        return hash(tuple(self.params_vals.items()))
+
+    def get_param(self, param_name):
+        return self.params_vals[param_name]
 
     def create_mutation(self, affected_params, beta=0.7):
         result = deepcopy(self)
@@ -37,20 +40,29 @@ class Individual:
         return result
 
 
-def mutate(individual, beta=0.5):
-    """Creates a mutation of the provided individual"""
-    params_number = len(unknown_params)
-    possible_params_number = range(1, params_number + 1)
-    affected_params_cnt = choices(
-        possible_params_number,
-        k=1,
-        weights=[x ** (-beta) for x in possible_params_number]
-    )[0]
-    print(affected_params_cnt)
+def mutate(individual, beta=1.1, affected_params_cnt=None):
+    """Creates a mutation of the provided individual
+
+    :param individual: the individual to create mutation on
+    :param beta: if affected_params_cnt is not specified,
+    probability of affected_cnt == c is proportional to c ^ {-beta}
+    :param affected_params_cnt: num of params which must be affected
+    :return: individual produced by the mutation
+    """
+    if affected_params_cnt is not None:
+        assert affected_params_cnt > 0
+        assert affected_params_cnt <= len(unknown_params)
+    assert 1 < beta < 2
+    if affected_params_cnt is None:
+        params_number = len(unknown_params)
+        possible_params_number = range(1, params_number + 1)
+        affected_params_cnt = choices(
+            possible_params_number,
+            k=1,
+            weights=[x ** (-beta) for x in possible_params_number]
+        )[0]
     affected_params = sample(unknown_params, k=affected_params_cnt)
-    print([x.name for x in affected_params])
     mutation = individual.create_mutation(affected_params)
-    print(mutation)
     return mutation
 
 

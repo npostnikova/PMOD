@@ -100,10 +100,17 @@ def combine_next_population(exec_path="execution_results.csv", gen_size=None,
     prev = read_prev_generation_with_results()
     gens = new + prev
     sorted_gens = sorted(gens, key=lambda ind_info: ind_info[1])  # by time
-    next_population = sorted_gens[:best]
-    ind_set = set([x[1] for x in next_population])
+    ind_set = set()
+    next_population = []
+    i = 0
+    while len(ind_set) < best and i < len(sorted_gens):
+        if sorted_gens[i][0] not in ind_set:
+            ind_set.add(sorted_gens[i][0])
+            next_population.append(sorted_gens[i])
+        i += 1
+    random.shuffle(new)
     if len(next_population) < gen_size:
-        for (ind, t, n) in random.shuffle(new):
+        for (ind, t, n) in new:
             if ind not in ind_set:
                 ind_set.add(ind)
                 next_population.append((ind, t, n))

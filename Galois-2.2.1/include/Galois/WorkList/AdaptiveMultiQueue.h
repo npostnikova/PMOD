@@ -309,7 +309,7 @@ private:
     return random() % suspend_size();
   }
 
-  inline size_t get_empty_queue() {
+  inline size_t get_empty_queues() {
     return empty_queues.load(std::memory_order_acquire);
   }
 

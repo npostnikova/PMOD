@@ -309,9 +309,13 @@ private:
     return random() % suspend_size();
   }
 
+  inline size_t get_empty_queue() {
+    return empty_queues.load(std::memory_order_acquire);
+  }
+
   //! Suspends if the thread is not the last.
   void suspend() {
-    while (empty_queues == getNQ()) {
+    while (get_empty_queues() == getNQ()) {
       size_t cell_id = rand_suspend_cell();
       if (try_suspend(cell_id)) {
         return;
@@ -358,7 +362,7 @@ private:
       node.cond_mutex.unlock();
       suspended.fetch_sub(1, std::memory_order_acq_rel);
       *resumedNum += 1;
-      if (empty_queues < getNQ())
+      if (get_empty_queues() < getNQ())
         return true;
       resume_all();
       return true;
@@ -702,11 +706,11 @@ public:
 //    removeH->size.store(0, std::memory_order_release);
 
     const size_t newSize = mergeH->heap.size();
-    mergeH->size.store(newSize, std::memory_order_release);
+    mergeH->updateSize();
+    mergeH->updateMin();
 
-    if (newSize > 0)
-      mergeH->writeMin(mergeH->getMin());
-    removeH->writeMin();
+    removeH->updateSize();
+    removeH->updateMin();
 
     if (wasEmptyRemove) empty_queues.fetch_sub(1, std::memory_order_acq_rel);
     nQ.store(curNQ - 1, std::memory_order_release);
@@ -951,10 +955,6 @@ public:
     static const size_t SLEEPING_ATTEMPTS = 8;
     const size_t RANDOM_ATTEMPTS = 4;// nT < 4 ? 1 : 4;
 
-    size_t failure = 0;
-    size_t success = 0;
-    size_t empty   = 0;
-
     Galois::optional<value_type> result;
     Heap* heap_i = nullptr;
     Heap* heap_j = nullptr;
@@ -965,12 +965,16 @@ public:
 
     size_t curNQ;
     size_t indexToLock = -1;
-    size_t blocking_iters = 32;
+    static const size_t BLOCKING_ITERS_LIMIT = 1024;
     while (true) {
       if constexpr (Blocking) {
         if (no_work) return result;
       }
+      size_t blocking_iters = 32;
       do {
+        size_t failure = 0;
+        size_t success = 0;
+        size_t empty   = 0;
         for (size_t i = 0; i < RANDOM_ATTEMPTS; i++) {
           while (true) {
             i_ind = rand_heap();
@@ -1020,13 +1024,14 @@ public:
         }
         if constexpr (Blocking) {
           active_waiting(blocking_iters);
-          blocking_iters *= 2;
+          if (blocking_iters < BLOCKING_ITERS_LIMIT)
+            blocking_iters *= 2;
         }
-      } while (Blocking && empty_queues != getNQ());
+        reportStat(success, failure, empty);
+      } while (Blocking && get_empty_queues() != getNQ());
 
-      reportStat(success, failure, empty);
       if constexpr (Blocking) {
-        active_waiting(random() % 128 + 32);
+//        active_waiting(random() % 128 + 32);
         if (empty_queues == getNQ()) {
           suspend();
         }

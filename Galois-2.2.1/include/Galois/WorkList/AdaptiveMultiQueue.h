@@ -830,7 +830,7 @@ public:
   // At least one.
   size_t numToPush(size_t limit) {
     for (size_t i = 1; i < limit; i++) {
-      if ((random() % PushChange::Q) < PopChange::P) {
+      if ((random() % PushChange::Q) < PushChange::P) {
         return i;
       }
     }
@@ -955,7 +955,8 @@ public:
     static const size_t SLEEPING_ATTEMPTS = 8;
     const size_t RANDOM_ATTEMPTS = 4;// nT < 4 ? 1 : 4;
 
-    Galois::optional<value_type> result;
+    static thread_local size_t local_q = rand_heap();
+
     Heap* heap_i = nullptr;
     Heap* heap_j = nullptr;
     size_t i_ind = 0;
@@ -963,8 +964,19 @@ public:
     Prior i_min = 0;
     Prior j_min = 0;
 
-    size_t curNQ;
-    size_t indexToLock = -1;
+    Galois::optional<value_type> result;
+
+    size_t change = random() % PopChange::Q;
+    if (local_q < getNQ() && change >= PopChange::P) {
+      heap_i = &heaps[local_q].data;
+      if (heap_i->try_lock()) {
+        if (!heap_i->heap.empty()) {
+          return extract_min(heap_i, 1, 0, 0);
+        }
+        heap_i->unlock();
+      }
+    }
+
     static const size_t BLOCKING_ITERS_LIMIT = 1024;
     while (true) {
       if constexpr (Blocking) {
@@ -1016,6 +1028,7 @@ public:
           }
 
           if (!heap_i->heap.empty()) {
+            local_q = i_ind;
             return extract_min(heap_i, success, failure, empty);
           } else {
             empty++;

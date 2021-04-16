@@ -122,11 +122,11 @@ Prob<1, 1> oneProb;
  * @tparam PopChange probability of changing the local queue for pop
  * @tparam Numa weights for choosing same/not same NUMA node
  * @tparam Prior type which is used for task priority
- * @tparam S weight for success event
- * @tparam F weight for failure event
- * @tparam E weight for empty event
- * @tparam SEGMENT_SIZE number of reported events needed for adaptivity changes
- * @tparam PERCENT proportion of events to make the decision on adaptivity changes
+ * @tparam PERCENT_F weight for success event
+ * @tparam PERCENT_LF weight for failure event
+ * @tparam PERCENT_E weight for empty event
+ * @tparam REFREASH_SIZE number of reported events needed for adaptivity changes
+ * @tparam PERCENT_S proportion of events to make the decision on adaptivity changes
  * @tparam RESUME_SIZE number of elements in the queue which signal resume is needed
  */
 template<typename T,
@@ -140,12 +140,12 @@ typename PushChange = Prob<1, 1>,
 typename PopChange  = Prob<1, 1>,
 typename Numa = Prob<2, 1>,
 typename Prior = unsigned long,
-size_t S = 1, // todo
-size_t F = 1,
-size_t E = 1,
-size_t SEGMENT_SIZE = 32,
-size_t PERCENT = 90,
-size_t RESUME_SIZE = SEGMENT_SIZE
+size_t PERCENT_F = 1, // todo
+size_t PERCENT_LF = 1,
+size_t PERCENT_E = 1,
+size_t REFREASH_SIZE = 32,
+size_t PERCENT_S = 90,
+size_t RESUME_SIZE = REFREASH_SIZE
 >
 class AdaptiveMultiQueue {
 private:
@@ -252,7 +252,8 @@ private:
   }
 
   //! Extracts minimum from the locked heap.
-  Galois::optional<value_t> extract_min(Heap* heap, size_t success, size_t failure, size_t empty) {
+  Galois::optional<value_t> extract_min(Heap* heap, size_t success, size_t failure, size_t empty,
+  size_t localStat) {
     auto result = getMin(heap);
 
     heap->updateMin();
@@ -261,7 +262,7 @@ private:
       empty_queues.fetch_add(1, std::memory_order_acq_rel);
     }
     heap->unlock();
-    reportStat(success, failure, empty);
+    reportPop(success, failure, empty, localStat);
     return result;
   }
 
@@ -481,13 +482,13 @@ public:
   };
 
   std::vector<std::string> debugVectorNames = {
-      "maxSizePush",
-      "minSizePush",
-      "failedNumDebugPush",
-      "successNumDebugPush",
-      "emptyNumDebugPop",
-      "failedNumDebugPop",
-      "successNumDebugPop",
+  "maxSizePush",
+  "minSizePush",
+  "failedNumDebugPush",
+  "successNumDebugPush",
+  "emptyNumDebugPop",
+  "failedNumDebugPop",
+  "successNumDebugPop",
   };
 
   std::vector<std::vector<std::vector<int>>> debugInfo;
@@ -499,7 +500,7 @@ public:
                          suspend_array(std::make_unique<CondNode[]>(nT * CondC)),
                          maxQNum(C * nT * 4),
                          debugInfo(mockLast, std::vector<std::vector<int>>(nT, std::vector<int>()))
-                         {
+  {
     //std::atomic_init(&nQ, C * nT); // todo
     memset(reinterpret_cast<void*>(&Heap::usedT), 0xff, sizeof(Heap::usedT));
 
@@ -574,10 +575,10 @@ public:
     std::ofstream out("amq_stats.csv" /*result_name*/, std::ios::app);
     if (!exists) {
       out << "threads,pushQ,popQ,s,f,e,segment_size,percent,resume_size,deleted,added,wantedToDelete," <<
-      "wantedToAdd,reportNum,minQ,maxQ,suspendedNum,resumedNum" << std::endl;
+          "wantedToAdd,reportNum,minQ,maxQ,suspendedNum,resumedNum" << std::endl;
     }
-    out << nT << "," << PushChange::Q << "," << PopChange::Q << "," << S << "," << F << ","
-    << E << "," << SEGMENT_SIZE << "," << PERCENT << "," << RESUME_SIZE;
+    out << nT << "," << PushChange::Q << "," << PopChange::Q << "," << PERCENT_F << "," << PERCENT_LF << ","
+        << PERCENT_E << "," << REFREASH_SIZE << "," << PERCENT_S << "," << RESUME_SIZE;
     deleteStatistic(deletedQ, out);
     deleteStatistic(addedQ, out);
     deleteStatistic(wantedToDelete, out);
@@ -631,13 +632,13 @@ public:
   //! Change the concurrency flag.
   template<bool _concurrent>
   struct rethread {
-    typedef AdaptiveMultiQueue<T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, _concurrent, Blocking, PushChange, PopChange, Numa, Prior, S, F, E, SEGMENT_SIZE, PERCENT, RESUME_SIZE> type;
+    typedef AdaptiveMultiQueue<T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, _concurrent, Blocking, PushChange, PopChange, Numa, Prior, PERCENT_F, PERCENT_LF, PERCENT_E, REFREASH_SIZE, PERCENT_S, RESUME_SIZE> type;
   };
 
   //! Change the type the worklist holds.
   template<typename _T>
   struct retype {
-    typedef AdaptiveMultiQueue<_T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, Concurrent, Blocking, PushChange, PopChange, Numa, Prior, S, F, E, SEGMENT_SIZE, PERCENT, RESUME_SIZE> type;
+    typedef AdaptiveMultiQueue<_T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, Concurrent, Blocking, PushChange, PopChange, Numa, Prior, PERCENT_F, PERCENT_LF, PERCENT_E, REFREASH_SIZE, PERCENT_S, RESUME_SIZE> type;
   };
 
   //! Push a value onto the queue.
@@ -774,14 +775,87 @@ public:
     adaptLock.unlock();
   }
 
-  inline void reportStat(size_t s, size_t f, size_t e) {
+  // TODO: do i need to count local failure/success?
+  void reportPush(size_t s, size_t f) {
+    static thread_local size_t curNQ = 1;
+    static thread_local size_t windowS = 0;
+    static thread_local size_t windowF = 0;
+    static thread_local size_t reportId = 0;
+
+    auto realNQ = getNQ();
+    if (curNQ != realNQ || reportId >= REFREASH_SIZE) {
+      curNQ = realNQ;
+      windowF = 0;
+      windowS = 0;
+      reportId = 0;
+    }
+    reportId++;
+    windowS += s;
+    windowF += f;
+    // f / (s + f) >= percent / 100
+    // 100 * f >= percent (s + f)
+    // TODO: is segment size needed?
+    if (100 * windowF >= PERCENT_S * (windowS + windowF)) {
+      // the percent of failures is huge enough
+      addQueue(curNQ);
+    }
+  }
+
+  static const size_t LOCAL_POPPED = 0;
+  static const size_t LOCAL_CHANGED = 1;
+  static const size_t LOCAL_FAILED = 2;
+
+  void reportPop(size_t s, size_t f, size_t e, size_t localStatus) {
+    static thread_local size_t curNQ = 1;
+    static thread_local size_t windowS = 0;
+    static thread_local size_t windowF = 0;
+    static thread_local size_t windowE = 0;
+    static thread_local size_t windowLS = 0;
+    static thread_local size_t windowLF = 0;
+    static thread_local size_t reportId = 0;
+
+    auto realNQ = getNQ();
+    if (curNQ != realNQ || reportId >= REFREASH_SIZE) {
+      curNQ = realNQ;
+      windowF = 0;
+      windowLF = 0;
+      windowS = 0;
+      windowLS = 0;
+      windowE = 0;
+      reportId = 0;
+    }
+    reportId++;
+    windowF += f;
+    windowS += s;
+    windowE += e;
+    if (localStatus == LOCAL_FAILED) {
+      windowLF++;
+    } else if (localStatus == LOCAL_POPPED) {
+      windowLS++;
+    } else if (localStatus == LOCAL_CHANGED) {
+      // ???
+      // :shrug:
+    }
+    auto emptyNum = get_empty_queues();
+    // emptyNum / curNQ >= E / 100
+    if (emptyNum * 100 >= PERCENT_E * curNQ) {
+      deleteQueue(curNQ);
+      // localFailure / (LF + LS) >= F / 100
+    } else if ((windowLF > 0 && windowLF * 100 >= PERCENT_LF * (windowLF * windowLS)) ||
+                windowF * 100 >= PERCENT_F * (windowF + windowS)) {
+      addQueue(curNQ);
+    }
+  }
+
+
+
+  inline void reportStat(size_t s, size_t f, size_t e, size_t flb, size_t ls) {
     *reportNum += 1;
     static thread_local size_t curQ = 0;
 
     if constexpr (AMQ_DEBUG) {
       // pop is here
       static thread_local size_t tId = Galois::Runtime::LL::getTID();
-
       debugInfo[successNumDebugPop][tId].push_back(s);
       debugInfo[failedNumDebugPop][tId].push_back(f);
       debugInfo[emptyNumDebugPop][tId].push_back(e);
@@ -789,7 +863,7 @@ public:
     }
 
 
-    static const size_t segmentSize = SEGMENT_SIZE;
+    static const size_t segmentSize = REFREASH_SIZE;
     static thread_local size_t statInd = 0;
     static thread_local int64_t windowSumF = 0;
     static thread_local int64_t windowSumS = 0;
@@ -809,11 +883,11 @@ public:
 
     statInd++;
     if (statInd >= segmentSize) {
-      const int64_t addSum = windowSumF * F;
-      const int64_t deleteSum = windowSumE * E + windowSumS * S;
+      const int64_t addSum = windowSumF * PERCENT_LF;
+      const int64_t deleteSum = windowSumE * PERCENT_E + windowSumS * PERCENT_F;
       const double allsum = addSum + deleteSum;
 
-      static const double percent = PERCENT / 100.0;
+      static const double percent = PERCENT_S / 100.0;
       if (windowSumF >= segmentSize && addSum / allsum > percent) {
         addQueue(curQ);
       } else if ((windowSumS + windowSumF) >= segmentSize && deleteSum / allsum > percent) {
@@ -855,12 +929,11 @@ public:
     int npush = 0;
     Heap* heap = nullptr;
     int total = std::distance(b, e);
-    size_t qToLock = local_q;
+    size_t qToLock = local_q < getNQ() ? local_q : rand_heap();
 
     // Statistics
     size_t failure = 0;
     size_t success = 0;
-    size_t empty   = 0; // empty doesn't matter in push
 
     size_t maxSize = 0;
     size_t minSize = SIZE_MAX;
@@ -886,10 +959,10 @@ public:
         }
       }
       success++;
-      if constexpr (Blocking) {
-        if (heap->heap.empty())
-          empty_queues.fetch_sub(1, std::memory_order_acq_rel);
-      }
+//      if constexpr (Blocking) {
+      if (heap->heap.empty())
+        empty_queues.fetch_sub(1, std::memory_order_acq_rel);
+//      }
 
       maxSize = std::max(maxSize, heap->heap.size());
       minSize = std::min(minSize, heap->heap.size());
@@ -925,7 +998,8 @@ public:
       debugInfo[successNumDebugPush][tId].push_back(success);
       debugInfo[failedNumDebugPush][tId].push_back(failure);
     }
-    reportStat(success, failure, empty);
+//    reportStat(success, failure, empty, failed_local_busy, local_success);
+    reportPush(success, failure);
     return npush;
   }
 
@@ -964,6 +1038,8 @@ public:
     Prior i_min = 0;
     Prior j_min = 0;
 
+    size_t localStatus = 0;
+
     Galois::optional<value_type> result;
 
     size_t change = random() % PopChange::Q;
@@ -971,9 +1047,12 @@ public:
       heap_i = &heaps[local_q].data;
       if (heap_i->try_lock()) {
         if (!heap_i->heap.empty()) {
-          return extract_min(heap_i, 1, 0, 0);
+          return extract_min(heap_i, 1, 0, 0, LOCAL_POPPED);
         }
+        localStatus = LOCAL_CHANGED;
         heap_i->unlock();
+      } else {
+        localStatus = LOCAL_FAILED;
       }
     }
 
@@ -1040,7 +1119,8 @@ public:
           if (blocking_iters < BLOCKING_ITERS_LIMIT)
             blocking_iters *= 2;
         }
-        reportStat(success, failure, empty);
+        // TODO when blocking
+        reportPop(success, failure, empty, localStatus);
       } while (Blocking && get_empty_queues() != getNQ());
 
       if constexpr (Blocking) {

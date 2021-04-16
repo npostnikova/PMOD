@@ -125,7 +125,7 @@ Prob<1, 1> oneProb;
  * @tparam PERCENT_F weight for success event
  * @tparam PERCENT_LF weight for failure event
  * @tparam PERCENT_E weight for empty event
- * @tparam REFREASH_SIZE number of reported events needed for adaptivity changes
+ * @tparam REFRESH_SIZE number of reported events needed for adaptivity changes
  * @tparam PERCENT_S proportion of events to make the decision on adaptivity changes
  * @tparam RESUME_SIZE number of elements in the queue which signal resume is needed
  */
@@ -143,9 +143,9 @@ typename Prior = unsigned long,
 size_t PERCENT_F = 1, // todo
 size_t PERCENT_LF = 1,
 size_t PERCENT_E = 1,
-size_t REFREASH_SIZE = 32,
+size_t REFRESH_SIZE = 32,
 size_t PERCENT_S = 90,
-size_t RESUME_SIZE = REFREASH_SIZE
+size_t RESUME_SIZE = REFRESH_SIZE
 >
 class AdaptiveMultiQueue {
 private:
@@ -578,7 +578,7 @@ public:
           "wantedToAdd,reportNum,minQ,maxQ,suspendedNum,resumedNum" << std::endl;
     }
     out << nT << "," << PushChange::Q << "," << PopChange::Q << "," << PERCENT_F << "," << PERCENT_LF << ","
-        << PERCENT_E << "," << REFREASH_SIZE << "," << PERCENT_S << "," << RESUME_SIZE;
+        << PERCENT_E << "," << REFRESH_SIZE << "," << PERCENT_S << "," << RESUME_SIZE;
     deleteStatistic(deletedQ, out);
     deleteStatistic(addedQ, out);
     deleteStatistic(wantedToDelete, out);
@@ -632,13 +632,13 @@ public:
   //! Change the concurrency flag.
   template<bool _concurrent>
   struct rethread {
-    typedef AdaptiveMultiQueue<T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, _concurrent, Blocking, PushChange, PopChange, Numa, Prior, PERCENT_F, PERCENT_LF, PERCENT_E, REFREASH_SIZE, PERCENT_S, RESUME_SIZE> type;
+    typedef AdaptiveMultiQueue<T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, _concurrent, Blocking, PushChange, PopChange, Numa, Prior, PERCENT_F, PERCENT_LF, PERCENT_E, REFRESH_SIZE, PERCENT_S, RESUME_SIZE> type;
   };
 
   //! Change the type the worklist holds.
   template<typename _T>
   struct retype {
-    typedef AdaptiveMultiQueue<_T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, Concurrent, Blocking, PushChange, PopChange, Numa, Prior, PERCENT_F, PERCENT_LF, PERCENT_E, REFREASH_SIZE, PERCENT_S, RESUME_SIZE> type;
+    typedef AdaptiveMultiQueue<_T, Comparer, C, DecreaseKey, DecreaseKeyIndexer, Concurrent, Blocking, PushChange, PopChange, Numa, Prior, PERCENT_F, PERCENT_LF, PERCENT_E, REFRESH_SIZE, PERCENT_S, RESUME_SIZE> type;
   };
 
   //! Push a value onto the queue.
@@ -783,7 +783,7 @@ public:
     static thread_local size_t reportId = 0;
 
     auto realNQ = getNQ();
-    if (curNQ != realNQ || reportId >= REFREASH_SIZE) {
+    if (curNQ != realNQ) {
       curNQ = realNQ;
       windowF = 0;
       windowS = 0;
@@ -792,12 +792,17 @@ public:
     reportId++;
     windowS += s;
     windowF += f;
-    // f / (s + f) >= percent / 100
-    // 100 * f >= percent (s + f)
-    // TODO: is segment size needed?
-    if (100 * windowF >= PERCENT_S * (windowS + windowF)) {
-      // the percent of failures is huge enough
-      addQueue(curNQ);
+    if (reportId >= REFRESH_SIZE) {
+      // f / (s + f) >= percent / 100
+      // 100 * f >= percent (s + f)
+      // TODO: is segment size needed?
+      if (100 * windowF >= PERCENT_S * (windowS + windowF)) {
+        // the percent of failures is huge enough
+        addQueue(curNQ);
+      }
+      windowF = 0;
+      windowS = 0;
+      reportId = 0;
     }
   }
 
@@ -815,7 +820,7 @@ public:
     static thread_local size_t reportId = 0;
 
     auto realNQ = getNQ();
-    if (curNQ != realNQ || reportId >= REFREASH_SIZE) {
+    if (curNQ != realNQ || reportId >= REFRESH_SIZE) {
       curNQ = realNQ;
       windowF = 0;
       windowLF = 0;
@@ -828,22 +833,30 @@ public:
     windowF += f;
     windowS += s;
     windowE += e;
-    if (localStatus == LOCAL_FAILED) {
-      windowLF++;
-    } else if (localStatus == LOCAL_POPPED) {
-      windowLS++;
-    } else if (localStatus == LOCAL_CHANGED) {
-      // ???
-      // :shrug:
-    }
-    auto emptyNum = get_empty_queues();
-    // emptyNum / curNQ >= E / 100
-    if (emptyNum * 100 >= PERCENT_E * curNQ) {
-      deleteQueue(curNQ);
-      // localFailure / (LF + LS) >= F / 100
-    } else if ((windowLF > 0 && windowLF * 100 >= PERCENT_LF * (windowLF * windowLS)) ||
-                windowF * 100 >= PERCENT_F * (windowF + windowS)) {
-      addQueue(curNQ);
+    if (reportId >= REFRESH_SIZE) {
+      if (localStatus == LOCAL_FAILED) {
+        windowLF++;
+      } else if (localStatus == LOCAL_POPPED) {
+        windowLS++;
+      } else if (localStatus == LOCAL_CHANGED) {
+        // ???
+        // :shrug:
+      }
+      auto emptyNum = get_empty_queues();
+      // emptyNum / curNQ >= E / 100
+      if (emptyNum * 100 >= PERCENT_E * curNQ) {
+        deleteQueue(curNQ);
+        // localFailure / (LF + LS) >= F / 100
+      } else if ((windowLF > 0 && windowLF * 100 >= PERCENT_LF * (windowLF * windowLS)) ||
+                 windowF * 100 >= PERCENT_F * (windowF + windowS)) {
+        addQueue(curNQ);
+      }
+      windowF = 0;
+      windowLF = 0;
+      windowS = 0;
+      windowLS = 0;
+      windowE = 0;
+      reportId = 0;
     }
   }
 
@@ -863,7 +876,7 @@ public:
     }
 
 
-    static const size_t segmentSize = REFREASH_SIZE;
+    static const size_t segmentSize = REFRESH_SIZE;
     static thread_local size_t statInd = 0;
     static thread_local int64_t windowSumF = 0;
     static thread_local int64_t windowSumS = 0;
@@ -1108,7 +1121,7 @@ public:
 
           if (!heap_i->heap.empty()) {
             local_q = i_ind;
-            return extract_min(heap_i, success, failure, empty);
+            return extract_min(heap_i, success, failure, empty, localStatus);
           } else {
             empty++;
             heap_i->unlock();

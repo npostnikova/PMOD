@@ -1,5 +1,6 @@
 import sys
 import csv
+import argparse
 from pathlib import Path
 
 from evol_minimization.unknown_amq_params import unknown_params
@@ -21,6 +22,8 @@ params_map = {x.name: x for x in unknown_params}
 
 
 def read_param_sets(path="next_generation.csv"):
+    if path is None:
+        path = "next_generation.csv"
     params = []
     if not Path(path).exists():
         return params
@@ -93,15 +96,23 @@ def generate_amqs(params,
     script.close()
 
 
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-g', '--graph',
+                        help='Supported graph types: road, web', default=None)
+    parser.add_argument('-a', '--algo',
+                        help='Supported algorithms: bfs', default=None)
+    parser.add_argument('-o', '--output',
+                        help='Output path', default=None)
+    parser.add_argument('-n', '--runs',
+                        help='Runs number', default=3)
+    parser.add_argument('--next',
+                        help='Next generation path', default=None)
+
+    args = parser.parse_args()
+    params = read_param_sets(args.next)
+    generate_amqs(params, args.algo, args.graph, Path(args.output), args.runs)
+
+
 if __name__ == "__main__":
-    if len(sys.argv) < 4:
-        print("Provide the number of algo, graph type and the output file path")
-        print("Supported algos: bfs")
-        print("Supported graph types: road, web")
-        exit()
-    algo = sys.argv[1]
-    graph_type = sys.argv[2]
-    output_path = sys.argv[3]
-    runs_number = 3 if len(sys.argv) == 4 else int(sys.argv[4])
-    params = read_param_sets()
-    generate_amqs(params, algo, graph_type, Path(output_path), runs_number)
+    main()

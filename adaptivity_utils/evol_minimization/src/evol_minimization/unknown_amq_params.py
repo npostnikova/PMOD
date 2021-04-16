@@ -15,12 +15,12 @@ class Param:
 
 # List of parameters, which are considered for minimization.
 unknown_params = (
-    Param("pushQ",        1,  10, lambda x: 2 ** x),
-    Param("popQ",         1,  10, lambda x: 2 ** x),
-    Param("s",            1,  10, lambda x:      x),
-    Param("f",            1,  10, lambda x:      x),
-    Param("e",            1,  10, lambda x:      x),
-    Param("segment_size", 1,  10, lambda x: 2 ** x),
-    Param("percent",      12, 20, lambda x:  x * 5),
-    Param("resume_size",  1,  10, lambda x: 2 ** x)
+    Param("pushQ",         1,  10, lambda x: 2 ** x),
+    Param("popQ",          1,  10, lambda x: 2 ** x),
+    Param("percent_f",     5,  19, lambda x:  x * 5),
+    Param("percent_lf",    5,  19, lambda x:  x * 5),
+    Param("percent_e",     2,  19, lambda x:  x * 5),
+    Param("refresh_size",  1,  10, lambda x: 2 ** x),
+    Param("percent_push",  5,  19, lambda x:  x * 5),
+    Param("resume_size",   1,  10, lambda x: 2 ** x)
 )

@@ -57,16 +57,16 @@ def generate_amqs(params,
                 "false",  # Decrease key todo: deprecated
                 "void",  # Decrease key indexer todo: deprecated
                 "true",  # Concurrent
-                "true",  # Blocking
+                "false",  # Blocking
                 f"Prob<1, {real_param_val(param, 'pushQ')}>",  # Push probability
                 f"Prob<1, {real_param_val(param, 'popQ')}>",  # Pop probability
                 "Prob<1, 1>",  # NUMA todo: ignored
                 "unsigned long",  # Priority type
-                str(real_param_val(param, 's')),
-                str(real_param_val(param, 'f')),
-                str(real_param_val(param, 'e')),
-                str(real_param_val(param, 'segment_size')),
-                str(real_param_val(param, 'percent')),
+                str(real_param_val(param, 'percent_f')),
+                str(real_param_val(param, 'percent_lf')),
+                str(real_param_val(param, 'percent_e')),
+                str(real_param_val(param, 'refresh_size')),
+                str(real_param_val(param, 'percent_push')),
                 str(real_param_val(param, 'resume_size'))
             ]
             header.write(

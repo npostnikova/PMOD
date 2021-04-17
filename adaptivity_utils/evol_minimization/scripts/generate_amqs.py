@@ -44,50 +44,71 @@ def generate_amqs(params,
                   graph_type="road",
                   output_path=Path(),
                   runs_number=3):
+    algo_to_element = {
+        "bfs": "WorkItem",
+        "sssp": "UpdateRequest"
+    }
     header = open(output_path / "ApproximationAMQ.h", "w")
     script = open(output_path / f"optimization_run_{algo}_{graph_type}.sh", "w")
     for param in params:
         suff = "_".join([str(v) for v in param.values()])
         print(suff)  # todo remove
+        amq_params = [
+            algo_to_element[algo],  # Type of the task
+            "Comparer",  # Tasks comparer
+            "2",  # C
+            "false",  # Decrease key todo: deprecated
+            "void",  # Decrease key indexer todo: deprecated
+            "true",  # Concurrent
+            "false",  # Blocking
+            f"Prob<1, {real_param_val(param, 'pushQ')}>",  # Push probability
+            f"Prob<1, {real_param_val(param, 'popQ')}>",  # Pop probability
+            "Prob<1, 1>",  # NUMA todo: ignored
+            "unsigned long",  # Priority type
+            str(real_param_val(param, 'percent_f')),
+            str(real_param_val(param, 'percent_lf')),
+            str(real_param_val(param, 'percent_e')),
+            str(real_param_val(param, 'refresh_size')),
+            str(real_param_val(param, 'percent_push')),
+            str(real_param_val(param, 'resume_size'))
+        ]
+        header.write(
+            f"typedef AdaptiveMultiQueue<{', '.join(amq_params)}> "
+            f"AMQOPT_{suff};\n"
+        )
+        header.write(f"if (wl == \"amqopt_{suff}\")\n")
         if algo == "bfs":
-            amq_params = [
-                "WorkItem",  # Type of the task
-                "Comparer",  # Tasks comparer
-                "2",  # C
-                "false",  # Decrease key todo: deprecated
-                "void",  # Decrease key indexer todo: deprecated
-                "true",  # Concurrent
-                "false",  # Blocking
-                f"Prob<1, {real_param_val(param, 'pushQ')}>",  # Push probability
-                f"Prob<1, {real_param_val(param, 'popQ')}>",  # Pop probability
-                "Prob<1, 1>",  # NUMA todo: ignored
-                "unsigned long",  # Priority type
-                str(real_param_val(param, 'percent_f')),
-                str(real_param_val(param, 'percent_lf')),
-                str(real_param_val(param, 'percent_e')),
-                str(real_param_val(param, 'refresh_size')),
-                str(real_param_val(param, 'percent_push')),
-                str(real_param_val(param, 'resume_size'))
-            ]
             header.write(
-                f"\ttypedef AdaptiveMultiQueue<{', '.join(amq_params)}> "
-                f"AMQOPT_{suff};\n"
-            )
-            header.write(f"\tif (wl == \"amqopt_{suff}\")\n")
-            header.write(
-                "\t\tGalois::for_each(WorkItem(source, 1), Process(graph), "
+                "\tGalois::for_each(WorkItem(source, 1), Process(graph), "
                 f"Galois::wl<AMQOPT_{suff}>());\n")
             for k in range(runs_number):
-                if graph_type == "road":
+                if graph_type == "ctr":
                     script.write(
                         "/home/ubuntu/PMOD/Galois-2.2.1/build/apps/bfs/bfs "
                         "~/PMOD/datasets/USA-road-dCTR.bin "
                         f"-wl=amqopt_{suff} -t=96 -resultFile=bfs_ctr_96\n")
-                elif graph_type == "web":
+                elif graph_type == "lj":
                     script.write(
                         "/home/ubuntu/PMOD/Galois-2.2.1/build/apps/bfs/bfs "
                         "~/PMOD/datasets/soc-LiveJournal1.bin "
                         f"-wl=amqopt_{suff} -t=96 -resultFile=bfs_lj_96\n")
+                else:
+                    raise UnsupportedGraphType(graph_type)
+        elif algo == "sssp":
+            header.write(
+                "\tGalois::for_each_local(initial, Process(this, graph), "
+                f"Galois::wl<AMQOPT_{suff}>());\n")
+            for k in range(runs_number):
+                if graph_type == "ctr":
+                    script.write(
+                        f"/home/ubuntu/PMOD/Galois-2.2.1/build/apps/{algo}/{algo} "
+                        "~/PMOD/datasets/USA-road-dCTR.bin "
+                        f"-wl=amqopt_{suff} -t=96 -resultFile={algo}_{graph_type}_96\n")
+                elif graph_type == "lj":
+                    script.write(
+                        f"/home/ubuntu/PMOD/Galois-2.2.1/build/apps/{algo}/{algo} "
+                        "~/PMOD/datasets/soc-LiveJournal1.bin "
+                        f"-wl=amqopt_{suff} -t=96 -resultFile={algo}_{graph_type}_96\n")
                 else:
                     raise UnsupportedGraphType(graph_type)
         else:
@@ -99,9 +120,9 @@ def generate_amqs(params,
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('-g', '--graph',
-                        help='Supported graph types: road, web', default=None)
+                        help='Supported graph types: ctr, lj', default=None)
     parser.add_argument('-a', '--algo',
-                        help='Supported algorithms: bfs', default=None)
+                        help='Supported algorithms: bfs, sssp', default=None)
     parser.add_argument('-o', '--output',
                         help='Output path', default=None)
     parser.add_argument('-n', '--runs',

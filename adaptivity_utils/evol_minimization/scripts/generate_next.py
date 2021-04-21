@@ -55,9 +55,9 @@ def create_random_generation(gen_size=100):
     return list(gen)
 
 
-def build_next_generation(gen_size=None):
+def build_next_generation(gen_size=None, rand=False):
     ancestors = read_prev_generation()
-    if len(ancestors) == 0:
+    if len(ancestors) == 0 or rand:
         gen = create_random_generation(gen_size)
     else:
         tabu = read_all_individuals()
@@ -70,5 +70,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--gen_size', type=int,
                         help='Size of the generation', default=None)
+    parser.add_argument('-r', '--rand', action='store_true')
     args = parser.parse_args()
-    build_next_generation(args.gen_size)
+    build_next_generation(args.gen_size, args.rand)

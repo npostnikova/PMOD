@@ -160,6 +160,10 @@ private:
 //  const int nQ;
   std::atomic<int> nQ = {0}; // todo atomic for adaptive!!!
 
+
+  std::unique_ptr<Runtime::LL::CacheLineStorage<std::vector<value_t>>[]> popLocal;
+  // std::atomic<int> nQ = {0}; todo atomic for adaptive!!!
+  //size_t nQ; // todo
   //! Maximum element of type `T`.
   // T maxT;
   //! The number of queues is changed under the mutex.
@@ -261,10 +265,19 @@ private:
                                         size_t localStat, size_t curNQ, size_t tId, size_t avgSize, size_t sizeN) {
     auto result = getMin(heap);
 
+    std::vector<value_t> & popped_v = popLocal[tId].data;
+    for (size_t i = 0; i < PopChange::Q - 1; i++) {
+      if (!heap->heap.empty()) {
+        popped_v.push_back(getMin(heap));
+      } else break;
+    }
+    maxPop->setMax(popped_v.empty() ? 0 : popped_v.back().prior() - result.prior());
+    std::reverse(popped_v.begin(), popped_v.end());
+
     heap->updateMin();
     heap->updateSize();
     if (heap->heap.empty()) {
-//      empty_queues.fetch_add(1, std::memory_order_acq_rel);
+      empty_queues.fetch_add(1, std::memory_order_acq_rel);
     }
     heap->unlock();
     reportPop(success, failure, empty, localStat, curNQ, tId, avgSize, sizeN);
@@ -465,6 +478,8 @@ public:
   static Galois::Statistic* reportNum;
   static Galois::Statistic* minNumQ;
   static Galois::Statistic* maxNumQ;
+  static Galois::Statistic* maxPush;
+  static Galois::Statistic* maxPop;
   static Galois::Statistic* suspendedNum;
   static Galois::Statistic* resumedNum;
 
@@ -525,7 +540,7 @@ public:
 
 
   AdaptiveMultiQueue() : nT(Galois::getActiveThreads()),
-                         nQ(1), // C * nT/*C > 0 ? C * nT :*/ ),
+                         nQ(192), // C * nT/*C > 0 ? C * nT :*/ ),
                          suspend_array(std::make_unique<CondNode[]>(nT * CondC)),
                          maxQNum(C * nT * 4),
                          debugInfo(mockLast, std::vector<std::vector<int>>(nT, std::vector<int>()))
@@ -535,6 +550,8 @@ public:
 
     heaps = std::make_unique<Runtime::LL::CacheLineStorage<Heap>[]>(C * nT * 4);
     threadLocalStats = std::make_unique<Runtime::LL::CacheLineStorage<std::array<size_t, NUM>>[]>(nT);
+
+    popLocal = std::make_unique<Runtime::LL::CacheLineStorage<std::vector<value_t >>[]>(nT);
 
     for (size_t i = 0; i < nT; i++) {
       threadLocalStats[i].data.fill(0);
@@ -558,6 +575,8 @@ public:
     initStatistic(maxNumQ, "maxNumQ");
     initStatistic(suspendedNum, "suspendedNum");
     initStatistic(resumedNum, "resumedNum");
+    initStatistic(maxPush, "maxPush");
+    initStatistic(maxPop, "maxPop");
     *maxNumQ = getNQ();
     *minNumQ = getNQ();
   }
@@ -627,6 +646,8 @@ public:
     deleteStatistic(maxNumQ, out);
     deleteStatistic(suspendedNum, out);
     deleteStatistic(resumedNum, out);
+    deleteStatistic(maxPush, out);
+    deleteStatistic(maxPop, out);
     out << std::endl;
     out.close();
 
@@ -827,7 +848,7 @@ public:
   // TODO: do i need to count local failure/success?
   void reportPush(size_t s, size_t f, size_t curNQ, size_t tId, size_t avgSize) {
 //    if (tId != 0) return;
-//    return;
+    return;
 //    static thread_local size_t tId = Galois::Runtime::LL::getTID();
     std::array<size_t, NUM>& arr = threadLocalStats[tId].data;
     if (curNQ != arr[curNQPush]) {
@@ -866,7 +887,7 @@ public:
   void reportPop(size_t s, size_t f, size_t e, size_t localStatus, size_t curNQ, size_t tId, size_t avgSize, size_t sizeN) {
 //if (tId != 0) return;
     //    static thread_local size_t tId = Galois::Runtime::LL::getTID();
-//   return;
+   return;
     std::array<size_t, NUM>& arr = threadLocalStats[tId].data;
     if (curNQ != arr[curNQPop]) {
       arr[curNQPop] = curNQ;
@@ -884,23 +905,23 @@ public:
     arr[popIdE] += e;
     arr[popIdENum] += sizeN;
     if (arr[popRepId] == REFRESH_SIZE) {
-      if (localStatus == LOCAL_FAILED) {
-        arr[popIdLF]++;
-      } else if (localStatus == LOCAL_POPPED) {
-        arr[popIdLS]++;
-      } else if (localStatus == LOCAL_CHANGED) {
-        // ???
-        // :shrug:
-      }
+//      if (localStatus == LOCAL_FAILED) {
+//        arr[popIdLF]++;
+//      } else if (localStatus == LOCAL_POPPED) {
+//        arr[popIdLS]++;
+//      } else if (localStatus == LOCAL_CHANGED) {
+//        // ???
+//        // :shrug:
+//      }
 //      auto emptyNum = get_empty_queues();
       // empty / askedNum >= E / 100
       if (arr[popIdE] * 100 >= PERCENT_E * arr[popIdENum]) {
         deleteQueue(curNQ);
         // localFailure / (LF + LS) >= LF / 100
-      } else  if (arr[popIdLF] > 0 && arr[popIdLF] * 100 >= PERCENT_LF * (arr[popIdLF] + arr[popIdLS])) {
-        if (avgSize >= RESUME_SIZE) {
-          if (addQueue(curNQ)) *addedPopLocal += 1;
-        }
+//      } else  if (arr[popIdLF] > 0 && arr[popIdLF] * 100 >= PERCENT_LF * (arr[popIdLF] + arr[popIdLS])) {
+//        if (avgSize >= RESUME_SIZE) {
+//          if (addQueue(curNQ)) *addedPopLocal += 1;
+//        }
       } else if (arr[popIdF] * 100 >= PERCENT_F * (arr[popIdF] + arr[popIdS])) {
 //        size_t sizeSum = 0;
 //        for (size_t i = 0; i < curNQ; i++) {
@@ -1034,7 +1055,7 @@ public:
         if (heap->heap.qInd >= newNQ) {
           // The queue was deleted
           heap->unlock();
-          qToLock = rand_heap();
+          qToLock = rand_heap(newNQ);
           heap = &heaps[qToLock].data;
           continue;
         } else {
@@ -1042,21 +1063,28 @@ public:
         }
       }
       success++;
-      if constexpr (Blocking) {
+//      if constexpr (Blocking) {
         if (heap->heap.empty())
           empty_queues.fetch_sub(1, std::memory_order_acq_rel);
-      }
+//      }
 
       maxSize = std::max(maxSize, heap->heap.size());
       minSize = std::min(minSize, heap->heap.size());
 
+
+      Prior maxP = b->prior();
+      Prior minP = b->prior();
       for (size_t i = 0; i < batchSize; i++) {
+        if (b->prior() > maxP) maxP = b->prior();
+        if (b->prior() < minP) minP = b->prior();
         heap->heap.push(*b++);
         npush++;
         total--;
       }
+      maxPush->setMax(maxP - minP);
       heap->updateMin();
       heap->updateSize();
+
 
 //      sizeSum += heap->getSize();
 //      sizeNum++;
@@ -1113,10 +1141,17 @@ public:
   Galois::optional<value_type> pop() {
     static thread_local size_t tId = Galois::Runtime::LL::getTID();
 
+    std::vector<value_type>& popped_v = popLocal[tId].data;
+    if (!popped_v.empty()) {
+      auto ret = popped_v.back();
+      popped_v.pop_back();
+      return ret;
+    }
+
+
     static const size_t SLEEPING_ATTEMPTS = 8;
     const size_t RANDOM_ATTEMPTS = 4;// nT < 4 ? 1 : 4;
 
-    static thread_local size_t local_q = rand_heap();
 
     Heap* heap_i = nullptr;
     Heap* heap_j = nullptr;
@@ -1125,25 +1160,11 @@ public:
     Prior i_min = 0;
     Prior j_min = 0;
 
-    size_t localStatus = 0;
 
     Galois::optional<value_type> result;
 
     size_t curNQ = getNQ();
 
-    size_t change = random() % PopChange::Q;
-    if (local_q < curNQ && change >= PopChange::P) {
-      heap_i = &heaps[local_q].data;
-      if (heap_i->try_lock()) {
-        if (!heap_i->heap.empty()) {
-          return extract_min(heap_i, 1, 0, 0, LOCAL_POPPED, curNQ, tId, heap_i->getSize(), 1);
-        }
-        localStatus = LOCAL_CHANGED;
-        heap_i->unlock();
-      } else {
-        localStatus = LOCAL_FAILED;
-      }
-    }
 
     size_t failure = 0;
     size_t success = 0;
@@ -1205,8 +1226,7 @@ public:
                 failure = 0;
                 success = 0;
                 empty = 0;
-                localStatus = LOCAL_CHANGED; // TODO to make no effect
-              }
+             }
               if (heap_i->heap.qInd >= newNQ) {
                 // The queue was deleted
                 heap_i->unlock();
@@ -1221,8 +1241,8 @@ public:
           }
 
           if (!heap_i->heap.empty()) {
-            local_q = i_ind;
-            return extract_min(heap_i, success, failure, emptyNum, localStatus, curNQ, tId, sumSize / sizeN, sizeN);
+//            local_q = i_ind;
+            return extract_min(heap_i, success, failure, emptyNum, 0, curNQ, tId, sumSize / sizeN, sizeN);
           } else {
             empty++;
             heap_i->unlock();
@@ -1238,7 +1258,7 @@ public:
 //        active_waiting(64); //blocking_iters);
       } while (Blocking && get_empty_queues() != getNQ());
 
-      reportPop(success, failure, emptyNum, localStatus, curNQ, tId, sumSize / sizeN, sizeN);
+      reportPop(success, failure, emptyNum, 0, curNQ, tId, sumSize / sizeN, sizeN);
       if constexpr (Blocking) {
 //        active_waiting(random() % 128 + 32);
         if (empty_queues == getNQ()) {
@@ -1474,6 +1494,48 @@ Statistic* AdaptiveMultiQueue<T, Comparer, C,
 DecreaseKey, DecreaseKeyIndexer, Concurrent,
 Blocking, PushChange, PopChange, Numa, Prior,
 S, F, E, WINDOW_SIZE, PROB, RESUME_SIZE>::maxNumQ;
+template<typename T,
+typename Comparer,
+size_t C,
+bool DecreaseKey ,
+typename DecreaseKeyIndexer,
+bool Concurrent,
+bool Blocking,
+typename PushChange,
+typename PopChange,
+typename Numa,
+typename Prior,
+size_t S,
+size_t F,
+size_t E,
+size_t WINDOW_SIZE,
+size_t PROB,
+size_t RESUME_SIZE>
+Statistic* AdaptiveMultiQueue<T, Comparer, C,
+DecreaseKey, DecreaseKeyIndexer, Concurrent,
+Blocking, PushChange, PopChange, Numa, Prior,
+S, F, E, WINDOW_SIZE, PROB, RESUME_SIZE>::maxPush;
+template<typename T,
+typename Comparer,
+size_t C,
+bool DecreaseKey ,
+typename DecreaseKeyIndexer,
+bool Concurrent,
+bool Blocking,
+typename PushChange,
+typename PopChange,
+typename Numa,
+typename Prior,
+size_t S,
+size_t F,
+size_t E,
+size_t WINDOW_SIZE,
+size_t PROB,
+size_t RESUME_SIZE>
+Statistic* AdaptiveMultiQueue<T, Comparer, C,
+DecreaseKey, DecreaseKeyIndexer, Concurrent,
+Blocking, PushChange, PopChange, Numa, Prior,
+S, F, E, WINDOW_SIZE, PROB, RESUME_SIZE>::maxPop;
 
 template<typename T,
 typename Comparer,

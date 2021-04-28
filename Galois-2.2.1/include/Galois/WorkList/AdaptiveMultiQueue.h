@@ -266,16 +266,20 @@ private:
     auto result = getMin(heap);
 
     std::vector<value_t> & popped_v = popLocal[tId].data;
-    for (size_t i = 0; i < PopChange::Q - 1; i++) {
-      if (!heap->heap.empty()) {
+    Prior curDelta = threadLocalStats[tId].data[priorityDelta];
+    Prior rrr = result.prior() + (1ul << (curDelta + PERCENT_LF)); //(1ul << (curDelta /*+ PopChange::Q*/));
+    while (!heap->heap.empty() &&  rrr >= heap->heap.min().prior() && popped_v.size() <= PopChange::Q) {
+//    for (size_t i = 0; i < PopChange::Q - 1; i++) {
+//      if (!heap->heap.empty()) {
         popped_v.push_back(getMin(heap));
-      } else break;
+//      } else break;
     }
+//    if (!popped_v.empty() && result.prior() > popped_v.back().prior()) maxPop->setMax(result.prior() - popped_v.back().prior());
     maxPop->setMax(popped_v.empty() ? 0 : popped_v.back().prior() - result.prior());
     std::reverse(popped_v.begin(), popped_v.end());
 
     heap->updateMin();
-    heap->updateSize();
+//    heap->updateSize();
     if (heap->heap.empty()) {
       empty_queues.fetch_add(1, std::memory_order_acq_rel);
     }
@@ -532,15 +536,17 @@ public:
 
   static const size_t curNQPop = popIdLS + 1;
   static const size_t popRepId = curNQPop + 1;
-  static const size_t NUM = 12;
+
+  static const size_t priorityDelta = popRepId + 1;
+  static const size_t NUM = 14;
 
 
-  std::unique_ptr<Runtime::LL::CacheLineStorage<std::array<size_t, NUM>>[]> threadLocalStats;
+  std::unique_ptr<Runtime::LL::CacheLineStorage<std::array<unsigned long, NUM>>[]> threadLocalStats;
 
 
 
   AdaptiveMultiQueue() : nT(Galois::getActiveThreads()),
-                         nQ(192), // C * nT/*C > 0 ? C * nT :*/ ),
+                         nQ(1), // C * nT/*C > 0 ? C * nT :*/ ),
                          suspend_array(std::make_unique<CondNode[]>(nT * CondC)),
                          maxQNum(C * nT * 4),
                          debugInfo(mockLast, std::vector<std::vector<int>>(nT, std::vector<int>()))
@@ -579,6 +585,8 @@ public:
     initStatistic(maxPop, "maxPop");
     *maxNumQ = getNQ();
     *minNumQ = getNQ();
+    *maxPop = 0;
+    *maxPush = 0;
   }
 
   void deleteStatistic(Galois::Statistic*& st, std::ofstream& out) {
@@ -713,7 +721,7 @@ public:
 
     heap->heap.push(val);
     heap->min.store(heap->heap.min().prior(), std::memory_order_release);
-    heap->updateSize();
+//    heap->updateSize();
     heap->unlock();
   }
 
@@ -769,10 +777,10 @@ public:
 //    removeH->size.store(0, std::memory_order_release);
 
     const size_t newSize = mergeH->heap.size();
-    mergeH->updateSize();
+//    mergeH->updateSize();
     mergeH->updateMin();
 
-    removeH->updateSize();
+//    removeH->updateSize();
     removeH->updateMin();
 
     if (wasEmptyRemove) empty_queues.fetch_sub(1, std::memory_order_acq_rel);
@@ -827,10 +835,10 @@ public:
     }
     maxNumQ->setMax(curNQ + 1);
 
-    elemsH->updateSize();
+//    elemsH->updateSize();
     elemsH->updateMin();
 
-    addH->updateSize();
+//    addH->updateSize();
     addH->updateMin();
 
 
@@ -846,9 +854,9 @@ public:
   }
 
   // TODO: do i need to count local failure/success?
-  void reportPush(size_t s, size_t f, size_t curNQ, size_t tId, size_t avgSize) {
+  void reportPush(size_t s, size_t f, size_t curNQ, size_t tId, size_t emptyNum, size_t sizeNum) {
 //    if (tId != 0) return;
-    return;
+//    return;
 //    static thread_local size_t tId = Galois::Runtime::LL::getTID();
     std::array<size_t, NUM>& arr = threadLocalStats[tId].data;
     if (curNQ != arr[curNQPush]) {
@@ -856,14 +864,26 @@ public:
       arr[pushIdF] = 0;
       arr[pushIdS] = 0;
       arr[pushRepId] = 0;
+//      arr[popIdE] = 0;
+//      arr[popIdENum] = 0;
     }
     arr[pushRepId]++;
     arr[pushIdS] += s;
     arr[pushIdF] += f;
+//    arr[popIdE] += emptyNum;
+//    arr[popIdENum] += sizeNum;
     if (arr[pushRepId] == REFRESH_SIZE) {
       // f / (s + f) >= percent / 100
       // 100 * f >= percent (s + f)
       // TODO: is segment size needed?
+//      if (arr[popIdE] * 100 >= PERCENT_E * arr[popIdENum]) {
+//        deleteQueue(curNQ);
+//        // localFailure / (LF + LS) >= LF / 100
+////      } else  if (arr[popIdLF] > 0 && arr[popIdLF] * 100 >= PERCENT_LF * (arr[popIdLF] + arr[popIdLS])) {
+////        if (avgSize >= RESUME_SIZE) {
+////          if (addQueue(curNQ)) *addedPopLocal += 1;
+////        }
+//      } else
       if (100 * arr[pushIdF] >= PERCENT_S * (arr[pushIdF] + arr[pushIdS])) {
 //        size_t sizeSum = 0;
 //        for (size_t i = 0; i < curNQ; i++) {
@@ -875,6 +895,8 @@ public:
 //        }
       }
       arr[pushIdF] = 0;
+//      arr[popIdE] = 0;
+//      arr[popIdENum] = 0;
       arr[pushIdS] = 0;
       arr[pushRepId] = 0;
     }
@@ -887,7 +909,7 @@ public:
   void reportPop(size_t s, size_t f, size_t e, size_t localStatus, size_t curNQ, size_t tId, size_t avgSize, size_t sizeN) {
 //if (tId != 0) return;
     //    static thread_local size_t tId = Galois::Runtime::LL::getTID();
-   return;
+//   return;
     std::array<size_t, NUM>& arr = threadLocalStats[tId].data;
     if (curNQ != arr[curNQPop]) {
       arr[curNQPop] = curNQ;
@@ -1005,6 +1027,16 @@ public:
     return limit;
   }
 
+  int closestPower(size_t number) {
+    if (number <= 1) return 0;
+    size_t power = 1;
+    while (number > 0) {
+      power++;
+      number >>= 1;
+    }
+    return power;
+  }
+
   //! Push a range onto the queue.
   template<typename Iter>
   unsigned int push(Iter b, Iter e) {
@@ -1023,12 +1055,15 @@ public:
     size_t curNQ = getNQ();
     int npush = 0;
     Heap* heap = nullptr;
-    int total = std::distance(b, e);
+    size_t total = std::distance(b, e);
     size_t qToLock = local_q < curNQ ? local_q : rand_heap(curNQ);
 
     // Statistics
     size_t failure = 0;
     size_t success = 0;
+
+    size_t emptyNum = 0;
+    size_t totalNum = 0;
 
     size_t maxSize = 0;
     size_t minSize = SIZE_MAX;
@@ -1037,7 +1072,7 @@ public:
     size_t sizeNum = 0;
 
     while (b != e) {
-      auto batchSize = numToPush(total);
+      auto batchSize = std::min(total, PushChange::Q); //numToPush(total);
       heap = &heaps[qToLock].data;
 
       while (true) {
@@ -1064,8 +1099,10 @@ public:
       }
       success++;
 //      if constexpr (Blocking) {
-        if (heap->heap.empty())
+        if (heap->heap.empty()) {
+         emptyNum++;
           empty_queues.fetch_sub(1, std::memory_order_acq_rel);
+        }
 //      }
 
       maxSize = std::max(maxSize, heap->heap.size());
@@ -1074,6 +1111,9 @@ public:
 
       Prior maxP = b->prior();
       Prior minP = b->prior();
+
+      sizeSum += heap->heap.size(); //getSize();
+      sizeNum++;
       for (size_t i = 0; i < batchSize; i++) {
         if (b->prior() > maxP) maxP = b->prior();
         if (b->prior() < minP) minP = b->prior();
@@ -1082,12 +1122,19 @@ public:
         total--;
       }
       maxPush->setMax(maxP - minP);
+      auto diff = closestPower(maxP - minP);
+      auto& curDelta = threadLocalStats[tId].data[priorityDelta];
+      curDelta = diff;
+//      if (std::abs(diff - (int)curDelta) >= 1) {
+//        if (diff > curDelta) {
+//          curDelta++;
+//        } else {
+//          curDelta--;
+//        }
+//      }
       heap->updateMin();
-      heap->updateSize();
+//      heap->updateSize();
 
-
-//      sizeSum += heap->getSize();
-//      sizeNum++;
 
       heap->unlock();
       if (total > 0) {
@@ -1114,7 +1161,7 @@ public:
       debugInfo[failedNumDebugPush][tId].push_back(failure);
     }
 //    reportStat(success, failure, empty, failed_local_busy, local_success);
-    reportPush(success, failure, curNQ, tId, sizeSum/ sizeNum);
+    reportPush(success, failure, curNQ, tId, emptyNum,  sizeNum);
     return npush;
   }
 
@@ -1192,6 +1239,14 @@ public:
 
             if (i_ind == j_ind && curNQ > 1)
               continue;
+
+            i_min = heap_i->getMin();
+            j_min = heap_j->getMin();
+            if (isFirstLess(j_min, i_min)) {
+              std::swap(i_ind, j_ind);
+              std::swap(i_min, j_min);
+              std::swap(heap_i, heap_j);
+            }
             sizeN += 2;
             size_t size1 = heap_i->getSize();
             size_t size2 = heap_j->getSize();
@@ -1204,19 +1259,15 @@ public:
               emptyNum++;
             }
 
-            i_min = heap_i->getMin();
-            j_min = heap_j->getMin();
-            if (isFirstLess(j_min, i_min)) {
-              std::swap(i_ind, j_ind);
-              std::swap(i_min, j_min);
-              std::swap(heap_i, heap_j);
-            }
-
 //            if (i_ind != j_ind && Heap::isUsedMin(j_min)) {
 //              empty++;
 //            }
-            if (Heap::isUsedMin(i_min)) {
-//              empty++;
+//            sizeN += 2;
+//            if (Heap::isUsedMin(j_min)) {
+//              emptyNum++;
+//            }
+            if (size1 == 0/*Heap::isUsedMin(i_min)*/) {
+//              emptyNum++;
               break;
             }
             if (heap_i->try_lock()) {
@@ -1242,7 +1293,7 @@ public:
 
           if (!heap_i->heap.empty()) {
 //            local_q = i_ind;
-            return extract_min(heap_i, success, failure, emptyNum, 0, curNQ, tId, sumSize / sizeN, sizeN);
+            return extract_min(heap_i, success, failure, emptyNum, 0, curNQ, tId, sumSize/ sizeN, sizeN);
           } else {
             empty++;
             heap_i->unlock();
@@ -1258,7 +1309,7 @@ public:
 //        active_waiting(64); //blocking_iters);
       } while (Blocking && get_empty_queues() != getNQ());
 
-      reportPop(success, failure, emptyNum, 0, curNQ, tId, sumSize / sizeN, sizeN);
+      reportPop(success, failure, emptyNum, 0, curNQ, tId, 0, sizeN);
       if constexpr (Blocking) {
 //        active_waiting(random() % 128 + 32);
         if (empty_queues == getNQ()) {

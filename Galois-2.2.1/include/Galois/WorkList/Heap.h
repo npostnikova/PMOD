@@ -115,7 +115,8 @@ struct DAryHeap {
 
   void build() {
     // D * index + 1 is the first child
-    for (size_t i = 0; is_valid_index(D * i + 1); i++) {
+    if (heap.empty()) return;
+    for (int i = heap.size() - 1; i >= 0; i--) {
       sift_down(i);
     }
   }

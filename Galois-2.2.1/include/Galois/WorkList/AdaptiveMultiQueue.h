@@ -160,6 +160,7 @@ private:
 //  const int nQ;
   std::atomic<int> nQ = {0}; // todo atomic for adaptive!!!
 
+  std::unique_ptr<Runtime::LL::CacheLineStorage<std::vector<value_t>>[]> pushLocal;
 
   std::unique_ptr<Runtime::LL::CacheLineStorage<std::vector<value_t>>[]> popLocal;
   // std::atomic<int> nQ = {0}; todo atomic for adaptive!!!
@@ -552,6 +553,7 @@ public:
     threadLocalStats = std::make_unique<Runtime::LL::CacheLineStorage<std::array<size_t, NUM>>[]>(nT);
 
     popLocal = std::make_unique<Runtime::LL::CacheLineStorage<std::vector<value_t >>[]>(nT);
+    pushLocal = std::make_unique<Runtime::LL::CacheLineStorage<std::vector<value_t >>[]>(nT);
 
     for (size_t i = 0; i < nT; i++) {
       threadLocalStats[i].data.fill(0);
@@ -1006,15 +1008,10 @@ public:
     }
 
     static thread_local size_t tId = Galois::Runtime::LL::getTID();
-    // local queue
-//    static thread_local size_t local_q = rand_heap();  // only one queue in the beginning
-    // todo: for numa is1Node(tId) ? map1Node(random() % (C * node1Cnt())): map2Node(random() % (C * node2Cnt()));
 
     size_t curNQ = getNQ();
     int npush = 0;
     Heap* heap = nullptr;
-    size_t total = std::distance(b, e);
-    size_t qToLock = rand_heap(curNQ);
 
     // Statistics
     size_t failure = 0;
@@ -1026,61 +1023,59 @@ public:
     Prior maxP = b->prior();
     Prior minP = b->prior();
 
-    while (b != e) {
-      auto batchSize = std::min(total, PushChange::Q);
-      heap = &heaps[qToLock].data;
+    auto& localPush = pushLocal[tId].data;
 
-      while (true) {
-        while (!heap->try_lock()) {
-          qToLock = rand_heap(curNQ);
-          heap = &heaps[qToLock].data;
-          failure++;
+    while (b != e) {
+      if (b->prior() > maxP) maxP = b->prior();
+      if (b->prior() < minP) minP = b->prior();
+      localPush.push_back(*b++);
+      npush++;
+      if (localPush.size() >= PushChange::Q) {
+        heap = &heaps[rand_heap(curNQ)].data;
+
+        while (true) {
+          while (!heap->try_lock()) {
+            heap = &heaps[rand_heap(curNQ)].data;
+            failure++;
+          }
+          auto newNQ = getNQ();
+          if (curNQ != newNQ) {
+            failure = 0;
+            success = 0;
+            curNQ = newNQ;
+          }
+          if (heap->heap.qInd >= newNQ) {
+            // The queue was deleted
+            heap->unlock();
+            heap = &heaps[rand_heap(newNQ)].data;
+            continue;
+          } else {
+            break;
+          }
         }
-        auto newNQ = getNQ();
-        if (curNQ != newNQ) {
-          failure = 0;
-          success = 0;
-          curNQ = newNQ;
-        }
-        if (heap->heap.qInd >= newNQ) {
-          // The queue was deleted
-          heap->unlock();
-          qToLock = rand_heap(newNQ);
-          heap = &heaps[qToLock].data;
-          continue;
-        } else {
-          break;
-        }
-      }
-      success++;
+        success++;
 //      if constexpr (Blocking) {
-      if (heap->heap.empty())
-        empty_queues.fetch_sub(1, std::memory_order_acq_rel);
+        if (heap->heap.empty())
+          empty_queues.fetch_sub(1, std::memory_order_acq_rel);
 //      }
 
-      maxSize = std::max(maxSize, heap->heap.size());
-      minSize = std::min(minSize, heap->heap.size());
+        maxSize = std::max(maxSize, heap->heap.size());
+        minSize = std::min(minSize, heap->heap.size());
 
-      for (size_t i = 0; i < batchSize; i++) {
-        if (b->prior() > maxP) maxP = b->prior();
-        if (b->prior() < minP) minP = b->prior();
-        heap->heap.push(*b++);
-        npush++;
-        total--;
-      }
-      heap->updateMin();
-      heap->updateSize();
+        while (!localPush.empty()) {
+          heap->heap.push(localPush.back());
+          localPush.pop_back();
+        }
+        heap->updateMin();
+        heap->updateSize();
 
-      heap->unlock();
-      if (total > 0) {
-        qToLock = rand_heap();
+        heap->unlock();
       }
     }
 //    TODO: NUMA
 //    if (!(is1Node(tId) ^ is1Node(qToLock / C))) {
 //      local_q = qToLock;
 //    }
-
     if constexpr (Blocking) {
       if (maxSize >= RESUME_SIZE) {
         // todo: is there a need to resume more than one?
@@ -1239,6 +1234,19 @@ public:
       } while (Blocking && get_empty_queues() != getNQ());
 
       reportPop(success, failure, emptyNum, curNQ, tId, sumSize / sizeN, sizeN);
+      // TODO: what if use the same strategy as in extract min
+      auto& pushV = pushLocal[tId].data;
+      auto& popV = popLocal[tId].data;
+      if (pushV.empty()) return result;
+      while (!pushV.empty()) {
+        popV.push_back(pushV.back());
+        pushV.pop_back();
+      }
+      std::sort(popV.begin(), popV.end(), [](const T& e1, const T& e2) { return e1.prior() < e2.prior(); });
+      auto res = popV.back();
+      popV.pop_back();
+      return res;
+
       if constexpr (Blocking) {
 //        active_waiting(random() % 128 + 32);
         if (empty_queues == getNQ()) {

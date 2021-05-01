@@ -215,7 +215,6 @@ public:
           break;
       }
       if (!heap_i->heap.empty()) {
-        local_q = i_ind;
         return extract_min(heap_i);
       }
       heap_i->unlock();

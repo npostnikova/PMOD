@@ -140,6 +140,7 @@ private:
     return result;
   }
 
+  //! Checks whether the first priority value is less.
   bool isFirstLess(Prior const& v1, Prior const& v2) {
     if (Heap::isMinDummy(v1)) {
       return false;
@@ -148,6 +149,18 @@ private:
       return true;
     }
     return v1 < v2;
+  }
+
+  //! Number of elements to push onto one queue.
+  //! At least one.
+  size_t randomBatchSize(size_t limit) {
+    for (size_t i = 0; i < limit; i++) {
+      if (random() % ChangeQPush == 0) {
+        // Need to change the queue
+        return i + 1;
+      }
+    }
+    return limit;
   }
 
 public:
@@ -172,46 +185,20 @@ public:
     typedef MultiQueueProbProb<_T, Comparer, ChangeQPush, ChangeQPop, C, Prior, Concurrent> type;
   };
 
-  //! Push a value onto the queue.
-  void push(const value_type &val) {
-    Heap* heap;
-    int q_ind;
-
-    do {
-      q_ind = rand_heap();
-      heap = &heaps[q_ind].data;
-    } while (!heap->try_lock());
-
-    heap->heap.push(val);
-    heap->min.store(heap->heap.min().prior(), std::memory_order_release);
-    heap->unlock();
-  }
-
-  size_t numToPush(size_t limit) {
-    // todo min is one as we trow a coin a least ones to get the local queue
-    for (size_t i = 1; i < limit; i++) {
-      if ((random() % ChangeQPush) < 1) {
-        return i;
-      }
-    }
-    return limit;
-  }
-
   //! Push a range onto the queue.
   template<typename Iter>
   unsigned int push(Iter b, Iter e) {
     if (b == e) return 0;
 
-    // local queue
     static thread_local size_t local_q = rand_heap();
 
-    int npush = 0;
+    unsigned int pushNumber = 0;
     Heap* heap = nullptr;
 
-    int total = std::distance(b, e);
+    ptrdiff_t elementsLeft = std::distance(b, e);
 
     while (b != e) {
-      auto batchSize = numToPush(total);
+      auto batchSize = randomBatchSize(elementsLeft);
       heap = &heaps[local_q].data;
 
       while (!heap->try_lock()) {
@@ -221,16 +208,16 @@ public:
 
       for (size_t i = 0; i < batchSize; i++) {
         heap->heap.push(*b++);
-        npush++;
-        total--;
+        pushNumber++;
+        elementsLeft--;
       }
       heap->updateMin();
       heap->unlock();
-      if (total > 0) {
+      if (elementsLeft > 0) {
         local_q = rand_heap();
       }
     }
-    return npush;
+    return pushNumber;
   }
 
   //! Push initial range onto the queue.
@@ -243,7 +230,7 @@ public:
 
   //! Pop a value from the queue.
   Galois::optional<value_type> pop() {
-    const size_t ATTEMPTS = 4;
+    static const size_t ATTEMPTS = 4;
 
     static thread_local size_t local_q = rand_heap();
     Galois::optional<value_type> result;
@@ -252,6 +239,8 @@ public:
     size_t i_ind = 0;
     size_t j_ind = 0;
 
+    // change == 0 -- the local queue should be changed
+    // otherwise, we try to pop from the local queue
     size_t change = random() % ChangeQPop;
 
     if (change > 0) {
@@ -278,18 +267,16 @@ public:
           i_ind = j_ind;
           heap_i = heap_j;
         }
-
         if (heap_i->try_lock())
           break;
       }
-
       if (!heap_i->heap.empty()) {
         local_q = i_ind;
         return extract_min(heap_i);
-      } else {
-        heap_i->unlock();
       }
+      heap_i->unlock();
     }
+    return result;
   }
 };
 

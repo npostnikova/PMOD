@@ -42,7 +42,7 @@
 #include "OwnerComputes.h"
 #include "StableIterator.h"
 #include "AdaptiveMultiQueue.h"
-#include "mq-optimized/MQOptimizedInclude.h"
+#include "MQOptimized/MQOptimizedInclude.h"
 #include "AMQ_WP.h"
 #include "StealingMultiQueue.h"
 

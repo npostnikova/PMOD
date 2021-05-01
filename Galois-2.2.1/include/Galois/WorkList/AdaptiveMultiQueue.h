@@ -1238,11 +1238,11 @@ public:
       auto& pushV = pushLocal[tId].data;
       auto& popV = popLocal[tId].data;
       if (pushV.empty()) return result;
-      while (!pushV.empty()) {
+      while (!pushV.empty() && popV.size() < PopChange::Q) {
         popV.push_back(pushV.back());
         pushV.pop_back();
       }
-      std::sort(popV.begin(), popV.end(), [](const T& e1, const T& e2) { return e1.prior() < e2.prior(); });
+      std::sort(popV.begin(), popV.end(), [](const T& e1, const T& e2) { return e1.prior() > e2.prior(); });
       auto res = popV.back();
       popV.pop_back();
       return res;

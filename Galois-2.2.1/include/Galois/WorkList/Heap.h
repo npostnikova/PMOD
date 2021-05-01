@@ -24,12 +24,6 @@ struct DAryHeap {
   size_t inAnotherQueue = 0;
   size_t notInQeues = 0;
 
-  ~DAryHeap() {
-    std::cout << "Found in the queue: " << inTheQueue << std::endl;
-    std::cout << "Found in another queue: " << inAnotherQueue << std::endl;
-    std::cout << "Not in queues: " << notInQeues << std::endl;
-  }
-
   //! Set index of the queue.
   void set_index(size_t index) {
     qInd = index;
@@ -114,8 +108,8 @@ struct DAryHeap {
   }
 
   void build() {
-    // D * index + 1 is the first child
-    for (size_t i = 0; is_valid_index(D * i + 1); i++) {
+    if (heap.empty()) return;
+    for (int i = heap.size() - 1; i >= 0; i--) {
       sift_down(i);
     }
   }

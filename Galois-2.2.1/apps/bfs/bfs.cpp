@@ -596,11 +596,17 @@ struct AsyncAlgo {
     typedef MultiQueueProbProb<element_t, Comparer, 1024, 512, 2, priority_t> MQ2_PP_1024_512;
     if (worklistname == "mq2_pp_1024_512")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PP_1024_512>());
+    typedef MultiQueueProbLocal<element_t, Comparer, 1024, 512, 2, priority_t> MQ2_PL_1024_512;
+    if (worklistname == "mq2_pl_1024_512")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_1024_512>());
 
     //////// LJ
     typedef MultiQueueProbProb<element_t, Comparer, 1024, 32, 2, priority_t> MQ2_PP_1024_32;
     if (worklistname == "mq2_pp_1024_32")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PP_1024_32>());
+    typedef MultiQueueProbLocal<element_t, Comparer, 1024, 32, 2, priority_t> MQ2_PL_1024_32;
+    if (worklistname == "mq2_pl_1024_32")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_1024_32>());
 
   }
 };

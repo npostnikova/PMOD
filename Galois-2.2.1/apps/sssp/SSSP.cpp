@@ -607,6 +607,9 @@ struct AsyncAlgo {
     typedef MultiQueueProbLocal<element_t, Comparer, 256, 4, 2, priority_t> MQ2_PL_256_4;
     if (worklistname == "mq2_pl_256_4")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<MQ2_PL_256_4>());
+    typedef MultiQueueLocalProb<element_t, Comparer, 128, 256, 2, priority_t> MQ2_LP_128_256;
+    if (worklistname == "mq2_lp_128_256")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<MQ2_LP_128_256>());
     typedef MultiQueueLocalLocal<element_t, Comparer, 8, 4, 2, priority_t> MQ2_LL_8_4;
     if (worklistname == "mq2_ll_8_4")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<MQ2_LL_8_4>());
@@ -618,6 +621,9 @@ struct AsyncAlgo {
     typedef MultiQueueProbLocal<element_t, Comparer, 1024, 16, 2, priority_t> MQ2_PL_1024_16;
     if (worklistname == "mq2_pl_1024_16")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<MQ2_PL_1024_16>());
+    typedef MultiQueueLocalProb<element_t, Comparer, 16, 1024, 2, priority_t> MQ2_LP_16_1024;
+    if (worklistname == "mq2_lp_16_1024")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<MQ2_LP_16_1024>());
     typedef MultiQueueLocalLocal<element_t, Comparer, 256, 8, 2, priority_t> MQ2_LL_256_8;
     if (worklistname == "mq2_ll_256_8")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<MQ2_LL_256_8>());

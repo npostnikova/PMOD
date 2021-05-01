@@ -11,6 +11,7 @@
 #include <thread>
 #include <random>
 #include <iostream>
+#include "HeapWithLock.h"
 
 namespace Galois {
 namespace WorkList {

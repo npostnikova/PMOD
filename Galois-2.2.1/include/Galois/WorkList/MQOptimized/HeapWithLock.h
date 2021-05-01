@@ -4,6 +4,10 @@
 #include "../Heap.h"
 #include "../WorkListHelpers.h"
 
+
+namespace Galois {
+namespace WorkList {
+
 /**
  * Lockable heap structure.
  *
@@ -13,10 +17,10 @@
  * @tparam D Arity of a sequential heap
  * Its `operator()` returns `true` iff the first argument should follow the second one.
  */
-template <typename  T,
-typename Comparer,
-typename Prior = unsigned long,
-size_t D = 4>
+template <typename T,
+          typename Comparer,
+          typename Prior = unsigned long,
+          size_t D = 4>
 struct HeapWithLock {
   DAryHeap<T, Comparer, 4> heap;
   // Dummy element for setting min when the heap is empty
@@ -60,9 +64,12 @@ private:
 };
 
 template<typename T,
-typename Compare,
-typename Prior,
-size_t D>
+         typename Compare,
+         typename Prior,
+         size_t D>
 Prior HeapWithLock<T, Compare, Prior, D>::dummy;
+
+} // namespace WorkList
+} // namespace Galois
 
 #endif //GALOIS_HEAPWITHLOCK_H

@@ -74,7 +74,10 @@ private:
 
   //! Extracts minimum from the locked heap.
   Galois::optional<value_t> extract_min(Heap* heap) {
+    static thread_local size_t tId = Galois::Runtime::LL::getTID();
+
     auto result = heap->heap.extractMin();
+    auto& buffer = popBuffer[tId].data;
 
     for (size_t i = 0; i < PopSize - 1 && !heap->heap.empty(); i++) {
        buffer.push_back(heap->heap.extractMin());
@@ -109,7 +112,7 @@ private:
   }
 
 public:
-  MultiQueueProbProb() : nT(Galois::getActiveThreads()), nQ(C * nT) {
+  MultiQueueProbLocal() : nT(Galois::getActiveThreads()), nQ(C * nT) {
     // Setting dummy element of the heap
     memset(reinterpret_cast<void*>(&Heap::dummy), 0xff, sizeof(Prior));
     heaps = std::make_unique<Runtime::LL::CacheLineStorage<Heap>[]>(nQ);

@@ -125,6 +125,14 @@ class ThreadPool_pthread : public ThreadPool {
   volatile RunCommand* workBegin; // Begin iterator for work commands
   volatile RunCommand* workEnd; // End iterator for work commands
 
+  unsigned mapThreadId(unsigned tId) {
+    const size_t SOCKET_SIZE = 24;
+    if (tId < SOCKET_SIZE) return tId;
+    if (tId < 2 * SOCKET_SIZE) return tId + SOCKET_SIZE;
+    if (tId < 3 * SOCKET_SIZE) return tId - SOCKET_SIZE;
+    return tId;
+  }
+
   void initThread() {
     // Initialize TID
     Galois::Runtime::LL::initTID();
@@ -132,7 +140,7 @@ class ThreadPool_pthread : public ThreadPool {
     Galois::Runtime::initPTS();
     if (!LL::EnvCheck("GALOIS_DO_NOT_BIND_THREADS"))
       if (id != 0 || !LL::EnvCheck("GALOIS_DO_NOT_BIND_MAIN_THREAD"))
-	Galois::Runtime::LL::bindThreadToProcessor(id);
+	Galois::Runtime::LL::bindThreadToProcessor(mapThreadId(id));
     // Use a simple pthread or atomic to avoid depending on Galois
     // too early in the initialization process
     started.release();

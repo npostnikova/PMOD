@@ -17,7 +17,7 @@ int main() {
   for (size_t i = 8; i < 1024; i *= 2) {
     windowSize.push_back(i);
   }
-  vector<size_t> emptyWeight = {1, 2};
+  vector<size_t> emptyWeight = {2};
   vector<int> percent = { 50, 60, 70, 80, 85, 90 };
   ofstream typedefs("AdapWPTypedefs.h");
   ofstream ifs("AdapWPIfs.h");

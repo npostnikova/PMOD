@@ -1,4 +1,6 @@
 #ifdef STEALING
+if (wl == "smq_1_2")
+  Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_1_2>());
 if (wl == "smq_1_4")
   Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_1_4>());
 if (wl == "smq_1_8")

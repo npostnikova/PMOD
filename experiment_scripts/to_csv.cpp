@@ -28,8 +28,6 @@ vector<string> split(string const &s, string const &delimiter) {
 class Data {
   vector<uint64_t> processed;
   vector<uint64_t> time;
-  uint64_t timeSum = 0;
-  size_t attempts = 0;
 
   uint64_t avg(vector<uint64_t> const& v) {
     uint64_t sum = 0;
@@ -141,7 +139,8 @@ int main(int argc, char* argv[]) {
       outProcessed << fixed << setprecision(3) << ", " << (double)amq2[i][j].avgProcessed() / V;
       if (pg > 0.5) outProcessed << fixed << setprecision(1) << "+-" << pg << "%";
       auto t = (double) amq2[i][j].standDevTime() /  (amq2[i][j].avgTime() * 0.01 );
-      outProcessed << "    " << fixed << setprecision(3) << (double)amq2[0][0].avgTime() / amq2[i][j].avgTime();
+      outProcessed << "    " << fixed << setprecision(3) << (amq2[i][j].avgTime() == 0 ? 0 :
+      (double)amq2[0][0].avgTime() / amq2[i][j].avgTime());
       if (t > 0.5) outProcessed << fixed << setprecision(1) << "+-" << t << "%";
 
       //outTime << ", " << amq2[i][j].avgTime();

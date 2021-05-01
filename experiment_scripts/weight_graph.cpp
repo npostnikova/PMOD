@@ -141,7 +141,7 @@ void writeGrFile(string const& filename, vector<Node> const& nodes) {
   out << "p sp " << nodes.size() << " " << cnt_edges << endl;
   for (size_t i = 0; i < nodes.size(); i++) {
     for (auto e : nodes[i].edges)
-      out << "a " << i + 1 << " " << e.to + 1 << " " << e.w << "\n";
+      out << "a " << i << " " << e.to << " " << e.w << "\n";
   }
   out.close();
 }

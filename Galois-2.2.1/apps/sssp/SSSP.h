@@ -41,10 +41,16 @@ template<typename GrNode>
 struct UpdateRequestCommon {
   GrNode n;
   Dist w;
+  size_t id; // todo delete
 
-  UpdateRequestCommon(const GrNode& N, Dist W): n(N), w(W) {}
+  UpdateRequestCommon(const GrNode& N, Dist W, size_t id): n(N), w(W), id(id) {}
+  UpdateRequestCommon(const GrNode& N, Dist W): n(N), w(W), id(0) {}
 
-  UpdateRequestCommon(): n(), w(0) {}
+  UpdateRequestCommon(): n(), w(0), id(0) {}
+
+  Dist prior() const {
+    return w;
+  }
 
   bool operator>(const UpdateRequestCommon& rhs) const {
     if (w > rhs.w) return true;
@@ -79,7 +85,7 @@ struct UpdateRequestCommon {
 struct SNode {
   Dist dist;
 //  int qInd = -1;
-//  int elemInd = -1;
+//  int elemInd = -1;uint64_t index = 0;
   std::atomic<uint64_t> index = {0};
 //  std::atomic<int> qInd = {-1};
 //  std::atomic<int> elemInd = {-1};

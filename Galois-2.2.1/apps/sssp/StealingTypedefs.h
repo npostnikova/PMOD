@@ -1,5 +1,7 @@
 #ifndef STEALING
 #define STEALING
+typedef StealingMultiQueue<UpdateRequest, Comparer, Prob<1, 2>, true> SMQ_1_2;
+
 typedef StealingMultiQueue<UpdateRequest, Comparer, Prob<1, 4>, true> SMQ_1_4;
 
 typedef StealingMultiQueue<UpdateRequest, Comparer, Prob<1, 8>, true> SMQ_1_8;

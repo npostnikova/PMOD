@@ -575,12 +575,12 @@ void writeComponent(Graph& graph, typename Graph::node_data_type::component_type
   // id == 1 if node is in component
   size_t numEdges = 0;
   size_t numNodes = 0;
-  bool rep = false;
+  int rep = 0;
   for (typename Graph::iterator ii = graph.begin(), ei = graph.end(); ii != ei; ++ii) {
     node_data_reference data = graph.getData(*ii);
-    if (!rep && data.component() == component) {
+    if (rep < 10 && data.component() == component) {
       std::cout << "node " << (ii - graph.begin()) << " is in component\n";
-      rep = true;
+      rep++;
     }
     data.id = data.component() == component ? 1 : 0;
     if (data.id) {

@@ -38,6 +38,7 @@
 #include <deque>
 #include <set>
 #include <fstream>
+#include <atomic>
 
 #include "SSSP.h"
 #include "GraphLabAlgo.h"
@@ -74,6 +75,7 @@ static cll::opt<bool> symmetricGraph("symmetricGraph", cll::desc("Input graph is
 static cll::opt<unsigned int> startNode("startNode", cll::desc("Node to start search from"), cll::init(0));
 static cll::opt<unsigned int> reportNode("reportNode", cll::desc("Node to report distance to"), cll::init(1));
 static cll::opt<int> stepShift("delta", cll::desc("Shift value for the deltastep"), cll::init(10));
+static cll::opt<std::string> mqSuff("suff", cll::desc("Suffix for amq or smq"), cll::init(""));
 cll::opt<unsigned int> memoryLimit("memoryLimit",
                                    cll::desc("Memory limit for out-of-core algorithms (in MB)"), cll::init(~0U));
 static cll::opt<Algo> algo("algo", cll::desc("Choose an algorithm:"),
@@ -123,6 +125,10 @@ struct not_consistent<Graph, typename std::enable_if<!Galois::Graph::is_segmente
     Dist dist = (unsigned int)g.getData(n).dist;
     if (dist == (unsigned int)DIST_INFINITY)
       return false;
+    if (dist < 0) {
+      std::cerr << "Negative distance\n";
+      return false;
+    }
 
     for (typename Graph::edge_iterator ii = g.edge_begin(n), ee = g.edge_end(n); ii != ee; ++ii) {
       Dist ddist = (unsigned int)g.getData(g.getEdgeDst(ii)).dist;
@@ -293,66 +299,6 @@ struct SerialAlgo {
   }
 };
 
-template <typename WorkItem>
-struct DecreaseKeyIndexer {
-  static int get_queue(WorkItem const& wi) {
-    return get_pair(wi).first;
-  }
-
-  static void set_pair(WorkItem const& wi, int q, uint32_t ind) {
-    wi.n->getData().index.store((int64_t (ind) << 32) | (uint32_t (q + 1)), std::memory_order_release);
-  }
-
-  static std::pair<int, uint32_t> get_pair(WorkItem const& wi) {
-    auto index = wi.n->getData().index.load(std::memory_order_acquire);
-    static const uint32_t& mask = (1ull << 32) - 1;
-    int q = index & mask;
-    return {q - 1, index >> 32};
-  }
-
-  static void set_queue(WorkItem const& wi, int newQ) {
-    auto& data = wi.n->getData();
-    data.qInd = newQ;
-    //return data.qInd.compare_exchange_strong(expQ, newQ);
-  }
-
-  //! Update index of the element in the queue.
-  //! The method is called only when the queue is blocked, so CAS should always be successful.
-  static void set_index(WorkItem const& wi, size_t index) {
-    auto &data = wi.n->getData();
-    data.elemInd = index;
-  }
-};
-//template <typename WorkItem>
-//struct DecreaseKeyIndexer {
-//  static int get_queue(WorkItem const& wi) {
-//   // auto& d = wi.n->getData().qInd;
-//    return wi.n->getData().qInd;
-//  }
-//
-//  static int get_index(WorkItem const& wi) {
-//    return wi.n->getData().elemInd;
-//  }
-//
-//  static bool cas_queue(WorkItem const& wi, int newQ, int expQ) {
-//    auto& data = wi.n->getData();
-//    return data.qInd.compare_exchange_strong(expQ, newQ);
-//  }
-//
-//  static void set_queue(WorkItem const& wi, int newQ) {
-//    auto& data = wi.n->getData();
-//    data.qInd = newQ;
-//    //return data.qInd.compare_exchange_strong(expQ, newQ);
-//  }
-//
-//  //! Update index of the element in the queue.
-//  //! The method is called only when the queue is blocked, so CAS should always be successful.
-//  static void set_index(WorkItem const& wi, size_t index) {
-//    auto &data = wi.n->getData();
-//    data.elemInd = index;
-//  }
-//};
-
 template<bool UseCas>
 struct AsyncAlgo {
   typedef SNode Node;
@@ -407,6 +353,7 @@ struct AsyncAlgo {
     volatile Dist* sdist = &sdata.dist;
     int nEdge = 0;
 
+    *nNodesProcessed += 1;
 
     if (req.w != (unsigned int)*sdist) {
       if (trackWork) {
@@ -415,7 +362,6 @@ struct AsyncAlgo {
       }
       return;
     }
-    *nNodesProcessed += 1;
     for (typename Graph::edge_iterator ii = graph.edge_begin(req.n, flag), ei = graph.edge_end(req.n, flag); ii != ei; ++ii) {
       if (req.w != (unsigned int)*sdist) {
         *nBad += nEdge;
@@ -512,26 +458,7 @@ struct AsyncAlgo {
     typedef UpdateRequestComparer<UpdateRequest> Comparer;
     typedef UpdateRequestNodeComparer<UpdateRequest> NodeComparer;
     typedef UpdateRequestHasher<UpdateRequest> Hasher;
-	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2> AMQ2;
-	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 0> AMQ0;
-	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, true, DecreaseKeyIndexer<UpdateRequest>> AMQ2DK;
-	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 0, true, DecreaseKeyIndexer<UpdateRequest>> AMQ0DK;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 1, 1, -128, 128, 64> AMQ2_1_128_128_64;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 1, 2, -128, 128, 32> AMQ2_2_128_128_32;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 2, 2, -128, 128, 32> AMQ2_22_128_128_32;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 1, 2, -128, 128, 16> AMQ2_2_128_128_16;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 1, 2, -128, 128, 64> AMQ2_2_128_128_64;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 2, 2, -128, 128, 64> AMQ2_22_128_128_64;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 1, 2, -128, 128, 128> AMQ2_2_128_128_128;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 1, 1, -256, 2048, 128> AMQ2_1_256_2048_128;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>, 0, 1, 1, 1, -128, 128, 64> AMQ2_1_128_128_64_1_1000_1_1000;
 
-//	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 4, false, void, true, false, push_p, pop_p> AMQ4;
-//	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 8, false, void, true, false, push_p, pop_p> AMQ8;
-//	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 4> AMQ4;
-//	  typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 8> AMQ8;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, true, DecreaseKeyIndexer<UpdateRequest>> AMQ2DecreaseKey;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, true> AMQ2Blocking;
 //    typedef GlobPQ<UpdateRequest, kLSMQ<UpdateRequest, UpdateRequestIndexer<UpdateRequest>, 256>> kLSM256;
 //    typedef GlobPQ<UpdateRequest, kLSMQ<UpdateRequest, UpdateRequestIndexer<UpdateRequest>, 16384>> kLSM16k;
 //    typedef GlobPQ<UpdateRequest, kLSMQ<UpdateRequest, UpdateRequestIndexer<UpdateRequest>, 4194304>> kLSM4m;
@@ -543,22 +470,6 @@ struct AsyncAlgo {
 //    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 2>> HMQ2;
 //    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 3>> HMQ3;
 //    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 4>> HMQ4;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 1000>> AMQ2_5_1000_1_1000;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>> AMQ2_1_1000_1_1000;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <5, 1000>> AMQ2_5_1000_5_1000;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 100>> AMQ2_5_1000_1_100;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 1000>, true> AMQ22_5_1000_1_1000;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>, true> AMQ22_1_1000_1_1000;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <5, 1000>, true> AMQ22_5_1000_5_1000;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 100>, true> AMQ22_5_1000_1_100;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 3, false, void, true, false, Prob <5, 1000>, Prob <1, 1000>> AMQ3_5_1000_1_1000;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 3, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>> AMQ3_1_1000_1_1000;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 3, false, void, true, false, Prob <5, 1000>, Prob <5, 1000>> AMQ3_5_1000_5_1000;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 3, false, void, true, false, Prob <5, 1000>, Prob <1, 100>> AMQ3_5_1000_1_100;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 4, false, void, true, false, Prob <5, 1000>, Prob <1, 1000>> AMQ4_5_1000_1_1000;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 4, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>> AMQ4_1_1000_1_1000;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 4, false, void, true, false, Prob <5, 1000>, Prob <5, 1000>> AMQ4_5_1000_5_1000;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 4, false, void, true, false, Prob <5, 1000>, Prob <1, 100>> AMQ4_5_1000_1_100;
 //    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 64>> HMQ64;
 //    typedef GlobPQ<UpdateRequest, DistQueue<Comparer, UpdateRequest, false>> PTSL;
 //    typedef GlobPQ<UpdateRequest, DistQueue<Comparer, UpdateRequest, true>> PPSL;
@@ -585,36 +496,13 @@ struct AsyncAlgo {
     graph.out_edges(source, Galois::MethodFlag::NONE).end(),
     InitialProcess(this, graph, initial, graph.getData(source)));
     std::string wl = worklistname;
+    if (!mqSuff.empty()) {
+      mqSuff = "_" + mqSuff;
+    }
     if (wl == "obim")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<OBIM>());
     else if (wl == "adap-obim")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<ADAPOBIM>());
-
-//#include "AMQChunk16.h"
-
-#include "AMQChunkMatch2.h"
-#include "AMQChunkMatch4.h"
-#include "AMQChunkMatch8.h"
-#include "AMQChunkMatch16.h"
-#include "AMQChunkMatch32.h"
-
-//#include "AdapTypedefs.h"
-//#include "AdapWPTypedefs.h"
-//#include "FixedWindowTypedefs.h"
-
-#include "StealingTypedefs.h"
-#include "StealingDKTypedefs.h"
-
-#include "StealingIfs.h"
-#include "StealingDKIfs.h"
-
-#include "AdapIfs.h"
-#include "FixedWindowIfs.h"
-#include "AdapWPIfs.h"
-
-//#include "FixedSegmentTypedefs10.h"
-//#include "FixedSegmentIfs10.h"
-
 
 //    else if (wl == "adap-mq2")
 //	    Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2>());
@@ -672,117 +560,6 @@ struct AsyncAlgo {
 //      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ3>());
 //    else if (wl == "hmq4")
 //      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ4>());
-//
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 0, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 3, 2, 128, 80> AMQ0_132_128_80;
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 0, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 3, 3, 512, 80> AMQ0_133_512_80;
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 0, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 3, 1, 32, 80> AMQ0_131_32_80;
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 1, false, void, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 3, 1, 32, 80> AMQ1_131_32_80;
-
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 0, true, DecreaseKeyIndexer<UpdateRequest>, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 3, 2, 128, 80> AMQ0_132_128_80_DK;
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 0, true, DecreaseKeyIndexer<UpdateRequest>, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 3, 3, 512, 80> AMQ0_133_512_80_DK;
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 0, true, DecreaseKeyIndexer<UpdateRequest>, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 3, 1, 32, 80> AMQ0_131_32_80_DK;
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 1, true, DecreaseKeyIndexer<UpdateRequest>, true, false, Prob <1, 1>, Prob <1, 1>, 0, 1, 3, 1, 32, 80> AMQ1_131_32_80_DK;
-
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 1, true, DecreaseKeyIndexer<UpdateRequest>, true, false, Prob <5, 1000>, Prob <1, 100>> AMQ2_5_1000_1_100;
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 1, true, DecreaseKeyIndexer<UpdateRequest>, true, false, Prob <5, 1000>, Prob <5, 1000>> AMQ2_5_1000_5_1000;
-
-    if (wl == "amq2_5_1000_1_100")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_5_1000_1_100>());
-
-    if (wl == "amq2_5_1000_5_1000")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_5_1000_5_1000>());
-
-
-    if (wl == "amq2")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2>());
-    if (wl == "amq0")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ0>());
-    if (wl == "amq2_dk")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2DK>());
-    if (wl == "amq0_dk")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ0DK>());
-
-    if (wl == "amq0_132_128_80")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ0_132_128_80>());
-    if (wl == "amq0_133_512_80")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ0_133_512_80>());
-    if (wl == "amq0_131_32_80")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ0_131_32_80>());
-    if (wl == "amq1_131_32_80")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ1_131_32_80>());
-
-    if (wl == "amq0_132_128_80_dk")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ0_132_128_80_DK>());
-    if (wl == "amq0_133_512_80_dk")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ0_133_512_80_DK>());
-    if (wl == "amq0_131_32_80_dk")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ0_131_32_80_DK>());
-    if (wl == "amq1_131_32_80_dk")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ1_131_32_80_DK>());
-
-//    if (wl == "amq2_1_128_128_64")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_128_128_64>());
-//
-// if (wl == "amq2_2_128_128_64")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_2_128_128_64>());
-//
-// if (wl == "amq2_2_128_128_128")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_2_128_128_128>());
-//
-// if (wl == "amq2_22_128_128_64")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_22_128_128_64>());
-//
-//
-// if (wl == "amq2_22_128_128_32")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_22_128_128_32>());
-//
-//   if (wl == "amq2_2_128_128_32")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_2_128_128_32>());
-//
-//   if (wl == "amq2_2_128_128_16")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_2_128_128_16>());
-//
-//
-//    if (wl == "amq2_1_128_128_64_1_1000_1_1000")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_128_128_64_1_1000_1_1000>());
-//
-//    if (wl == "amq2_1_256_2048_128")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_256_2048_128>());
-////    else if (wl == "amq2_0.001_0.001")
-//    else if (wl == "amq2_0.005_0.001")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_5_1000_1_1000>());
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_1000_1_1000>());
-//    else if (wl == "amq2_0.005_0.005")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_5_1000_5_1000>());
-//    else if (wl == "amq2_0.005_0.01")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_5_1000_1_100>());
-//    else if (wl == "amq22_0.005_0.001")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ22_5_1000_1_1000>());
-//    else if (wl == "amq22_0.001_0.001")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ22_1_1000_1_1000>());
-//    else if (wl == "amq22_0.005_0.005")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ22_5_1000_5_1000>());
-//    else if (wl == "amq22_0.005_0.01")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ22_5_1000_1_100>());
-//    else if (wl == "amq3_0.005_0.001")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ3_5_1000_1_1000>());
-//    else if (wl == "amq3_0.001_0.001")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ3_1_1000_1_1000>());
-//    else if (wl == "amq3_0.005_0.005")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ3_5_1000_5_1000>());
-//    else if (wl == "amq3_0.005_0.01")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ3_5_1000_1_100>());
-//    else if (wl == "amq4_0.005_0.001")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ4_5_1000_1_1000>());
-//    else if (wl == "amq4_0.001_0.001")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ4_1_1000_1_1000>());
-//    else if (wl == "amq4_0.005_0.005")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ4_5_1000_5_1000>());
-//    else if (wl == "amq4_0.005_0.01")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ4_5_1000_1_100>());
-
-//    else if (wl == "hmq64")
-//      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ64>());
 //    else if (wl == "thrskiplist")
 //      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<PTSL>());
 //    else if (wl == "pkgskiplist")
@@ -803,6 +580,35 @@ struct AsyncAlgo {
 //      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<kLSM4m>());
 //    else
 //      std::cerr << "No work list!" << "\n";
+//
+//    typedef MyHMQ<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_TRY1;
+//    if (worklistname == "hmq2_try1")
+//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_TRY1>());
+//    typedef MyHMQBlocking<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_BLOCKING1;
+//    if (worklistname == "hmq2_blocking1")
+//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_BLOCKING1>());
+//    typedef MyHMQTryLock2Q<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_TRY2;
+//    if (worklistname == "hmq2_try2")
+//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_TRY2>());
+//    typedef MyHMQBlocking2Q<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_BLOCKING2;
+//    if (worklistname == "hmq2_blocking2")
+//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_BLOCKING2>());
+//    typedef MyPQ<UpdateRequest, Comparer, true> USUAL_PQ;
+//    if (worklistname == "pq")
+//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_PQ>());
+
+#define priority_t Dist
+#define element_t UpdateRequest
+
+    ///////// CTR
+    typedef MultiQueueProbProb<element_t, Comparer, 32, 16, 2, priority_t> MQ2_PP_32_16;
+    if (worklistname == "mq2_pp_32_16")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<MQ2_PP_32_16>());
+
+    //////// LJ
+    typedef MultiQueueProbProb<element_t, Comparer, 1024, 128, 2, priority_t> MQ2_PP_1024_128;
+    if (worklistname == "mq2_pp_1024_128")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<MQ2_PP_1024_128>());
 
   }
 };
@@ -965,8 +771,8 @@ void run(bool prealloc = true) {
   time (&end);
   double dif = difftime (end,start);
 
-  std::ofstream out(amqResultFile, std::ios::app);
-  out << T.get() << " ";
+  std::ofstream out(amqResultFile + mqSuff, std::ios::app);
+  out << T.get() << ",";
   out.close();
 
   printf ("Elapsed time is %.2lf seconds.\n", dif );
@@ -1031,8 +837,10 @@ int main(int argc, char **argv) {
 
   if (trackWork) {
     std::string wl = worklistname;
-    std::ofstream nodes(amqResultFile, std::ios::app);
-    nodes << wl << " " << getStatVal(nNodesProcessed) << " " << Galois::Runtime::activeThreads << std::endl;
+    if (wl.size() >= 3 && wl[1] == 'm' && wl[2] == 'q' && (wl[0] == 's' || wl[0] == 'a'))
+      wl = wl + mqSuff;
+    std::ofstream nodes(amqResultFile + mqSuff, std::ios::app);
+    nodes << wl << "," << getStatVal(nNodesProcessed) << "," << Galois::Runtime::activeThreads << "," << stepShift << std::endl;
     nodes.close();
 
     delete BadWork;

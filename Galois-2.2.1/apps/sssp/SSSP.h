@@ -46,6 +46,10 @@ struct UpdateRequestCommon {
 
   UpdateRequestCommon(): n(), w(0) {}
 
+  Dist prior() const {
+    return w;
+  }
+
   bool operator>(const UpdateRequestCommon& rhs) const {
     if (w > rhs.w) return true;
     if (w < rhs.w) return false;
@@ -78,11 +82,6 @@ struct UpdateRequestCommon {
 
 struct SNode {
   Dist dist;
-//  int qInd = -1;
-//  int elemInd = -1;
-  std::atomic<uint64_t> index = {0};
-//  std::atomic<int> qInd = {-1};
-//  std::atomic<int> elemInd = {-1};
 };
 
 template<typename Graph>

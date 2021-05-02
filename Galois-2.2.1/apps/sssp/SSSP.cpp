@@ -614,7 +614,7 @@ struct AsyncAlgo {
     if (worklistname == "mq2_ll_8_4")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<MQ2_LL_8_4>());
 
-    typedef StealingMultiQueue<element_t, Comparer, 8, true, 1> SMQ_8_1;
+    typedef StealingMultiQueue<element_t, Comparer, 8, 1, true> SMQ_8_1;
     if (worklistname == "smq_8_1")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_8_1>());
 
@@ -632,7 +632,7 @@ struct AsyncAlgo {
     if (worklistname == "mq2_ll_256_8")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<MQ2_LL_256_8>());
 
-    typedef StealingMultiQueue<element_t, Comparer, 8, true, 8> SMQ_8_8;
+    typedef StealingMultiQueue<element_t, Comparer, 8, 8, true> SMQ_8_8;
     if (worklistname == "smq_8_8")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_8_8>());
 

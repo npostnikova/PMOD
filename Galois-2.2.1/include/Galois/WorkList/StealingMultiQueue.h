@@ -21,11 +21,11 @@ namespace WorkList {
  * @tparam D Arity of the heap.
  */
 template<typename T,
-         typename Compare,
-         size_t STEAL_NUM,
-         size_t D = 4>
+typename Compare,
+size_t STEAL_NUM,
+size_t D = 4>
 struct HeapWithStealBuffer {
-  static Compare cmp;
+  static Compare compare;
   // Represents a flag for empty cells.
   static T dummy;
   DAryHeap<T, Compare, D> heap;
@@ -35,7 +35,7 @@ struct HeapWithStealBuffer {
   }
 
   //! Checks whether the element is "null".
-  bool isDummy(T const& element) {
+  static bool isDummy(T const& element) {
     return element == dummy;
   }
 
@@ -141,7 +141,7 @@ private:
     if (stolen.is_initialized()) {
       auto elements = stolen.get();
       for (size_t i = 1; i < STEAL_NUM; i++) {
-        if (!isDummy(elements[i])) heap.push_back(elements[i]);
+        if (!isDummy(elements[i])) heap.push(elements[i]);
       }
       return elements[0];
     }
@@ -156,21 +156,22 @@ private:
 };
 
 template<typename T,
-         typename Compare,
-         size_t STEAL_NUM,
-         size_t D>
+typename Compare,
+size_t STEAL_NUM,
+size_t D>
 T HeapWithStealBuffer<T, Compare, STEAL_NUM, D>::dummy;
 
 template<typename T,
-         typename Comparer,
-         size_t StealProb,
-         size_t StealBatchSize = 8,
-         bool Concurrent = true
+typename Comparer,
+size_t StealProb,
+size_t StealBatchSize = 8,
+bool Concurrent = true
 >
 class StealingMultiQueue {
 private:
   typedef HeapWithStealBuffer<T, Comparer, StealBatchSize, 4> Heap;
   std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<Heap>[]> heaps;
+  std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]> stealBuffers;
   static Comparer compare;
   const size_t nQ;
 
@@ -201,6 +202,7 @@ private:
     T localMin = heaps[tId].data.getMinWriter();
     bool nextIterNeeded = true;
     while (nextIterNeeded) {
+      nextIterNeeded = false;
       auto randId = rand_heap();
       if (randId == tId) continue;
       Heap* randH = &heaps[randId].data;
@@ -213,10 +215,12 @@ private:
         auto stolen = randH->trySteal(nextIterNeeded);
         if (stolen.is_initialized()) {
           auto elements = stolen.get();
+          auto& buffer = stealBuffers[tId].data;
           for (size_t i = 1; i < StealBatchSize; i++) {
             if (!Heap::isDummy(elements[i]))
-              heaps[tId].data.heap.push(elements[i]);
+              buffer.push_back(elements[i]);
           }
+          std::reverse(buffer.begin(), buffer.end());
           return elements[0];
         }
       }
@@ -228,6 +232,7 @@ public:
   StealingMultiQueue() : nQ(Galois::getActiveThreads()) {
     memset(reinterpret_cast<void*>(&Heap::dummy), 0xff, sizeof(Heap::dummy));
     heaps = std::make_unique<Galois::Runtime::LL::CacheLineStorage<Heap>[]>(nQ);
+    stealBuffers = std::make_unique<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]>(nQ);
   }
 
   typedef T value_type;
@@ -267,15 +272,22 @@ public:
   Galois::optional<T> pop() {
     static thread_local size_t tId = Galois::Runtime::LL::getTID();
     Galois::optional<T> emptyResult;
+    auto& buffer = stealBuffers[tId].data;
+    if (!buffer.empty()) {
+      auto val = buffer.back();
+      buffer.pop_back();
+      if (heaps[tId].data.isBufferStolen()) heaps[tId].data.fillBuffer();
+      return val;
+    }
 
     // rand == 0 -- try to steal
     // otherwise, pop locally
     if (nQ > 1 && random() % StealProb == 0) {
-        Galois::optional<T> stolen = trySteal();
-        if (stolen.is_initialized()) return stolen;
+      Galois::optional<T> stolen = trySteal();
+      if (stolen.is_initialized()) return stolen;
     }
     auto minVal = heaps[tId].data.extractMin();
-    if (!Heap::isDummy(minVal)) return minVal;
+    if (minVal.is_initialized()) return minVal;
 
     // Our heap is empty
     return nQ == 1 ? emptyResult : trySteal();
@@ -288,4 +300,3 @@ GALOIS_WLCOMPILECHECK(StealingMultiQueue)
 } // namespace Galois
 
 #endif //GALOIS_STEALINGMULTIQUEUE_H
-

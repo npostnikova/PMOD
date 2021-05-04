@@ -120,13 +120,6 @@ struct HeapWithStealBuffer {
     }
     bool raceFlag = false; // useless now
     auto bufferMin = getBufferMin(raceFlag);
-    if (!isDummy(bufferMin) && compare(heap.min(), bufferMin)) {
-      auto stolen = tryStealLocally();
-      if (stolen.is_initialized()) {
-        fillBuffer();
-        return stolen;
-      }
-    }
     auto localMin = heap.extractMin();
     if (isDummy(bufferMin)) fillBuffer();
     return localMin;

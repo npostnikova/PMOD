@@ -192,7 +192,8 @@ private:
   //! Repeats if failed because of a race.
   Galois::optional<T> trySteal() {
     static thread_local size_t tId = Galois::Runtime::LL::getTID();
-    T localMin = heaps[tId].data.getMinWriter();
+    auto& local = heaps[tId].data;
+    T localMin = local.heap.empty() ? local.getMinWriter() : local.heap.min();
     bool nextIterNeeded = true;
     while (nextIterNeeded) {
       nextIterNeeded = false;

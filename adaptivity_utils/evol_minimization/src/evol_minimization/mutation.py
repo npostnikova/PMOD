@@ -1,7 +1,7 @@
 from random import choices, sample
 from copy import deepcopy
 
-from evol_minimization.unknown_amq_params import unknown_params
+from evol_minimization.unknown_smq_params import unknown_params
 
 
 class Individual:

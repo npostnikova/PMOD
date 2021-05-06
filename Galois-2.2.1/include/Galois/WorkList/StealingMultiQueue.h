@@ -163,6 +163,7 @@ size_t INC_SIZE_PERCENT = 80,
 size_t DEC_SIZE_PERCENT = 40,
 size_t INC_PROB_PERCENT = 80,
 size_t DEC_PROB_PERCENT = 40,
+size_t EMPTY_PROB_PERCENT = 40,
 bool Concurrent = true>
 class StealingMultiQueue {
 private:
@@ -231,6 +232,13 @@ private:
         checkProbChanges();
         clearProbStats();
       }
+    }
+
+    void reportEmpty(size_t empty, size_t total, size_t localSize) {
+        if (stealSize < MAX_STEAL_SIZE && empty * 100 >= total * EMPTY_PROB_PERCENT && localSize >= 2 * (1u << (stealSize + 1))) {
+          stealSize++;
+          maxSize->setMax(stealSize);
+        }
     }
 
     void checkProbChanges() {
@@ -316,18 +324,19 @@ private:
     bool nextIterNeeded = true;
     size_t ourBetter = 0;
     size_t otherBetter = 0;
-    const size_t MAX_ITERS = 16;
-    for (size_t j = 0; j < MAX_ITERS; j++) {
+    size_t races = 0;
+    size_t wasEmpty = 0;
+    const size_t MAX_ITERS = 4;
+    for (size_t j = 0; j < MAX_ITERS; ) {
       nextIterNeeded = false;
       auto randId = rand_heap();
       if (randId == tId) continue;
       Heap* randH = &heaps[randId].data;
       auto randMin = randH->getBufferMin(nextIterNeeded);
+      if (!nextIterNeeded) j++;
       if (randH->isDummy(randMin)) {
         // Nothing to steal
-        nextIterNeeded = true; // TODO ???
-        ourBetter++;
-        continue;
+        wasEmpty++;
       }
       if (Heap::isDummy(localMin) || compare(localMin, randMin)) {
         otherBetter++;
@@ -341,13 +350,18 @@ private:
           }
           std::reverse(buffer.begin(), buffer.end());
           threadStorage.getLocal()->reportStealStats(ourBetter, otherBetter);
+          threadStorage.getLocal()->reportEmpty(wasEmpty, j + 1, local.heap.size());
           return elements[0];
+        } else {
+          if (!nextIterNeeded) j++;
+          wasEmpty++;
         }
       } else {
         ourBetter++;
       }
     }
     threadStorage.getLocal()->reportStealStats(ourBetter, otherBetter);
+    threadStorage.getLocal()->reportEmpty(wasEmpty, MAX_ITERS, local.heap.size());
     return Galois::optional<T>();
   }
 
@@ -412,11 +426,11 @@ public:
     auto exists = std::filesystem::exists("smq_stats.csv");
     std::ofstream out("smq_stats.csv" /*result_name*/, std::ios::app);
     if (!exists) {
-      out << "threads,stat_buff,stat_prob_inc_size,dec_size,inc_prob,dec_prob" <<
+      out << "threads,stat_buff,stat_prob_inc_size,dec_size,inc_prob,dec_prob,empty_prob" <<
           "size_changed,min_size,max_size,prob_changed,min_prob,max_prob" << std::endl;
     }
     out << nQ << "," << STAT_BUFF_SIZE  << "," << STAT_PROB_SIZE << "," << INC_SIZE_PERCENT << ","
-        << DEC_SIZE_PERCENT << "," << INC_PROB_PERCENT << "," << DEC_PROB_PERCENT;
+        << DEC_SIZE_PERCENT << "," << INC_PROB_PERCENT << "," << DEC_PROB_PERCENT << "," << EMPTY_PROB_PERCENT;
     deleteStatistic(sizeChangeCnt, out);
     out << "," << MIN_STEAL_SIZE;
 //    deleteStatistic(minSize, out);
@@ -462,7 +476,7 @@ public:
     typedef StealingMultiQueue<T, Comparer,
     STAT_BUFF_SIZE, STAT_PROB_SIZE,
     INC_SIZE_PERCENT, DEC_SIZE_PERCENT,
-    INC_PROB_PERCENT, DEC_PROB_PERCENT,
+    INC_PROB_PERCENT, DEC_PROB_PERCENT, EMPTY_PROB_PERCENT,
     _concurrent> type;
   };
 
@@ -472,7 +486,7 @@ public:
     typedef StealingMultiQueue<_T, Comparer,
     STAT_BUFF_SIZE, STAT_PROB_SIZE,
     INC_SIZE_PERCENT, DEC_SIZE_PERCENT,
-    INC_PROB_PERCENT, DEC_PROB_PERCENT,
+    INC_PROB_PERCENT, DEC_PROB_PERCENT, EMPTY_PROB_PERCENT,
     Concurrent> type;
   };
 
@@ -536,10 +550,11 @@ size_t INC_SIZE_PERCENT,
 size_t DEC_SIZE_PERCENT,
 size_t INC_PROB_PERCENT,
 size_t DEC_PROB_PERCENT,
+size_t  EMPTY_PROB_PERCENT,
 bool Concurrent> Statistic* StealingMultiQueue<
 T, Comparer, STAT_BUFF_SIZE, STAT_PROB_SIZE,
 INC_SIZE_PERCENT, DEC_SIZE_PERCENT,
-INC_PROB_PERCENT, DEC_PROB_PERCENT, Concurrent>::sizeChangeCnt;
+INC_PROB_PERCENT, DEC_PROB_PERCENT, EMPTY_PROB_PERCENT, Concurrent>::sizeChangeCnt;
 
 template<typename T,
 typename Comparer,
@@ -549,10 +564,11 @@ size_t INC_SIZE_PERCENT,
 size_t DEC_SIZE_PERCENT,
 size_t INC_PROB_PERCENT,
 size_t DEC_PROB_PERCENT,
+size_t  EMPTY_PROB_PERCENT,
 bool Concurrent> Statistic* StealingMultiQueue<
 T, Comparer, STAT_BUFF_SIZE, STAT_PROB_SIZE,
 INC_SIZE_PERCENT, DEC_SIZE_PERCENT,
-INC_PROB_PERCENT, DEC_PROB_PERCENT, Concurrent>::minSize;
+INC_PROB_PERCENT, DEC_PROB_PERCENT, EMPTY_PROB_PERCENT, Concurrent>::minSize;
 
 template<typename T,
 typename Comparer,
@@ -562,10 +578,11 @@ size_t INC_SIZE_PERCENT,
 size_t DEC_SIZE_PERCENT,
 size_t INC_PROB_PERCENT,
 size_t DEC_PROB_PERCENT,
+size_t  EMPTY_PROB_PERCENT,
 bool Concurrent> Statistic* StealingMultiQueue<
 T, Comparer, STAT_BUFF_SIZE, STAT_PROB_SIZE,
 INC_SIZE_PERCENT, DEC_SIZE_PERCENT,
-INC_PROB_PERCENT, DEC_PROB_PERCENT, Concurrent>::maxSize;
+INC_PROB_PERCENT, DEC_PROB_PERCENT, EMPTY_PROB_PERCENT, Concurrent>::maxSize;
 
 template<typename T,
 typename Comparer,
@@ -575,10 +592,11 @@ size_t INC_SIZE_PERCENT,
 size_t DEC_SIZE_PERCENT,
 size_t INC_PROB_PERCENT,
 size_t DEC_PROB_PERCENT,
+size_t  EMPTY_PROB_PERCENT,
 bool Concurrent> Statistic* StealingMultiQueue<
 T, Comparer, STAT_BUFF_SIZE, STAT_PROB_SIZE,
 INC_SIZE_PERCENT, DEC_SIZE_PERCENT,
-INC_PROB_PERCENT, DEC_PROB_PERCENT, Concurrent>::probChangeCnt;
+INC_PROB_PERCENT, DEC_PROB_PERCENT, EMPTY_PROB_PERCENT, Concurrent>::probChangeCnt;
 
 template<typename T,
 typename Comparer,
@@ -588,10 +606,11 @@ size_t INC_SIZE_PERCENT,
 size_t DEC_SIZE_PERCENT,
 size_t INC_PROB_PERCENT,
 size_t DEC_PROB_PERCENT,
+size_t  EMPTY_PROB_PERCENT,
 bool Concurrent> Statistic* StealingMultiQueue<
 T, Comparer, STAT_BUFF_SIZE, STAT_PROB_SIZE,
 INC_SIZE_PERCENT, DEC_SIZE_PERCENT,
-INC_PROB_PERCENT, DEC_PROB_PERCENT, Concurrent>::minProb;
+INC_PROB_PERCENT, DEC_PROB_PERCENT, EMPTY_PROB_PERCENT, Concurrent>::minProb;
 
 template<typename T,
 typename Comparer,
@@ -601,10 +620,11 @@ size_t INC_SIZE_PERCENT,
 size_t DEC_SIZE_PERCENT,
 size_t INC_PROB_PERCENT,
 size_t DEC_PROB_PERCENT,
+size_t  EMPTY_PROB_PERCENT,
 bool Concurrent> Statistic* StealingMultiQueue<
 T, Comparer, STAT_BUFF_SIZE, STAT_PROB_SIZE,
 INC_SIZE_PERCENT, DEC_SIZE_PERCENT,
-INC_PROB_PERCENT, DEC_PROB_PERCENT, Concurrent>::maxProb;
+INC_PROB_PERCENT, DEC_PROB_PERCENT, EMPTY_PROB_PERCENT, Concurrent>::maxProb;
 
 
 } // namespace WorkList

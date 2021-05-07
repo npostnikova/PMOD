@@ -25,7 +25,7 @@ template<typename T,
          size_t STEAL_NUM,
          size_t D = 4>
 struct HeapWithStealBuffer {
-  static Compare cmp;
+  static Compare compare;
   // Represents a flag for empty cells.
   static T dummy;
   DAryHeap<T, Compare, D> heap;
@@ -35,7 +35,7 @@ struct HeapWithStealBuffer {
   }
 
   //! Checks whether the element is "null".
-  bool isDummy(T const& element) {
+  static bool isDummy(T const& element) {
     return element == dummy;
   }
 
@@ -141,7 +141,7 @@ private:
     if (stolen.is_initialized()) {
       auto elements = stolen.get();
       for (size_t i = 1; i < STEAL_NUM; i++) {
-        if (!isDummy(elements[i])) heap.push_back(elements[i]);
+        if (!isDummy(elements[i])) heap.push(elements[i]);
       }
       return elements[0];
     }
@@ -201,6 +201,7 @@ private:
     T localMin = heaps[tId].data.getMinWriter();
     bool nextIterNeeded = true;
     while (nextIterNeeded) {
+      nextIterNeeded = false;
       auto randId = rand_heap();
       if (randId == tId) continue;
       Heap* randH = &heaps[randId].data;
@@ -275,7 +276,7 @@ public:
         if (stolen.is_initialized()) return stolen;
     }
     auto minVal = heaps[tId].data.extractMin();
-    if (!Heap::isDummy(minVal)) return minVal;
+    if (minVal.is_initialized()) return minVal;
 
     // Our heap is empty
     return nQ == 1 ? emptyResult : trySteal();

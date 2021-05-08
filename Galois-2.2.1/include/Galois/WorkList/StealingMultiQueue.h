@@ -171,6 +171,7 @@ class StealingMultiQueue {
 private:
   typedef HeapWithStealBuffer<T, Comparer, StealBatchSize, 4> Heap;
   std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<Heap>[]> heaps;
+  std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]> stealBuffers;
   static Comparer compare;
   const size_t nQ;
 
@@ -214,10 +215,12 @@ private:
         auto stolen = randH->trySteal(nextIterNeeded);
         if (stolen.is_initialized()) {
           auto elements = stolen.get();
+          auto& buffer = stealBuffers[tId].data;
           for (size_t i = 1; i < StealBatchSize; i++) {
             if (!Heap::isDummy(elements[i]))
-              heaps[tId].data.heap.push(elements[i]);
+              buffer.push_back(elements[i]);
           }
+          std::reverse(buffer.begin(), buffer.end());
           return elements[0];
         }
       }
@@ -229,6 +232,7 @@ public:
   StealingMultiQueue() : nQ(Galois::getActiveThreads()) {
     memset(reinterpret_cast<void*>(&Heap::dummy), 0xff, sizeof(Heap::dummy));
     heaps = std::make_unique<Galois::Runtime::LL::CacheLineStorage<Heap>[]>(nQ);
+    stealBuffers = std::make_unique<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]>(nQ);
   }
 
   typedef T value_type;
@@ -268,12 +272,19 @@ public:
   Galois::optional<T> pop() {
     static thread_local size_t tId = Galois::Runtime::LL::getTID();
     Galois::optional<T> emptyResult;
+    auto& buffer = stealBuffers[tId].data;
+    if (!buffer.empty()) {
+      auto val = buffer.back();
+      buffer.pop_back();
+      if (heaps[tId].data.isBufferStolen()) heaps[tId].data.fillBuffer();
+      return val;
+    }
 
     // rand == 0 -- try to steal
     // otherwise, pop locally
     if (nQ > 1 && random() % StealProb == 0) {
-        Galois::optional<T> stolen = trySteal();
-        if (stolen.is_initialized()) return stolen;
+      Galois::optional<T> stolen = trySteal();
+      if (stolen.is_initialized()) return stolen;
     }
     auto minVal = heaps[tId].data.extractMin();
     if (minVal.is_initialized()) return minVal;

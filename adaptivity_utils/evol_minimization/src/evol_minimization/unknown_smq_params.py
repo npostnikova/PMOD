@@ -21,5 +21,5 @@ unknown_params = (
     Param("dec_size_per", 1,  15, lambda x: 5 * x),
     Param("inc_prob_per", 5,  19, lambda x: 5 * x),
     Param("dec_prob_per", 1,  15, lambda x: 5 * x),
-    Param("empty_prob_per", 1,  15, lambda x: 5 * x),
+    Param("empty_prob_per", 1,  19, lambda x: 5 * x),
 )

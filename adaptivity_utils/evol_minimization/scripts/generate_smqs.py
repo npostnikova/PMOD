@@ -61,7 +61,7 @@ def generate_amqs(params,
             str(real_param_val(param, 'inc_size_per')),
             str(real_param_val(param, 'dec_size_per')),
             str(real_param_val(param, 'inc_prob_per')),
-            str(real_param_val(param, 'dec_prob_per'))
+            str(real_param_val(param, 'dec_prob_per')),
             str(real_param_val(param, 'empty_prob_per'))
         ]
         header.write(

@@ -4,6 +4,7 @@
 #include <atomic>
 #include <cstdlib>
 #include <vector>
+#include <filesystem>
 
 #include "StealingQueue.h"
 #include "Heap.h"
@@ -14,16 +15,16 @@ namespace WorkList {
 /**
  * Class-helper, consists of a sequential heap and
  * a stealing buffer.
- * 
+ *
  * @tparam T Type of the elements.
  * @tparam Compare Elements comparator.
  * @tparam STEAL_NUM Number of elements to steal at once.
  * @tparam D Arity of the heap.
  */
 template<typename T,
-         typename Compare,
-         size_t STEAL_NUM,
-         size_t D = 4>
+typename Compare,
+size_t STEAL_NUM,
+size_t D = 4>
 struct HeapWithStealBuffer {
   static Compare compare;
   // Represents a flag for empty cells.
@@ -77,7 +78,7 @@ struct HeapWithStealBuffer {
         return vals[0];
       }
     }
-    return fillBuffer();
+    return fillBuffer(STEAL_NUM);
   }
 
   //! Tries to steal the elements from the stealing buffer.
@@ -99,11 +100,11 @@ struct HeapWithStealBuffer {
 
   //! Fills the steal buffer.
   //! Called when the elements from the previous epoch are empty.
-  T fillBuffer() {
+  T fillBuffer(size_t elementsNumber) {
     if (heap.empty()) return dummy;
     std::array<T, STEAL_NUM> elements;
     elements.fill(dummy);
-    for (size_t i = 0; i < STEAL_NUM && !heap.empty(); i++) {
+    for (size_t i = 0; i < elementsNumber && !heap.empty(); i++) {
       elements[i] = heap.extractMin();
     }
     stealBuffer = elements;
@@ -123,12 +124,12 @@ struct HeapWithStealBuffer {
     if (!isDummy(bufferMin) && compare(heap.min(), bufferMin)) {
       auto stolen = tryStealLocally();
       if (stolen.is_initialized()) {
-        fillBuffer();
+        fillBuffer(STEAL_NUM);
         return stolen;
       }
     }
     auto localMin = heap.extractMin();
-    if (isDummy(bufferMin)) fillBuffer();
+    if (isDummy(bufferMin)) fillBuffer(STEAL_NUM);
     return localMin;
   }
 
@@ -156,24 +157,153 @@ private:
 };
 
 template<typename T,
-         typename Compare,
-         size_t STEAL_NUM,
-         size_t D>
+typename Compare,
+size_t STEAL_NUM,
+size_t D>
 T HeapWithStealBuffer<T, Compare, STEAL_NUM, D>::dummy;
 
 template<typename T,
-         typename Comparer,
-         size_t StealProb,
-         size_t StealBatchSize = 8,
-         bool Concurrent = true
->
+typename Comparer,
+size_t STAT_BUFF_SIZE = 4,
+size_t STAT_PROB_SIZE = 4,
+size_t INC_SIZE_PERCENT = 80,
+size_t DEC_SIZE_PERCENT = 40,
+size_t INC_PROB_PERCENT = 80,
+size_t DEC_PROB_PERCENT = 40,
+size_t EMPTY_PROB_PERCENT = 40,
+bool Concurrent = true>
 class StealingMultiQueue {
 private:
-  typedef HeapWithStealBuffer<T, Comparer, StealBatchSize, 4> Heap;
+  static const size_t MIN_STEAL_SIZE = STAT_PROB_SIZE;
+  static const size_t MAX_STEAL_SIZE = STAT_PROB_SIZE;
+  static const size_t MIN_STEAL_PROB = STAT_BUFF_SIZE;
+  static const size_t MAX_STEAL_PROB = STAT_BUFF_SIZE;
+  typedef HeapWithStealBuffer<T, Comparer, MAX_STEAL_SIZE, 4> Heap;
   std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<Heap>[]> heaps;
   std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]> stealBuffers;
   static Comparer compare;
   const size_t nQ;
+
+  struct PerThread {
+
+    size_t stealProb = MIN_STEAL_PROB;
+    size_t stealSize = MIN_STEAL_SIZE;
+
+    // We wanted to steal
+    size_t stealAttemptsNum = 0;
+    // We tried to steal
+    size_t otherMinLessNum = 0;
+    size_t stealReportId = 0;
+
+    // We checked our buffer
+    size_t stolenChecksNum = 0;
+    // Our buffer was empty
+    size_t stolenNum = 0;
+    size_t bufferCheckReportId = 0;
+
+    void reportBufferEmpty() {
+      return;
+      stolenChecksNum++;
+      stolenNum++;
+      bufferCheckReportId++;
+      if (bufferCheckReportId >= STAT_BUFF_SIZE) {
+        checkNeedExtend();
+        clearSizeStats(); // todo needed or not
+      }
+    }
+
+    void reportBufferFull() {
+      return;
+      stolenChecksNum++;
+      bufferCheckReportId++;
+      if (bufferCheckReportId >= STAT_BUFF_SIZE) {
+        checkNeedExtend();
+        clearSizeStats();
+      }
+    }
+
+    // Whether stealing size should be extended
+    void checkNeedExtend() {
+      // stolen / checks >= inc_percent / 100
+      // stolen * 100 >= inc_percent * checks
+      if (stolenNum * 100 >= INC_SIZE_PERCENT * stolenChecksNum) {
+        increaseSize();
+      } else if (stolenNum * 100 <= DEC_SIZE_PERCENT * stolenChecksNum) {
+        decreaseSize();
+      }
+    }
+
+    void reportStealStats(size_t ourBetter, size_t otherBetter) {
+      return;
+      stealAttemptsNum += ourBetter + otherBetter;
+      otherMinLessNum += otherBetter;
+      stealReportId++;
+      if (stealReportId >= STAT_PROB_SIZE) {
+        checkProbChanges();
+        clearProbStats();
+      }
+    }
+
+    void reportEmpty(size_t empty, size_t total, size_t localSize) {
+      return;
+      if (stealSize < MAX_STEAL_SIZE && empty * 100 >= total * EMPTY_PROB_PERCENT && localSize >= 2 * (1u << (stealSize + 1))) {
+        stealSize++;
+        maxSize->setMax(stealSize);
+      }
+    }
+
+    void checkProbChanges() {
+      if (otherMinLessNum * 100 >= stealAttemptsNum * INC_PROB_PERCENT) {
+        increaseProb();
+      } else if (otherMinLessNum * 100 <= stealAttemptsNum * DEC_PROB_PERCENT) {
+        decreaseProb();
+      }
+    }
+
+    void clearSizeStats() {
+      stolenNum = 0;
+      stolenChecksNum = 0;
+      bufferCheckReportId = 0;
+    }
+
+    void clearProbStats() {
+      stealAttemptsNum = 0;
+      otherMinLessNum = 0;
+      stealReportId = 0;
+    }
+
+    void increaseProb() {
+      if (stealProb > MIN_STEAL_PROB) {
+        stealProb--;
+        *probChangeCnt += 1;
+      }
+    }
+
+    void decreaseProb() {
+      if (stealProb < MAX_STEAL_PROB) {
+        stealProb++;
+        *probChangeCnt += 1;
+        maxProb->setMax(stealProb);
+      }
+    }
+
+    void increaseSize() {
+      if (stealSize < MAX_STEAL_SIZE) {
+        stealSize++;
+        *sizeChangeCnt += 1;
+        maxSize->setMax(stealSize);
+      }
+    }
+
+    void decreaseSize() {
+      if (stealSize > MIN_STEAL_SIZE) {
+        stealSize--;
+        *sizeChangeCnt += 1;
+      }
+    }
+  };
+
+  Runtime::PerThreadStorage<PerThread> threadStorage;
 
   //! Thread local random.
   uint32_t random() {
@@ -199,8 +329,14 @@ private:
   //! Repeats if failed because of a race.
   Galois::optional<T> trySteal() {
     static thread_local size_t tId = Galois::Runtime::LL::getTID();
+    auto& local = heaps[tId].data;
     T localMin = heaps[tId].data.getMinWriter();
     bool nextIterNeeded = true;
+    size_t ourBetter = 0;
+    size_t otherBetter = 0;
+    size_t races = 0;
+    size_t wasEmpty = 0;
+    const size_t MAX_ITERS = 4;
     while (nextIterNeeded) {
       nextIterNeeded = false;
       auto randId = rand_heap();
@@ -209,44 +345,157 @@ private:
       auto randMin = randH->getBufferMin(nextIterNeeded);
       if (randH->isDummy(randMin)) {
         // Nothing to steal
-        continue;
+        wasEmpty++;
       }
       if (Heap::isDummy(localMin) || compare(localMin, randMin)) {
+        otherBetter++;
         auto stolen = randH->trySteal(nextIterNeeded);
         if (stolen.is_initialized()) {
           auto elements = stolen.get();
           auto& buffer = stealBuffers[tId].data;
-          for (size_t i = 1; i < StealBatchSize; i++) {
+          for (size_t i = 1; i < MAX_STEAL_SIZE; i++) {
             if (!Heap::isDummy(elements[i]))
               buffer.push_back(elements[i]);
           }
           std::reverse(buffer.begin(), buffer.end());
+          threadStorage.getLocal()->reportStealStats(ourBetter, otherBetter);
+//          threadStorage.getLocal()->reportEmpty(wasEmpty, j + 1, local.heap.size());
           return elements[0];
+        } else {
+          wasEmpty++;
         }
+      } else {
+        ourBetter++;
       }
     }
+    threadStorage.getLocal()->reportStealStats(ourBetter, otherBetter);
+    threadStorage.getLocal()->reportEmpty(wasEmpty, MAX_ITERS, local.heap.size());
     return Galois::optional<T>();
   }
 
+  //! Fills steal buffer if it is empty.
+  void fillBufferIfNeeded() {
+    static thread_local size_t tId = Galois::Runtime::LL::getTID();
+    auto& heap = heaps[tId].data;
+    PerThread* local = threadStorage.getLocal();
+    if (heap.isBufferStolen()) {
+      heap.fillBuffer(local->stealSize);
+      local->reportBufferEmpty();
+    } else {
+      local->reportBufferFull();
+    }
+  }
+
 public:
+  static Galois::Statistic* maxSize;
+  static Galois::Statistic* minSize;
+  static Galois::Statistic* maxProb;
+  static Galois::Statistic* minProb;
+  static Galois::Statistic* sizeChangeCnt;
+  static Galois::Statistic* probChangeCnt;
+
+  void initStatistic(Galois::Statistic*& st, std::string const& name) {
+    if (st == nullptr)
+      st = new Galois::Statistic(name);
+  }
+
   StealingMultiQueue() : nQ(Galois::getActiveThreads()) {
     memset(reinterpret_cast<void*>(&Heap::dummy), 0xff, sizeof(Heap::dummy));
     heaps = std::make_unique<Galois::Runtime::LL::CacheLineStorage<Heap>[]>(nQ);
     stealBuffers = std::make_unique<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]>(nQ);
+
+    initStatistic(maxSize, "maxSize");
+    initStatistic(minSize, "minSize");
+    initStatistic(maxProb, "maxProb");
+    initStatistic(minProb, "minProb");
+    initStatistic(sizeChangeCnt, "sizeChange");
+    initStatistic(probChangeCnt, "probChange");
+    *minSize = MIN_STEAL_SIZE;
+    *maxSize = MIN_STEAL_SIZE;
+    *minProb = MIN_STEAL_PROB;
+    *maxProb = MIN_STEAL_PROB;
   }
+
+  void deleteStatistic(Galois::Statistic*& st, std::ofstream& out) {
+    if (st != nullptr) {
+      if (st->getStatname().find("min") != std::string::npos) {
+        out << "," << getMinVal(st);
+      } else if (st->getStatname().find("max") != std::string::npos) {
+        out << "," << getMaxVal(st);
+      } else {
+        out << "," << getStatVal(st);
+      }
+      delete st;
+      st = nullptr;
+    }
+  }
+
+  ~StealingMultiQueue() {
+    auto exists = std::filesystem::exists("smq_stats.csv");
+    std::ofstream out("smq_stats.csv" /*result_name*/, std::ios::app);
+    if (!exists) {
+      out << "threads,stat_buff,stat_prob_inc_size,dec_size,inc_prob,dec_prob,empty_prob" <<
+          "size_changed,min_size,max_size,prob_changed,min_prob,max_prob" << std::endl;
+    }
+    out << nQ << "," << STAT_BUFF_SIZE  << "," << STAT_PROB_SIZE << "," << INC_SIZE_PERCENT << ","
+        << DEC_SIZE_PERCENT << "," << INC_PROB_PERCENT << "," << DEC_PROB_PERCENT << "," << EMPTY_PROB_PERCENT;
+    deleteStatistic(sizeChangeCnt, out);
+    out << "," << MIN_STEAL_SIZE;
+//    deleteStatistic(minSize, out);
+    deleteStatistic(maxSize, out);
+    deleteStatistic(probChangeCnt, out);
+    out << "," << MIN_STEAL_PROB;
+//    deleteStatistic(minProb, out);
+    deleteStatistic(maxProb, out);
+    out << std::endl;
+    out.close();
+  }
+
+  uint64_t getMaxVal(Galois::Statistic* value) {
+    uint64_t stat = 0;
+    for (unsigned x = 0; x < Galois::Runtime::activeThreads; ++x)
+      stat = std::max(stat, value->getValue(x));
+    return stat;
+  }
+
+  uint64_t getMinVal(Galois::Statistic* value) {
+    uint64_t stat = SIZE_MAX;
+    for (unsigned x = 0; x < Galois::Runtime::activeThreads; ++x) {
+      if (value->getValue(x) < 1)
+        continue;
+      stat = std::min(stat, value->getValue(x));
+    }
+    return stat;
+  }
+
+  uint64_t getStatVal(Galois::Statistic* value) {
+    uint64_t stat = 0;
+    for (unsigned x = 0; x < Galois::Runtime::activeThreads; ++x)
+      stat += value->getValue(x);
+    return stat;
+  }
+
 
   typedef T value_type;
 
   //! Change the concurrency flag.
   template<bool _concurrent>
   struct rethread {
-    typedef StealingMultiQueue<T, Comparer, StealProb, StealBatchSize, _concurrent> type;
+    typedef StealingMultiQueue<T, Comparer,
+    STAT_BUFF_SIZE, STAT_PROB_SIZE,
+    INC_SIZE_PERCENT, DEC_SIZE_PERCENT,
+    INC_PROB_PERCENT, DEC_PROB_PERCENT, EMPTY_PROB_PERCENT,
+    _concurrent> type;
   };
 
   //! Change the type the worklist holds.
   template<typename _T>
   struct retype {
-    typedef StealingMultiQueue<_T, Comparer, StealProb, StealBatchSize, Concurrent> type;
+    typedef StealingMultiQueue<_T, Comparer,
+    STAT_BUFF_SIZE, STAT_PROB_SIZE,
+    INC_SIZE_PERCENT, DEC_SIZE_PERCENT,
+    INC_PROB_PERCENT, DEC_PROB_PERCENT, EMPTY_PROB_PERCENT,
+    Concurrent> type;
   };
 
   template<typename RangeTy>
@@ -265,7 +514,7 @@ public:
       heap->heap.push(*b++);
       pushedNum++;
     }
-    if (heap->isBufferStolen()) heap->fillBuffer();
+    fillBufferIfNeeded();
     return pushedNum;
   }
 
@@ -276,13 +525,13 @@ public:
     if (!buffer.empty()) {
       auto val = buffer.back();
       buffer.pop_back();
-      if (heaps[tId].data.isBufferStolen()) heaps[tId].data.fillBuffer();
+      fillBufferIfNeeded();
       return val;
     }
 
     // rand == 0 -- try to steal
     // otherwise, pop locally
-    if (nQ > 1 && random() % StealProb == 0) {
+    if (nQ > 1 && random() % (threadStorage.getLocal()->stealProb) == 0) {
       Galois::optional<T> stolen = trySteal();
       if (stolen.is_initialized()) return stolen;
     }
@@ -296,8 +545,92 @@ public:
 
 GALOIS_WLCOMPILECHECK(StealingMultiQueue)
 
+template<typename T,
+typename Comparer,
+size_t STAT_BUFF_SIZE,
+size_t STAT_PROB_SIZE,
+size_t INC_SIZE_PERCENT,
+size_t DEC_SIZE_PERCENT,
+size_t INC_PROB_PERCENT,
+size_t DEC_PROB_PERCENT,
+size_t  EMPTY_PROB_PERCENT,
+bool Concurrent> Statistic* StealingMultiQueue<
+T, Comparer, STAT_BUFF_SIZE, STAT_PROB_SIZE,
+INC_SIZE_PERCENT, DEC_SIZE_PERCENT,
+INC_PROB_PERCENT, DEC_PROB_PERCENT, EMPTY_PROB_PERCENT, Concurrent>::sizeChangeCnt;
+
+template<typename T,
+typename Comparer,
+size_t STAT_BUFF_SIZE,
+size_t STAT_PROB_SIZE,
+size_t INC_SIZE_PERCENT,
+size_t DEC_SIZE_PERCENT,
+size_t INC_PROB_PERCENT,
+size_t DEC_PROB_PERCENT,
+size_t  EMPTY_PROB_PERCENT,
+bool Concurrent> Statistic* StealingMultiQueue<
+T, Comparer, STAT_BUFF_SIZE, STAT_PROB_SIZE,
+INC_SIZE_PERCENT, DEC_SIZE_PERCENT,
+INC_PROB_PERCENT, DEC_PROB_PERCENT, EMPTY_PROB_PERCENT, Concurrent>::minSize;
+
+template<typename T,
+typename Comparer,
+size_t STAT_BUFF_SIZE,
+size_t STAT_PROB_SIZE,
+size_t INC_SIZE_PERCENT,
+size_t DEC_SIZE_PERCENT,
+size_t INC_PROB_PERCENT,
+size_t DEC_PROB_PERCENT,
+size_t  EMPTY_PROB_PERCENT,
+bool Concurrent> Statistic* StealingMultiQueue<
+T, Comparer, STAT_BUFF_SIZE, STAT_PROB_SIZE,
+INC_SIZE_PERCENT, DEC_SIZE_PERCENT,
+INC_PROB_PERCENT, DEC_PROB_PERCENT, EMPTY_PROB_PERCENT, Concurrent>::maxSize;
+
+template<typename T,
+typename Comparer,
+size_t STAT_BUFF_SIZE,
+size_t STAT_PROB_SIZE,
+size_t INC_SIZE_PERCENT,
+size_t DEC_SIZE_PERCENT,
+size_t INC_PROB_PERCENT,
+size_t DEC_PROB_PERCENT,
+size_t  EMPTY_PROB_PERCENT,
+bool Concurrent> Statistic* StealingMultiQueue<
+T, Comparer, STAT_BUFF_SIZE, STAT_PROB_SIZE,
+INC_SIZE_PERCENT, DEC_SIZE_PERCENT,
+INC_PROB_PERCENT, DEC_PROB_PERCENT, EMPTY_PROB_PERCENT, Concurrent>::probChangeCnt;
+
+template<typename T,
+typename Comparer,
+size_t STAT_BUFF_SIZE,
+size_t STAT_PROB_SIZE,
+size_t INC_SIZE_PERCENT,
+size_t DEC_SIZE_PERCENT,
+size_t INC_PROB_PERCENT,
+size_t DEC_PROB_PERCENT,
+size_t  EMPTY_PROB_PERCENT,
+bool Concurrent> Statistic* StealingMultiQueue<
+T, Comparer, STAT_BUFF_SIZE, STAT_PROB_SIZE,
+INC_SIZE_PERCENT, DEC_SIZE_PERCENT,
+INC_PROB_PERCENT, DEC_PROB_PERCENT, EMPTY_PROB_PERCENT, Concurrent>::minProb;
+
+template<typename T,
+typename Comparer,
+size_t STAT_BUFF_SIZE,
+size_t STAT_PROB_SIZE,
+size_t INC_SIZE_PERCENT,
+size_t DEC_SIZE_PERCENT,
+size_t INC_PROB_PERCENT,
+size_t DEC_PROB_PERCENT,
+size_t  EMPTY_PROB_PERCENT,
+bool Concurrent> Statistic* StealingMultiQueue<
+T, Comparer, STAT_BUFF_SIZE, STAT_PROB_SIZE,
+INC_SIZE_PERCENT, DEC_SIZE_PERCENT,
+INC_PROB_PERCENT, DEC_PROB_PERCENT, EMPTY_PROB_PERCENT, Concurrent>::maxProb;
+
+
 } // namespace WorkList
 } // namespace Galois
 
 #endif //GALOIS_STEALINGMULTIQUEUE_H
-

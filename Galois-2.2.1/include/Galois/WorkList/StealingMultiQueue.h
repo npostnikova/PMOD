@@ -174,10 +174,10 @@ size_t EMPTY_PROB_PERCENT = 40,
 bool Concurrent = true>
 class StealingMultiQueue {
 private:
-  static const size_t MIN_STEAL_SIZE = 1;
-  static const size_t MAX_STEAL_SIZE = 1;
-  static const size_t MIN_STEAL_PROB = STAT_BUFF_SIZE;
-  static const size_t MAX_STEAL_PROB = STAT_BUFF_SIZE;
+  static const size_t MIN_STEAL_SIZE = 16;
+  static const size_t MAX_STEAL_SIZE = 16;
+  static const size_t MIN_STEAL_PROB = 8;
+  static const size_t MAX_STEAL_PROB = 8;
   typedef HeapWithStealBuffer<T, Comparer, MAX_STEAL_SIZE, 4> Heap;
   std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<Heap>[]> heaps;
   std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]> stealBuffers;
@@ -231,6 +231,16 @@ private:
       return;
       // stolen / checks >= inc_percent / 100
       // stolen * 100 >= inc_percent * checks
+      size_t newSize = 0;
+      if (stolenNum * 100 <= 20 * stolenChecksNum) {
+        newSize = 1;
+      } else if (stolenNum * 100 <= 40 * stolenChecksNum) {
+        newSize = 2;
+      } else if (stolenNum * 100 <= 80 * stolenChecksNum) {
+        newSize = 4;
+      } else {
+
+      }
       if (stolenNum * 100 >= INC_SIZE_PERCENT * stolenChecksNum) {
 //        if (size >= 4 * stealSize) increaseSize();
       } else if (stolenNum * 100 <= DEC_SIZE_PERCENT * stolenChecksNum) {
@@ -239,6 +249,7 @@ private:
     }
 
     void reportStealStats(size_t ourBetter, size_t otherBetter) {
+      return;
       stealAttemptsNum += ourBetter + otherBetter;
       otherMinLessNum += otherBetter;
       stealReportId++;
@@ -249,7 +260,7 @@ private:
     }
 
     void reportEmpty(size_t empty, size_t total, size_t localSize) {
-      return;
+//      return;
       emptyNum += empty;
       tryNum += total;
       emptyReportId++;
@@ -260,11 +271,32 @@ private:
     }
 
     void checkEmpty(size_t localSize) {
-      if (emptyNum * 100 >= tryNum * EMPTY_PROB_PERCENT/* && localSize >= 2 * stealSize*/) {
-        increaseSize();
-      } else if (emptyNum * 100 <= tryNum * DEC_SIZE_PERCENT) {
-        decreaseSize();
+      size_t size = 0;
+      if (emptyNum * 100 <= tryNum * 10) {
+        size = 1;
+      } else if (emptyNum * 100 <= tryNum * 30) {
+        size = 2;
+      } else if (emptyNum * 100 <= tryNum * 60) {
+        size = 4;
+      } else if (emptyNum * 100 <= tryNum * 90) {
+        size = 8;
+      } else {
+        size = 16;
       }
+      if (stealSize < size) {
+        *sizeIncrease += 1;
+      } else if (stealSize > size) {
+        *sizeDecrease += 1;
+      }
+      maxSize->setMax(size);
+      minSize->setMin(size);
+      stealSize = size;
+//
+//      if (emptyNum * 100 >= tryNum * EMPTY_PROB_PERCENT/* && localSize >= 2 * stealSize*/) {
+//        increaseSize();
+//      } else if (emptyNum * 100 <= tryNum * DEC_SIZE_PERCENT) {
+//        decreaseSize();
+//      }
     }
 
     void checkProbChanges() {
@@ -340,7 +372,7 @@ private:
     void increaseSize() {
       if (stealSize < MAX_STEAL_SIZE) {
         stealSize <<= 1u;
-        *sizeChangeCnt += 1;
+        *sizeIncrease += 1;
         maxSize->setMax(stealSize);
       }
     }
@@ -348,7 +380,7 @@ private:
     void decreaseSize() {
       if (stealSize > MIN_STEAL_SIZE) {
         stealSize >>= 1u;
-        *sizeChangeCnt += 1;
+        *sizeDecrease += 1;
       }
     }
   };
@@ -413,6 +445,8 @@ private:
           threadStorage.getLocal()->reportStealStats(ourBetter, otherBetter);
           threadStorage.getLocal()->reportEmpty(wasEmpty, tried, local.heap.size());
           return elements[0];
+        } else {
+//          wasEmpty++;
         }
       } else {
         ourBetter++;
@@ -441,7 +475,8 @@ public:
   static Galois::Statistic* minSize;
   static Galois::Statistic* maxProb;
   static Galois::Statistic* minProb;
-  static Galois::Statistic* sizeChangeCnt;
+  static Galois::Statistic* sizeIncrease;
+  static Galois::Statistic* sizeDecrease;
   static Galois::Statistic* probIncreased;
   static Galois::Statistic* probDecreased;
 
@@ -459,7 +494,8 @@ public:
     initStatistic(minSize, "minSize");
     initStatistic(maxProb, "maxProb");
     initStatistic(minProb, "minProb");
-    initStatistic(sizeChangeCnt, "sizeChange");
+    initStatistic(sizeIncrease, "sizeInc");
+    initStatistic(sizeDecrease, "sizeDec");
     initStatistic(probIncreased, "probInc");
     initStatistic(probDecreased, "probDec");
     *minSize = MIN_STEAL_SIZE;
@@ -494,15 +530,15 @@ public:
 
     out << nQ << "," << STAT_BUFF_SIZE  << "," << STAT_PROB_SIZE << "," << INC_PROB_PERCENT
     << "," << DEC_PROB_PERCENT;
-//    deleteStatistic(sizeChangeCnt, out);
+//    deleteStatistic(sizeIncrease, out);
 //    out << "," << MIN_STEAL_SIZE;
-//    deleteStatistic(minSize, out);
-//    deleteStatistic(maxSize, out);
-    deleteStatistic(probIncreased, out);
-    deleteStatistic(probDecreased, out);
+    deleteStatistic(minSize, out);
+    deleteStatistic(maxSize, out);
+    deleteStatistic(sizeIncrease, out);
+    deleteStatistic(sizeDecrease, out);
 //    out << "," << MIN_STEAL_PROB;
-    deleteStatistic(minProb, out);
-    deleteStatistic(maxProb, out);
+//    deleteStatistic(minProb, out);
+//    deleteStatistic(maxProb, out);
     out << std::endl;
     out.close();
   }
@@ -613,7 +649,20 @@ size_t  EMPTY_PROB_PERCENT,
 bool Concurrent> Statistic* StealingMultiQueue<
 T, Comparer, STAT_BUFF_SIZE, STAT_PROB_SIZE,
 INC_SIZE_PERCENT, DEC_SIZE_PERCENT,
-INC_PROB_PERCENT, DEC_PROB_PERCENT, EMPTY_PROB_PERCENT, Concurrent>::sizeChangeCnt;
+INC_PROB_PERCENT, DEC_PROB_PERCENT, EMPTY_PROB_PERCENT, Concurrent>::sizeIncrease;
+template<typename T,
+typename Comparer,
+size_t STAT_BUFF_SIZE,
+size_t STAT_PROB_SIZE,
+size_t INC_SIZE_PERCENT,
+size_t DEC_SIZE_PERCENT,
+size_t INC_PROB_PERCENT,
+size_t DEC_PROB_PERCENT,
+size_t  EMPTY_PROB_PERCENT,
+bool Concurrent> Statistic* StealingMultiQueue<
+T, Comparer, STAT_BUFF_SIZE, STAT_PROB_SIZE,
+INC_SIZE_PERCENT, DEC_SIZE_PERCENT,
+INC_PROB_PERCENT, DEC_PROB_PERCENT, EMPTY_PROB_PERCENT, Concurrent>::sizeDecrease;
 
 template<typename T,
 typename Comparer,

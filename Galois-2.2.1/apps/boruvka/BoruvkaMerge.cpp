@@ -66,6 +66,9 @@ static cll::opt<bool> use_weighted_rmat("wrmat",cll::desc("Weighted RMAT"), cll:
 static cll::opt<bool> verify_via_kruskal("verify",cll::desc("Verify MST result via Serial Kruskal"), cll::Optional,cll::init(false));
 static cll::opt<int> stepShift("delta", cll::desc("Shift value for the deltastep"), cll::init(0));
 static cll::opt<std::string> worklistname("wl", cll::desc("Worklist to use"), cll::value_desc("worklist"), cll::init("obim"));
+static cll::opt<std::string> resultFile("resultFile", cll::desc("File for writting experiment results"), cll::init("result.txt"));
+static cll::opt<std::string> mqSuff("suff", cll::desc("Suffix for amq or smq"), cll::init(""));
+
 
 static const bool trackWork = true;
 static Galois::Statistic* nOverall;
@@ -74,6 +77,7 @@ static Galois::Statistic* WLEmptyWork;
 static Galois::Statistic* nBad;
 static Galois::Statistic* nEmpty;
 static Galois::Statistic* nEdgesProcessed;
+static Galois::Statistic* nNodesProcessed;
 
 static int nodeID = 0;
 ///////////////////////////////////////////////////////////////////////////////////////
@@ -187,6 +191,10 @@ struct WorkItem{
   GNode first;
   unsigned second;
 
+  unsigned prior() const {
+    return second;
+  }
+
   WorkItem(const GNode& N, unsigned W): first(N), second(W) {}
 
   WorkItem(): first(), second(0) {}
@@ -218,6 +226,7 @@ Galois::Runtime::PerThreadStorage<long long> MSTWeight;
 struct process {
    template<typename ContextTy>
    void operator()(const WorkItem& srcn, ContextTy& lwl) {
+     *nNodesProcessed += 1;
       GNode src = srcn.first;
       if (graph.containsNode(src) == false) {
          // if src does not exist in graph, empty work
@@ -226,7 +235,7 @@ struct process {
          return;
       }
       graph.getData(src, Galois::MethodFlag::ALL);
-      GNode * minNeighbor = 0;
+      GNode * minNeighbor = nullptr;
 #if BORUVKA_DEBUG
       //std::cout<<"Processing "<<graph.getData(src).toString()<<std::endl;
 #endif
@@ -365,6 +374,8 @@ long long runBodyParallel() {
    typedef VectorOrderedByIntegerMetric<Indexer, Chunk, 10> VECOBIM;
    typedef VectorOrderedByIntegerMetric<Indexer, noChunk, 10> VECOBIM_NOCHUNK;
    typedef VectorOrderedByIntegerMetric<Indexer, globNoChunk, 10> VECOBIM_GLOB_NOCHUNK;
+//  typedef SkipListSMQ<WorkItem, seq_gt, Prob<1, 2>, true> SMQ_1_2;
+//  typedef SkipListSMQ<WorkItem, seq_gt, Prob<1, 16>, true> SMQ_1_16;
 
    size_t approxNodeData = graph.size() * 128;
    Galois::preAlloc(numThreads + 3 * approxNodeData / Galois::Runtime::MM::pageSize);
@@ -381,6 +392,9 @@ long long runBodyParallel() {
    }
 
    std::string wl = worklistname;
+  if (!mqSuff.empty()) {
+    mqSuff = "_" + mqSuff;
+  }
    if (wl.find("obim") == std::string::npos)
      stepShift = 0;
    std::cout << "INFO: Using delta-step of " << (1 << stepShift) << "\n";
@@ -393,7 +407,7 @@ long long runBodyParallel() {
    Galois::StatTimer T;
    T.start();
 #ifdef GALOIS_USE_EXP
-   Exp::PriAuto<64, Indexer, OBIM, seq_less, seq_gt>::for_each(graph.begin(), graph.end(), process());
+   Exp::PriAuto<64, Indexer, OBIM, seq_less, seq_gt>::for_each_local(graph.begin(), graph.end(), process());
 #else
    if (wl == "obim")
    Galois::for_each_local(initial, process(), Galois::wl<OBIM>());
@@ -451,10 +465,35 @@ long long runBodyParallel() {
      Galois::for_each_local(initial, process(), Galois::wl<SWARMPQ>());
    else if (wl == "heapswarm")
      Galois::for_each_local(initial, process(), Galois::wl<HSWARMPQ>());
-   else
-     std::cerr << "No work list!" << "\n";
+//   else
+//     std::cerr << "No work list!" << "\n";
+//    typedef MyHMQ<WorkItem, seq_gt, 2, true> USUAL_HMQ2_TRY1;
+//    if (worklistname == "hmq2_try1")
+//      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_TRY1>());
+//    typedef MyHMQBlocking<WorkItem, seq_gt, 2, true> USUAL_HMQ2_BLOCKING1;
+//    if (worklistname == "hmq2_blocking1")
+//      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_BLOCKING1>());
+//    typedef MyHMQTryLock2Q<WorkItem, seq_gt, 2, true> USUAL_HMQ2_TRY2;
+//    if (worklistname == "hmq2_try2")
+//      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_TRY2>());
+//    typedef MyHMQBlocking2Q<WorkItem, seq_gt, 2, true> USUAL_HMQ2_BLOCKING2;
+//    if (worklistname == "hmq2_blocking2")
+//      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_BLOCKING2>());
+//  typedef MyPQ<WorkItem, seq_gt, true> USUAL_PQ;
+//  if (worklistname == "pq")
+//    Galois::for_each_local(initial, process(), Galois::wl<USUAL_PQ>());
+
+  typedef StealingMultiQueue<WorkItem, seq_gt, 16, 16, true> SMQ_16_16;
+  if (wl == "smq_16_16")
+    Galois::for_each_local(initial, process(), Galois::wl<SMQ_16_16>());
+
+
 #endif
    T.stop();
+
+  std::ofstream out(resultFile + mqSuff, std::ios::app);
+  out << T.get() << ",";
+  out.close();
 
    Galois::reportPageAlloc("MeminfoPost");
    Galois::Runtime::reportNumaAlloc("NumaPost");
@@ -655,6 +694,14 @@ long long verify(Graph & g){
    return kruskal_impl(g.size(), read_edges(g));
 }
 #endif
+
+uint64_t getStatVal(Galois::Statistic* value) {
+  uint64_t stat = 0;
+  for (unsigned x = 0; x < Galois::Runtime::activeThreads; ++x)
+    stat += value->getValue(x);
+  return stat;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////
 int main(int argc, char **argv) {
    Galois::StatManager M;
@@ -672,6 +719,7 @@ int main(int argc, char **argv) {
      BadWork = new Galois::Statistic("BadWork");
      nOverall = new Galois::Statistic("nOverall");
      nEdgesProcessed = new Galois::Statistic("nEdgesProcessed");
+     nNodesProcessed = new Galois::Statistic("nNodesProcessed");
    }
 #if BORUVKA_DEBUG
    long long kruskal_wt;
@@ -690,10 +738,18 @@ int main(int argc, char **argv) {
 #endif
 
    if (trackWork) {
+     std::string wl = worklistname;
+     if (wl.size() >= 3 && wl[1] == 'm' && wl[2] == 'q' && (wl[0] == 's' || wl[0] == 'a'))
+       wl = wl + mqSuff;
+     std::ofstream nodes(resultFile + mqSuff, std::ios::app);
+     nodes << wl << "," << getStatVal(nNodesProcessed) << "," << Galois::Runtime::activeThreads << "," << stepShift << std::endl;
+     nodes.close();
+
      delete WLEmptyWork;
      delete nEmpty;
      delete nOverall;
      delete nEdgesProcessed;
+     delete nNodesProcessed;
      delete nBad;
      delete BadWork;
    }

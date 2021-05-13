@@ -725,7 +725,7 @@ struct AsyncAlgo {
 #define priority_t Dist
 #define element_t UpdateRequest
 
-    typedef StealingMultiQueue<element_t, Comparer, true> SMQ_4_1;
+    typedef StealingMultiQueue<element_t, Comparer, 4, 1, true> SMQ_4_1;
     if (wl == "smq_4_1")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_4_1>());
 

@@ -191,7 +191,7 @@ struct WorkItem{
   GNode first;
   unsigned second;
 
-  unsigned prior() {
+  unsigned prior() const {
     return second;
   }
 
@@ -374,9 +374,8 @@ long long runBodyParallel() {
    typedef VectorOrderedByIntegerMetric<Indexer, Chunk, 10> VECOBIM;
    typedef VectorOrderedByIntegerMetric<Indexer, noChunk, 10> VECOBIM_NOCHUNK;
    typedef VectorOrderedByIntegerMetric<Indexer, globNoChunk, 10> VECOBIM_GLOB_NOCHUNK;
-  typedef SkipListSMQ<WorkItem, seq_gt, Prob<1, 2>, true> SMQ_1_2;
-  typedef SkipListSMQ<WorkItem, seq_gt, Prob<1, 16>, true> SMQ_1_16;
-  typedef MultiQueueProbProb<WorkItem, seq_gt, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 100>> AMQ2_5_1000_1_100;
+//  typedef SkipListSMQ<WorkItem, seq_gt, Prob<1, 2>, true> SMQ_1_2;
+//  typedef SkipListSMQ<WorkItem, seq_gt, Prob<1, 16>, true> SMQ_1_16;
 
    size_t approxNodeData = graph.size() * 128;
    Galois::preAlloc(numThreads + 3 * approxNodeData / Galois::Runtime::MM::pageSize);
@@ -466,113 +465,28 @@ long long runBodyParallel() {
      Galois::for_each_local(initial, process(), Galois::wl<SWARMPQ>());
    else if (wl == "heapswarm")
      Galois::for_each_local(initial, process(), Galois::wl<HSWARMPQ>());
-   else if (wl == "smq_1_2")
-     Galois::for_each_local(initial, process(), Galois::wl<SMQ_1_2>());
-   else if (wl == "smq_1_16")
-     Galois::for_each_local(initial, process(), Galois::wl<SMQ_1_16>());
-   else if (wl == "amq2_5_1000_1_100")
-     Galois::for_each_local(initial, process(), Galois::wl<AMQ2_5_1000_1_100>());
 //   else
 //     std::cerr << "No work list!" << "\n";
-#include "Heatmaps.h"
-    typedef MyHMQ<WorkItem, seq_gt, 2, true> USUAL_HMQ2_TRY1;
-    if (worklistname == "hmq2_try1")
-      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_TRY1>());
-    typedef MyHMQBlocking<WorkItem, seq_gt, 2, true> USUAL_HMQ2_BLOCKING1;
-    if (worklistname == "hmq2_blocking1")
-      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_BLOCKING1>());
-    typedef MyHMQTryLock2Q<WorkItem, seq_gt, 2, true> USUAL_HMQ2_TRY2;
-    if (worklistname == "hmq2_try2")
-      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_TRY2>());
-    typedef MyHMQBlocking2Q<WorkItem, seq_gt, 2, true> USUAL_HMQ2_BLOCKING2;
-    if (worklistname == "hmq2_blocking2")
-      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_BLOCKING2>());
-  typedef MyPQ<WorkItem, seq_gt, true> USUAL_PQ;
-  if (worklistname == "pq")
-    Galois::for_each_local(initial, process(), Galois::wl<USUAL_PQ>());
+//    typedef MyHMQ<WorkItem, seq_gt, 2, true> USUAL_HMQ2_TRY1;
+//    if (worklistname == "hmq2_try1")
+//      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_TRY1>());
+//    typedef MyHMQBlocking<WorkItem, seq_gt, 2, true> USUAL_HMQ2_BLOCKING1;
+//    if (worklistname == "hmq2_blocking1")
+//      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_BLOCKING1>());
+//    typedef MyHMQTryLock2Q<WorkItem, seq_gt, 2, true> USUAL_HMQ2_TRY2;
+//    if (worklistname == "hmq2_try2")
+//      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_TRY2>());
+//    typedef MyHMQBlocking2Q<WorkItem, seq_gt, 2, true> USUAL_HMQ2_BLOCKING2;
+//    if (worklistname == "hmq2_blocking2")
+//      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_BLOCKING2>());
+//  typedef MyPQ<WorkItem, seq_gt, true> USUAL_PQ;
+//  if (worklistname == "pq")
+//    Galois::for_each_local(initial, process(), Galois::wl<USUAL_PQ>());
 
-//  typedef StealingMultiQueue<WorkItem, seq_gt, Prob<1, 8>, true, 4, Prob<8, 1>> SMQ_1_8_4_8_1;
-//  if (wl == "smq_1_8_4_8_1")
-//    Galois::for_each_local(initial, process(), Galois::wl<SMQ_1_8_4_8_1>());
+  typedef StealingMultiQueue<WorkItem, seq_gt, 16, 16, true> SMQ_16_16;
+  if (wl == "smq_16_16")
+    Galois::for_each_local(initial, process(), Galois::wl<SMQ_16_16>());
 
-
-//  typedef AdaptiveMultiQueue<WorkItem, seq_gt, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 128>, int> AMQ2_1_1024_1_128;
-//  if (wl == "amq2_1_1024_1_128")
-//    Galois::for_each_local(initial, process(), Galois::wl<AMQ2_1_1024_1_128>());
-//  typedef AdaptiveMultiQueue<WorkItem, seq_gt, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 256>, int> AMQ2_1_1024_1_256;
-//  if (wl == "amq2_1_1024_1_256")
-//    Galois::for_each_local(initial, process(), Galois::wl<AMQ2_1_1024_1_256>());
-//  typedef AdaptiveMultiQueue<WorkItem, seq_gt, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 512>, int> AMQ2_1_1024_1_512;
-//  if (wl == "amq2_1_1024_1_512")
-//    Galois::for_each_local(initial, process(), Galois::wl<AMQ2_1_1024_1_512>());
-/*
-  typedef StealingMultiQueue<WorkItem, seq_gt, Prob <1, 16>, true, 16> SMQ_1_16_16;
-  if (wl == "smq_1_16_16")
-    Galois::for_each_local(initial, process(), Galois::wl<SMQ_1_16_16>());
-
-  typedef AdaptiveMultiQueue<WorkItem, seq_gt, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 256>, Prob <2, 1>> AMQ2_1_1024_1_256_2_1;
-  if (wl == "amq2_1_1024_1_256_2_1")
-    Galois::for_each_local(initial, process(), Galois::wl<AMQ2_1_1024_1_256_2_1>());
-  typedef AdaptiveMultiQueue<WorkItem, seq_gt, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 256>, Prob <4, 1>> AMQ2_1_1024_1_256_4_1;
-  if (wl == "amq2_1_1024_1_256_4_1")
-    Galois::for_each_local(initial, process(), Galois::wl<AMQ2_1_1024_1_256_4_1>());
-  typedef AdaptiveMultiQueue<WorkItem, seq_gt, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 256>, Prob <8, 1>> AMQ2_1_1024_1_256_8_1;
-  if (wl == "amq2_1_1024_1_256_8_1")
-    Galois::for_each_local(initial, process(), Galois::wl<AMQ2_1_1024_1_256_8_1>());
-  typedef AdaptiveMultiQueue<WorkItem, seq_gt, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 256>, Prob <16, 1>> AMQ2_1_1024_1_256_16_1;
-  if (wl == "amq2_1_1024_1_256_16_1")
-    Galois::for_each_local(initial, process(), Galois::wl<AMQ2_1_1024_1_256_16_1>());
-  typedef AdaptiveMultiQueue<WorkItem, seq_gt, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 256>, Prob <32, 1>> AMQ2_1_1024_1_256_32_1;
-  if (wl == "amq2_1_1024_1_256_32_1")
-    Galois::for_each_local(initial, process(), Galois::wl<AMQ2_1_1024_1_256_32_1>());
-  typedef AdaptiveMultiQueue<WorkItem, seq_gt, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 256>, Prob <64, 1>> AMQ2_1_1024_1_256_64_1;
-  if (wl == "amq2_1_1024_1_256_64_1")
-    Galois::for_each_local(initial, process(), Galois::wl<AMQ2_1_1024_1_256_64_1>());
-  typedef AdaptiveMultiQueue<WorkItem, seq_gt, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 256>, Prob <128, 1>> AMQ2_1_1024_1_256_128_1;
-  if (wl == "amq2_1_1024_1_256_128_1")
-    Galois::for_each_local(initial, process(), Galois::wl<AMQ2_1_1024_1_256_128_1>());
-  typedef AdaptiveMultiQueue<WorkItem, seq_gt, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 256>, Prob <256, 1>> AMQ2_1_1024_1_256_256_1;
-  if (wl == "amq2_1_1024_1_256_256_1")
-    Galois::for_each_local(initial, process(), Galois::wl<AMQ2_1_1024_1_256_256_1>());
-  typedef AdaptiveMultiQueue<WorkItem, seq_gt, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 256>, Prob <512, 1>> AMQ2_1_1024_1_256_512_1;
-  if (wl == "amq2_1_1024_1_256_512_1")
-    Galois::for_each_local(initial, process(), Galois::wl<AMQ2_1_1024_1_256_512_1>());
-  typedef AdaptiveMultiQueue<WorkItem, seq_gt, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 256>, Prob <1024, 1>> AMQ2_1_1024_1_256_1024_1;
-  if (wl == "amq2_1_1024_1_256_1024_1")
-    Galois::for_each_local(initial, process(), Galois::wl<AMQ2_1_1024_1_256_1024_1>());
-
-
-  typedef StealingMultiQueue<WorkItem, seq_gt, Prob<1, 16>, true, 16, Prob<2, 1>> SMQ_1_16_16_2_1;
-  if (wl == "smq_1_16_16_2_1")
-    Galois::for_each_local(initial, process(),  Galois::wl<SMQ_1_16_16_2_1>());
-  typedef StealingMultiQueue<WorkItem, seq_gt, Prob<1, 16>, true, 16, Prob<4, 1>> SMQ_1_16_16_4_1;
-  if (wl == "smq_1_16_16_4_1")
-    Galois::for_each_local(initial, process(),  Galois::wl<SMQ_1_16_16_4_1>());
-  typedef StealingMultiQueue<WorkItem, seq_gt, Prob<1, 16>, true, 16, Prob<8, 1>> SMQ_1_16_16_8_1;
-  if (wl == "smq_1_16_16_8_1")
-    Galois::for_each_local(initial, process(),  Galois::wl<SMQ_1_16_16_8_1>());
-  typedef StealingMultiQueue<WorkItem, seq_gt, Prob<1, 16>, true, 16, Prob<16, 1>> SMQ_1_16_16_16_1;
-  if (wl == "smq_1_16_16_16_1")
-    Galois::for_each_local(initial, process(),  Galois::wl<SMQ_1_16_16_16_1>());
-  typedef StealingMultiQueue<WorkItem, seq_gt, Prob<1, 16>, true, 16, Prob<32, 1>> SMQ_1_16_16_32_1;
-  if (wl == "smq_1_16_16_32_1")
-    Galois::for_each_local(initial, process(),  Galois::wl<SMQ_1_16_16_32_1>());
-  typedef StealingMultiQueue<WorkItem, seq_gt, Prob<1, 16>, true, 16, Prob<64, 1>> SMQ_1_16_16_64_1;
-  if (wl == "smq_1_16_16_64_1")
-    Galois::for_each_local(initial, process(),  Galois::wl<SMQ_1_16_16_64_1>());
-  typedef StealingMultiQueue<WorkItem, seq_gt, Prob<1, 16>, true, 16, Prob<128, 1>> SMQ_1_16_16_128_1;
-  if (wl == "smq_1_16_16_128_1")
-    Galois::for_each_local(initial, process(),  Galois::wl<SMQ_1_16_16_128_1>());
-  typedef StealingMultiQueue<WorkItem, seq_gt, Prob<1, 16>, true, 16, Prob<256, 1>> SMQ_1_16_16_256_1;
-  if (wl == "smq_1_16_16_256_1")
-    Galois::for_each_local(initial, process(),  Galois::wl<SMQ_1_16_16_256_1>());
-  typedef StealingMultiQueue<WorkItem, seq_gt, Prob<1, 16>, true, 16, Prob<512, 1>> SMQ_1_16_16_512_1;
-  if (wl == "smq_1_16_16_512_1")
-    Galois::for_each_local(initial, process(),  Galois::wl<SMQ_1_16_16_512_1>());
-  typedef StealingMultiQueue<WorkItem, seq_gt, Prob<1, 16>, true, 16, Prob<1024, 1>> SMQ_1_16_16_1024_1;
-  if (wl == "smq_1_16_16_1024_1")
-    Galois::for_each_local(initial, process(),  Galois::wl<SMQ_1_16_16_1024_1>());
-*/
 
 #endif
    T.stop();

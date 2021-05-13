@@ -72,6 +72,7 @@ static cll::opt<std::string> filename(cll::Positional, cll::desc("<input graph>"
 static cll::opt<std::string> coordFilename("coordFilename", cll::desc("coordinate file name"));
 static cll::opt<unsigned int> xdim("xdim", cll::desc("xdim of the map"));
 static cll::opt<unsigned int> ydim("ydim", cll::desc("ydim of the map"));
+static cll::opt<std::string> mqSuff("suff", cll::desc("Suffix for amq or smq"), cll::init(""));
 
 static cll::opt<std::string> transposeGraphName("graphTranspose", cll::desc("Transpose of input graph"));
 static cll::opt<bool> symmetricGraph("symmetricGraph", cll::desc("Input graph is symmetric"));
@@ -513,6 +514,7 @@ struct AsyncAlgo {
 
     unsigned int heu_val = heuristic(sdata, graph);
 
+    *nNodesProcessed += 1;
     if (req.w-heu_val != (unsigned int)*sdist) {
       if (trackWork) {
         *nEmpty += 1;
@@ -520,7 +522,6 @@ struct AsyncAlgo {
       }
       return;
     }
-    *nNodesProcessed += 1;
     //std::cout<<"Dist: "<<(unsigned int)*sdist<<" heuristic "<<heu_val<<" req.w: "<<req.w<<" \n";
     for (typename Graph::edge_iterator ii = graph.edge_begin(req.n, flag), ei = graph.edge_end(req.n, flag); ii != ei; ++ii) {
       if (req.w-heu_val != (unsigned int)(*sdist)) {
@@ -650,13 +651,9 @@ struct AsyncAlgo {
         graph.out_edges(source, Galois::MethodFlag::NONE).end(),
         InitialProcess(this, graph, initial, graph.getData(source)));
     std::string wl = worklistname;
-
-#include "StealingTypedefs.h"
-#include "StealingDKTypedefs.h"
-
-#include "StealingIfs.h"
-#include "StealingDKIfs.h"
-
+    if (!mqSuff.empty()) {
+      mqSuff = "_" + mqSuff;
+    }
     if (wl == "obim")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<OBIM>());
     else if (wl == "adap-obim")
@@ -723,6 +720,32 @@ struct AsyncAlgo {
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<kLSM4m>());
 //    else
 //      std::cerr << "No work list!" << "\n";
+
+
+#define priority_t Dist
+#define element_t UpdateRequest
+
+    typedef StealingMultiQueue<element_t, Comparer, true> SMQ_4_1;
+    if (wl == "smq_4_1")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_4_1>());
+
+
+//    typedef MyHMQ<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_TRY1;
+//    if (worklistname == "hmq2_try1")
+//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_TRY1>());
+//    typedef MyHMQBlocking<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_BLOCKING1;
+//    if (worklistname == "hmq2_blocking1")
+//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_BLOCKING1>());
+//    typedef MyHMQTryLock2Q<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_TRY2;
+//    if (worklistname == "hmq2_try2")
+//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_TRY2>());
+//    typedef MyHMQBlocking2Q<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_BLOCKING2;
+//    if (worklistname == "hmq2_blocking2")
+//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_BLOCKING2>());
+//    typedef MyPQ<UpdateRequest, Comparer, true> USUAL_PQ;
+//    if (worklistname == "pq")
+//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_PQ>());
+
   }
 };
 
@@ -880,6 +903,11 @@ void run(bool prealloc = true) {
 
   T.stop();
 
+
+  std::ofstream out(resultFileName + mqSuff, std::ios::app);
+  out << T.get() << ",";
+  out.close();
+
   Galois::reportPageAlloc("MeminfoPost");
 #ifndef GEM5
   Galois::Runtime::reportNumaAlloc("NumaPost");
@@ -942,8 +970,10 @@ int main(int argc, char **argv) {
 
   if (trackWork) {
     std::string wl = worklistname;
-    std::ofstream nodes(resultFileName, std::ios::app);
-    nodes << wl << " " << getStatVal(nNodesProcessed) << " " << Galois::Runtime::activeThreads << std::endl;
+    if (wl.size() >= 3 && wl[1] == 'm' && wl[2] == 'q' && (wl[0] == 's' || wl[0] == 'a'))
+      wl = wl + mqSuff;
+    std::ofstream nodes(resultFileName + mqSuff, std::ios::app);
+    nodes << wl << "," << getStatVal(nNodesProcessed) << "," << Galois::Runtime::activeThreads << std::endl;
     nodes.close();
 
     delete BadWork;

@@ -43,6 +43,10 @@ struct UpdateRequestCommon {
   GrNode n;
   Dist w;
 
+  Dist prior() const {
+    return w;
+  }
+
   UpdateRequestCommon(const GrNode& N, Dist W): n(N), w(W) {}
 
   UpdateRequestCommon(): n(), w(0) {}

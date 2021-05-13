@@ -57,10 +57,12 @@ struct HeapWithStealBuffer {
     if (v1 % 2 == 0) {
       return dummy;
     }
-    std::array<T, STEAL_NUM> vals = stealBuffer;
+    auto res = stealBuffer[0];
+//    std::array<T, STEAL_NUM> vals = stealBuffer;
     auto v2 = getVersion();
     if (v1 == v2) {
-      return vals[0];
+      return res;
+//      return vals[0];
     }
     // Somebody has stolen the elements
     raceHappened = true;
@@ -72,57 +74,76 @@ struct HeapWithStealBuffer {
   T getMinWriter(size_t elementsSum) {
     auto v1 = getVersion();
     if (v1 % 2 != 0) {
-      std::array<T, STEAL_NUM> vals = stealBuffer;
+      auto res = stealBuffer[0];
+//      std::array<T, STEAL_NUM> vals = stealBuffer;
       auto v2 = getVersion();
       if (v1 == v2) {
-        return vals[0];
+        return res;
+//        return vals[0];
       }
     }
     return fillBuffer(elementsSum);
   }
 
   //! Tries to steal the elements from the stealing buffer.
-  Galois::optional<std::array<T, STEAL_NUM>> trySteal(bool& raceHappened) {
-    auto emptyRes = Galois::optional<std::array<T, STEAL_NUM>>();
+  int trySteal(bool& raceHappened, T* arr) {
+//    auto emptyRes = Galois::optional<std::vector<T>>();
     auto v1 = getVersion();
     if (v1 % 2 == 0) {
       // Already stolen
-      return emptyRes;
+      return 0; //emptyRes;
     }
-    std::array<T, STEAL_NUM> buffer = stealBuffer;
+    size_t ind = 0;
+//     arr[ind] = stealBuffer[0];
+//    static std::vector<T> res;
+//    res.push_back(stealBuffer[0]);
+
+    for (; ind < STEAL_NUM; ind++) {
+      if (!isDummy(stealBuffer[ind])) arr[ind] = stealBuffer[ind];
+      else break;
+    }
+//    }
+//    std::array<T, STEAL_NUM> buffer = stealBuffer;
     if (version.compare_exchange_weak(v1, v1 + 1, std::memory_order_acq_rel)) {
-      return buffer;
+      return ind; //buffer;
     }
     // Another thread got ahead
     raceHappened = true;
-    return emptyRes;
+    return 0; //emptyRes;
   }
 
   //! Fills the steal buffer.
   //! Called when the elements from the previous epoch are empty.
   T fillBuffer(size_t elementsNumber) {
     if (heap.empty()) return dummy;
-    std::array<T, STEAL_NUM> elements;
-    elements.fill(dummy);
-    for (size_t i = 0; i < elementsNumber && !heap.empty(); i++) {
-      elements[i] = heap.extractMin();
+    static thread_local size_t prevFill = STEAL_NUM;
+//    std::array<T, STEAL_NUM> elements;
+//    elements.fill(dummy);
+    size_t curFill = 0;
+    for (; curFill < elementsNumber && !heap.empty(); curFill++) {
+      stealBuffer[curFill] = heap.extractMin();
     }
-    stealBuffer = elements;
+    for (size_t j = curFill; j < prevFill; j++) {
+      stealBuffer[j] = dummy;
+    }
+    prevFill = curFill;
+//      stealBuffer[0] = heap.extractMin();
+//    stealBuffer = elements;
     version.fetch_add(1, std::memory_order_acq_rel);
-    return elements[0];
+    return stealBuffer[0];
   }
 
   //! Extract min from the structure: both the buffer and the heap
   //! are considered. Called from the owner-thread.
-  Galois::optional<T> extractMin(size_t elementsNum) {
+  Galois::optional<T> extractMin(size_t elementsNum, T* arr) {
     if (heap.empty()) {
       // Only check the steal buffer
-      return tryStealLocally();
+      return tryStealLocally(arr);
     }
     bool raceFlag = false; // useless now
     auto bufferMin = getBufferMin(raceFlag);
     if (!isDummy(bufferMin) && compare(heap.min(), bufferMin)) {
-      auto stolen = tryStealLocally();
+      auto stolen = tryStealLocally(arr);
       if (stolen.is_initialized()) {
         fillBuffer(elementsNum);
         return stolen;
@@ -136,15 +157,16 @@ struct HeapWithStealBuffer {
 private:
   //! Tries to steal elements from local buffer.
   //! Return minimum among stolen elements.
-  Galois::optional<T> tryStealLocally() {
+  Galois::optional<T> tryStealLocally(T* arr) {
     bool raceFlag = false; // useless now
-    auto stolen = trySteal(raceFlag);
-    if (stolen.is_initialized()) {
-      auto elements = stolen.get();
-      for (size_t i = 1; i < STEAL_NUM; i++) {
-        if (!isDummy(elements[i])) heap.push(elements[i]);
+    const auto stolen = trySteal(raceFlag, arr);
+    if (stolen > 0) {
+//      auto elements = stolen.get();
+//      while (stolen)
+      for (size_t i = 1; i < stolen; i++) {
+        /*if (!isDummy(elements[i])) */ heap.push(arr[i]);
       }
-      return elements[0];
+      return arr[0]; //elements[0];
     }
     return Galois::optional<T>();
   }
@@ -174,7 +196,7 @@ size_t EMPTY_PROB_PERCENT = 40,
 bool Concurrent = true>
 class StealingMultiQueue {
 private:
-  static const size_t MIN_STEAL_SIZE = 16;
+  static const size_t MIN_STEAL_SIZE = 1;
   static const size_t MAX_STEAL_SIZE = 16;
   static const size_t MIN_STEAL_PROB = 8;
   static const size_t MAX_STEAL_PROB = 8;
@@ -185,6 +207,7 @@ private:
   const size_t nQ;
 
   struct PerThread {
+    T stolen[MAX_STEAL_SIZE];
 
     size_t stealProb = MIN_STEAL_PROB;
     size_t stealSize = MIN_STEAL_SIZE;
@@ -260,7 +283,7 @@ private:
     }
 
     void reportEmpty(size_t empty, size_t total, size_t localSize) {
-//      return;
+      return;
       emptyNum += empty;
       tryNum += total;
       emptyReportId++;
@@ -275,13 +298,13 @@ private:
       if (emptyNum * 100 <= tryNum * 10) {
         size = 1;
       } else if (emptyNum * 100 <= tryNum * 30) {
-        size = 2;
+        size = 1;
       } else if (emptyNum * 100 <= tryNum * 60) {
-        size = 4;
+        size = 2;
       } else if (emptyNum * 100 <= tryNum * 90) {
-        size = 8;
+        size = 3;
       } else {
-        size = 16;
+        size = 4;
       }
       if (stealSize < size) {
         *sizeIncrease += 1;
@@ -428,23 +451,25 @@ private:
       auto randMin = randH->getBufferMin(nextIterNeeded);
       if (randH->isDummy(randMin)) {
         // Nothing to steal
-        wasEmpty++;
+        if (!nextIterNeeded) wasEmpty++;
         continue;
       }
       if (Heap::isDummy(localMin) || compare(localMin, randMin)) {
         otherBetter++;
-        auto stolen = randH->trySteal(nextIterNeeded);
-        if (stolen.is_initialized()) {
-          auto elements = stolen.get();
+        T* stolenBuff = threadStorage.getLocal()->stolen;
+        const auto stolen = randH->trySteal(nextIterNeeded, stolenBuff);
+        if (stolen > 0) {
+//          auto elements = stolen.get();
           auto& buffer = stealBuffers[tId].data;
-          for (size_t i = 1; i < MAX_STEAL_SIZE; i++) {
-            if (!Heap::isDummy(elements[i]))
-              buffer.push_back(elements[i]);
+          for (size_t i = 1; i < stolen /*MAX_STEAL_SIZE*/; i++) {
+//            if (!Heap::isDummy(elements[i]))
+              buffer.push_back(stolenBuff[i]);
+//            else break;
           }
           std::reverse(buffer.begin(), buffer.end());
           threadStorage.getLocal()->reportStealStats(ourBetter, otherBetter);
           threadStorage.getLocal()->reportEmpty(wasEmpty, tried, local.heap.size());
-          return elements[0];
+          return threadStorage.getLocal()->stolen[0]; //elements[0];
         } else {
 //          wasEmpty++;
         }
@@ -627,7 +652,7 @@ public:
       Galois::optional<T> stolen = trySteal();
       if (stolen.is_initialized()) return stolen;
     }
-    auto minVal = heaps[tId].data.extractMin(threadStorage.getLocal()->stealSize);
+    auto minVal = heaps[tId].data.extractMin(threadStorage.getLocal()->stealSize, threadStorage.getLocal()->stolen);
     if (minVal.is_initialized()) return minVal;
 
     // Our heap is empty

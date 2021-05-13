@@ -196,7 +196,7 @@ size_t EMPTY_PROB_PERCENT = 40,
 bool Concurrent = true>
 class StealingMultiQueue {
 private:
-  static const size_t MIN_STEAL_SIZE = 1;
+  static const size_t MIN_STEAL_SIZE = 16;
   static const size_t MAX_STEAL_SIZE = 16;
   static const size_t MIN_STEAL_PROB = 8;
   static const size_t MAX_STEAL_PROB = 8;
@@ -272,7 +272,7 @@ private:
     }
 
     void reportStealStats(size_t ourBetter, size_t otherBetter) {
-      return;
+//      return;
       stealAttemptsNum += ourBetter + otherBetter;
       otherMinLessNum += otherBetter;
       stealReportId++;
@@ -283,7 +283,7 @@ private:
     }
 
     void reportEmpty(size_t empty, size_t total, size_t localSize) {
-      return;
+//      return;
       emptyNum += empty;
       tryNum += total;
       emptyReportId++;
@@ -302,9 +302,9 @@ private:
       } else if (emptyNum * 100 <= tryNum * 60) {
         size = 2;
       } else if (emptyNum * 100 <= tryNum * 90) {
-        size = 3;
+        size = 8;
       } else {
-        size = 4;
+        size = 16;
       }
       if (stealSize < size) {
         *sizeIncrease += 1;
@@ -325,9 +325,9 @@ private:
     void checkProbChanges() {
       size_t newProb = 0;
       if (otherMinLessNum * 100 <= stealAttemptsNum * 5) {
-        newProb = 64;
-      } else if (otherMinLessNum * 100 <= stealAttemptsNum * 10) {
         newProb = 32;
+      } else if (otherMinLessNum * 100 <= stealAttemptsNum * 10) {
+        newProb = 16;
       } else if (otherMinLessNum * 100 <= stealAttemptsNum * 20) {
         newProb = 16;
       } else if (otherMinLessNum * 100 <= stealAttemptsNum * 60) {

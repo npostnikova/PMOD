@@ -43,7 +43,7 @@ struct UpdateRequestCommon {
   GrNode n;
   Dist w;
 
-  Dist prior() {
+  Dist prior() const {
     return w;
   }
 

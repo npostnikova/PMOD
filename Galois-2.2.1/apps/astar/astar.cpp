@@ -514,7 +514,6 @@ struct AsyncAlgo {
 
     unsigned int heu_val = heuristic(sdata, graph);
 
-
     *nNodesProcessed += 1;
     if (req.w-heu_val != (unsigned int)*sdist) {
       if (trackWork) {
@@ -655,35 +654,6 @@ struct AsyncAlgo {
     if (!mqSuff.empty()) {
       mqSuff = "_" + mqSuff;
     }
-
-//#include "StealingTypedefs.h"
-//#include "StealingDKTypedefs.h"
-//
-//#include "StealingIfs.h"
-//#include "StealingDKIfs.h"
-
-
-    typedef StealingMultiQueue<UpdateRequest, Comparer, Prob<1, 2>, true> SMQ_1_2;
-    typedef StealingMultiQueue<UpdateRequest, Comparer, Prob<1, 16>, true> SMQ_1_16;
-//    typedef StealingMultiQueue<UpdateRequest, Comparer, Prob<1, 2>, true, true, DecreaseKeyIndexer<UpdateRequest>> SMQ_1_2_dk;
-//    typedef StealingMultiQueue<UpdateRequest, Comparer, Prob<1, 16>, true, true, DecreaseKeyIndexer<UpdateRequest>> SMQ_1_16_dk;
-
-    typedef MultiQueueProbProb<UpdateRequest, Comparer, 2, false, void, true, false, Prob<5, 1000>, Prob<1, 100>> AMQ_2_5_1000_1_100;
-//    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, true, DecreaseKeyIndexer<UpdateRequest>, true, false, Prob<5, 1000>, Prob<1, 100>> AMQ_2_5_1000_1_100_dk;
-
-    if (wl == "smq_1_2")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_1_2>());
-    if (wl == "smq_1_16")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_1_16>());
-//    if (wl == "smq_1_2_dk")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_1_2_dk>());
-//    if (wl == "smq_1_16_dk")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_1_16_dk>());
-    if (wl == "amq2_5_1000_1_100")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_2_5_1000_1_100>());
-//    if (wl == "amq2_5_1000_1_100_dk")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ_2_5_1000_1_100_dk>());
-
     if (wl == "obim")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<OBIM>());
     else if (wl == "adap-obim")
@@ -751,123 +721,30 @@ struct AsyncAlgo {
 //    else
 //      std::cerr << "No work list!" << "\n";
 
-    typedef StealingMultiQueue<UpdateRequest, Comparer, Prob<1, 8>, true, 4, Prob<8, 1>> SMQ_1_8_4_8_1;
-    if (wl == "smq_1_8_4_8_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_1_8_4_8_1>());
+
+#define priority_t Dist
+#define element_t UpdateRequest
+
+    typedef StealingMultiQueue<element_t, Comparer, true> SMQ_4_1;
+    if (wl == "smq_4_1")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_4_1>());
 
 
-#include "Heatmaps.h"
-
-    typedef MyHMQ<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_TRY1;
-    if (worklistname == "hmq2_try1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_TRY1>());
-    typedef MyHMQBlocking<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_BLOCKING1;
-    if (worklistname == "hmq2_blocking1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_BLOCKING1>());
-    typedef MyHMQTryLock2Q<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_TRY2;
-    if (worklistname == "hmq2_try2")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_TRY2>());
-    typedef MyHMQBlocking2Q<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_BLOCKING2;
-    if (worklistname == "hmq2_blocking2")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_BLOCKING2>());
-    typedef MyPQ<UpdateRequest, Comparer, true> USUAL_PQ;
-    if (worklistname == "pq")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_PQ>());
-/*
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 512>, Prob <1, 4>, Prob <2, 1>> AMQ2_1_512_1_4_2_1;
-    if (wl == "amq2_1_512_1_4_2_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_512_1_4_2_1>());
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 512>, Prob <1, 4>, Prob <4, 1>> AMQ2_1_512_1_4_4_1;
-    if (wl == "amq2_1_512_1_4_4_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_512_1_4_4_1>());
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 512>, Prob <1, 4>, Prob <8, 1>> AMQ2_1_512_1_4_8_1;
-    if (wl == "amq2_1_512_1_4_8_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_512_1_4_8_1>());
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 512>, Prob <1, 4>, Prob <16, 1>> AMQ2_1_512_1_4_16_1;
-    if (wl == "amq2_1_512_1_4_16_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_512_1_4_16_1>());
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 512>, Prob <1, 4>, Prob <32, 1>> AMQ2_1_512_1_4_32_1;
-    if (wl == "amq2_1_512_1_4_32_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_512_1_4_32_1>());
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 512>, Prob <1, 4>, Prob <64, 1>> AMQ2_1_512_1_4_64_1;
-    if (wl == "amq2_1_512_1_4_64_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_512_1_4_64_1>());
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 512>, Prob <1, 4>, Prob <128, 1>> AMQ2_1_512_1_4_128_1;
-    if (wl == "amq2_1_512_1_4_128_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_512_1_4_128_1>());
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 512>, Prob <1, 4>, Prob <256, 1>> AMQ2_1_512_1_4_256_1;
-    if (wl == "amq2_1_512_1_4_256_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_512_1_4_256_1>());
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 512>, Prob <1, 4>, Prob <512, 1>> AMQ2_1_512_1_4_512_1;
-    if (wl == "amq2_1_512_1_4_512_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_512_1_4_512_1>());
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 512>, Prob <1, 4>, Prob <1024, 1>> AMQ2_1_512_1_4_1024_1;
-    if (wl == "amq2_1_512_1_4_1024_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_512_1_4_1024_1>());
-
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 512>, Prob <1, 256>, Prob <2, 1>> AMQ2_1_512_1_256_2_1;
-    if (wl == "amq2_1_512_1_256_2_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_512_1_256_2_1>());
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 512>, Prob <1, 256>, Prob <4, 1>> AMQ2_1_512_1_256_4_1;
-    if (wl == "amq2_1_512_1_256_4_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_512_1_256_4_1>());
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 512>, Prob <1, 256>, Prob <8, 1>> AMQ2_1_512_1_256_8_1;
-    if (wl == "amq2_1_512_1_256_8_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_512_1_256_8_1>());
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 512>, Prob <1, 256>, Prob <16, 1>> AMQ2_1_512_1_256_16_1;
-    if (wl == "amq2_1_512_1_256_16_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_512_1_256_16_1>());
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 512>, Prob <1, 256>, Prob <32, 1>> AMQ2_1_512_1_256_32_1;
-    if (wl == "amq2_1_512_1_256_32_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_512_1_256_32_1>());
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 512>, Prob <1, 256>, Prob <64, 1>> AMQ2_1_512_1_256_64_1;
-    if (wl == "amq2_1_512_1_256_64_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_512_1_256_64_1>());
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 512>, Prob <1, 256>, Prob <128, 1>> AMQ2_1_512_1_256_128_1;
-    if (wl == "amq2_1_512_1_256_128_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_512_1_256_128_1>());
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 512>, Prob <1, 256>, Prob <256, 1>> AMQ2_1_512_1_256_256_1;
-    if (wl == "amq2_1_512_1_256_256_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_512_1_256_256_1>());
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 512>, Prob <1, 256>, Prob <512, 1>> AMQ2_1_512_1_256_512_1;
-    if (wl == "amq2_1_512_1_256_512_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_512_1_256_512_1>());
-    typedef AdaptiveMultiQueue<UpdateRequest, Comparer, 2, false, void, true, false, Prob <1, 512>, Prob <1, 256>, Prob <1024, 1>> AMQ2_1_512_1_256_1024_1;
-    if (wl == "amq2_1_512_1_256_1024_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_1_512_1_256_1024_1>());
-
-    typedef StealingMultiQueue<UpdateRequest, Comparer, Prob<1, 4>, true, 2, Prob<2, 1>> SMQ_1_4_2_2_1;
-    if (wl == "smq_1_4_2_2_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_1_4_2_2_1>());
-    typedef StealingMultiQueue<UpdateRequest, Comparer, Prob<1, 4>, true, 2, Prob<4, 1>> SMQ_1_4_2_4_1;
-    if (wl == "smq_1_4_2_4_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_1_4_2_4_1>());
-    typedef StealingMultiQueue<UpdateRequest, Comparer, Prob<1, 4>, true, 2, Prob<8, 1>> SMQ_1_4_2_8_1;
-    if (wl == "smq_1_4_2_8_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_1_4_2_8_1>());
-    typedef StealingMultiQueue<UpdateRequest, Comparer, Prob<1, 4>, true, 2, Prob<16, 1>> SMQ_1_4_2_16_1;
-    if (wl == "smq_1_4_2_16_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_1_4_2_16_1>());
-    typedef StealingMultiQueue<UpdateRequest, Comparer, Prob<1, 4>, true, 2, Prob<32, 1>> SMQ_1_4_2_32_1;
-    if (wl == "smq_1_4_2_32_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_1_4_2_32_1>());
-    typedef StealingMultiQueue<UpdateRequest, Comparer, Prob<1, 4>, true, 2, Prob<64, 1>> SMQ_1_4_2_64_1;
-    if (wl == "smq_1_4_2_64_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_1_4_2_64_1>());
-    typedef StealingMultiQueue<UpdateRequest, Comparer, Prob<1, 4>, true, 2, Prob<128, 1>> SMQ_1_4_2_128_1;
-    if (wl == "smq_1_4_2_128_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_1_4_2_128_1>());
-    typedef StealingMultiQueue<UpdateRequest, Comparer, Prob<1, 4>, true, 2, Prob<256, 1>> SMQ_1_4_2_256_1;
-    if (wl == "smq_1_4_2_256_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_1_4_2_256_1>());
-    typedef StealingMultiQueue<UpdateRequest, Comparer, Prob<1, 4>, true, 2, Prob<512, 1>> SMQ_1_4_2_512_1;
-    if (wl == "smq_1_4_2_512_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_1_4_2_512_1>());
-    typedef StealingMultiQueue<UpdateRequest, Comparer, Prob<1, 4>, true, 2, Prob<1024, 1>> SMQ_1_4_2_1024_1;
-    if (wl == "smq_1_4_2_1024_1")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_1_4_2_1024_1>());
-*/
-
+//    typedef MyHMQ<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_TRY1;
+//    if (worklistname == "hmq2_try1")
+//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_TRY1>());
+//    typedef MyHMQBlocking<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_BLOCKING1;
+//    if (worklistname == "hmq2_blocking1")
+//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_BLOCKING1>());
+//    typedef MyHMQTryLock2Q<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_TRY2;
+//    if (worklistname == "hmq2_try2")
+//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_TRY2>());
+//    typedef MyHMQBlocking2Q<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_BLOCKING2;
+//    if (worklistname == "hmq2_blocking2")
+//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_BLOCKING2>());
+//    typedef MyPQ<UpdateRequest, Comparer, true> USUAL_PQ;
+//    if (worklistname == "pq")
+//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_PQ>());
 
   }
 };

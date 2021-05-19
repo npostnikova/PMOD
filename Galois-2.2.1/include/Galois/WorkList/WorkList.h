@@ -45,6 +45,7 @@
 #include "MQOptimized/MQOptimizedInclude.h"
 #include "AMQ_WP.h"
 #include "StealingMultiQueue.h"
+#include "AdaptiveStealingMultiQueue.h"
 
 namespace Galois {
 /**
@@ -63,8 +64,6 @@ namespace Galois {
  */
 namespace WorkList {
 namespace { // don't pollute the symbol table with the example
-
-using namespace smq;
 
 // Worklists may not be copied.
 // Worklists should be default instantiatable

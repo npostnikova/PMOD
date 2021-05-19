@@ -483,9 +483,17 @@ long long runBodyParallel() {
 //  if (worklistname == "pq")
 //    Galois::for_each_local(initial, process(), Galois::wl<USUAL_PQ>());
 
+  typedef StealingMultiQueue<WorkItem, seq_gt, 4, 8, true> SMQ_4_8;
+  if (wl == "smq_4_8" or wl == "smq_usa")
+    Galois::for_each_local(initial, process(), Galois::wl<SMQ_4_8>());
   typedef StealingMultiQueue<WorkItem, seq_gt, 16, 16, true> SMQ_16_16;
-  if (wl == "smq_16_16")
+  if (wl == "smq_16_16" or wl == "smq_west")
     Galois::for_each_local(initial, process(), Galois::wl<SMQ_16_16>());
+
+
+  typedef AdaptiveStealingMultiQueue<WorkItem, seq_gt> ASMQ;
+  if (wl == "adap-smq")
+    Galois::for_each_local(initial, process(), Galois::wl<ASMQ>());
 
 
 #endif

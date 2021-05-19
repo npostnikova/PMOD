@@ -443,7 +443,6 @@ struct AsyncAlgo {
 //    typedef dChunkedPTFIFO<1> noChunk;
 //    typedef ChunkedFIFO<64> globChunk;
 //    typedef ChunkedFIFO<1> globNoChunk;
-//    typedef OrderedByIntegerMetric<UpdateRequestIndexer<UpdateRequest>, Chunk, 10> OBIM;
     typedef OrderedByIntegerMetric<UpdateRequestIndexer<UpdateRequest>, Chunk, 10> OBIM;
     typedef AdaptiveOrderedByIntegerMetric<UpdateRequestIndexer<UpdateRequest>, Chunk, 10, true, false, CHUNK_SIZE> ADAPOBIM;
 //    typedef OrderedByIntegerMetric<UpdateRequestIndexer<UpdateRequest>, dChunkedLIFO<64>, 10> OBIM_LIFO;
@@ -462,20 +461,23 @@ struct AsyncAlgo {
 //    typedef GlobPQ<UpdateRequest, kLSMQ<UpdateRequest, UpdateRequestIndexer<UpdateRequest>, 256>> kLSM256;
 //    typedef GlobPQ<UpdateRequest, kLSMQ<UpdateRequest, UpdateRequestIndexer<UpdateRequest>, 16384>> kLSM16k;
 //    typedef GlobPQ<UpdateRequest, kLSMQ<UpdateRequest, UpdateRequestIndexer<UpdateRequest>, 4194304>> kLSM4m;
-//    typedef GlobPQ<UpdateRequest, LockFreeSkipList<Comparer, UpdateRequest>> GPQ;
-//    typedef GlobPQ<UpdateRequest, SprayList<NodeComparer, UpdateRequest>> SL;
-//    typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 1>> MQ1;
+    typedef GlobPQ<UpdateRequest, LockFreeSkipList<Comparer, UpdateRequest>> GPQ;
+    typedef GlobPQ<UpdateRequest, SprayList<NodeComparer, UpdateRequest>> SL;
+    typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 1>> MQ1;
+    typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 2>> MQ2;
+    typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 3>> MQ3;
+    typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 4>> MQ4;
 //    typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 4>> MQ4;
-//    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 1>> HMQ1;
-//    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 2>> HMQ2;
-//    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 3>> HMQ3;
-//    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 4>> HMQ4;
+    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 1>> HMQ1;
+    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 2>> HMQ2;
+    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 3>> HMQ3;
+    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 4>> HMQ4;
 //    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 64>> HMQ64;
 //    typedef GlobPQ<UpdateRequest, DistQueue<Comparer, UpdateRequest, false>> PTSL;
 //    typedef GlobPQ<UpdateRequest, DistQueue<Comparer, UpdateRequest, true>> PPSL;
 //    typedef GlobPQ<UpdateRequest, LocalPQ<Comparer, UpdateRequest>> LPQ;
-//    typedef GlobPQ<UpdateRequest, SwarmPQ<Comparer, UpdateRequest>> SWARMPQ;
-//    typedef GlobPQ<UpdateRequest, HeapSwarmPQ<Comparer, UpdateRequest>> HSWARMPQ;
+    typedef GlobPQ<UpdateRequest, SwarmPQ<Comparer, UpdateRequest>> SWARMPQ;
+    typedef GlobPQ<UpdateRequest, HeapSwarmPQ<Comparer, UpdateRequest>> HSWARMPQ;
 //    typedef GlobPQ<UpdateRequest, PartitionPQ<Comparer, Hasher, UpdateRequest>> PPQ;
 //    typedef SkipListOrderedByIntegerMetric<UpdateRequestIndexer<UpdateRequest>, Chunk, 10> SLOBIM;
 //    typedef SkipListOrderedByIntegerMetric<UpdateRequestIndexer<UpdateRequest>, noChunk, 10> SLOBIM_NOCHUNK;
@@ -544,32 +546,36 @@ struct AsyncAlgo {
 //      Galois::for_each_local(initial, Process(this, graph), Galois::wl<OBIM_GLOB>());
 //    else if (wl == "obim-glob-nochunk")
 //      Galois::for_each_local(initial, Process(this, graph), Galois::wl<OBIM_GLOB_NOCHUNK>());
-//    else if (wl == "skiplist")
-//      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<GPQ>());
-//    else if (wl == "spraylist")
-//      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<SL>());
-//    else if (wl == "multiqueue1")
-//      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ1>());
-//    else if (wl == "multiqueue4")
-//      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ4>());
-//    else if (wl == "heapmultiqueue1")
-//      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ1>());
-//    if (wl == "hmq2")
-//      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ2>());
-//    else if (wl == "hmq3")
-//      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ3>());
-//    else if (wl == "hmq4")
-//      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ4>());
+    else if (wl == "skiplist")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<GPQ>());
+    else if (wl == "spraylist")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<SL>());
+    else if (wl == "mq1")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ1>());
+    else if (wl == "mq2")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ2>());
+    else if (wl == "mq3")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ3>());
+    else if (wl == "mq4")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ4>());
+    else if (wl == "hmq1")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ1>());
+    else if (wl == "hmq2")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ2>());
+    else if (wl == "hmq3")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ3>());
+    else if (wl == "hmq4")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ4>());
 //    else if (wl == "thrskiplist")
 //      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<PTSL>());
 //    else if (wl == "pkgskiplist")
 //      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<PPSL>());
 //    else if (wl == "lpq")
 //      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<LPQ>());
-//    else if (wl == "swarm")
-//      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<SWARMPQ>());
-//    else if (wl == "heapswarm")
-//      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HSWARMPQ>());
+    else if (wl == "swarm")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<SWARMPQ>());
+    else if (wl == "heapswarm")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HSWARMPQ>());
 //    else if (wl == "ppq")
 //      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<PPQ>());
 //    else if (wl == "klsm256")
@@ -615,7 +621,7 @@ struct AsyncAlgo {
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<MQ2_LL_8_4>());
 
     typedef StealingMultiQueue<element_t, Comparer, 8, 1, true> SMQ_8_1;
-    if (worklistname == "smq_8_1")
+    if (worklistname == "smq_8_1" or worklistname == "smq_ctr" or worklistname == "smq_usa")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_8_1>());
 
     //////// LJ
@@ -633,8 +639,15 @@ struct AsyncAlgo {
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<MQ2_LL_256_8>());
 
     typedef StealingMultiQueue<element_t, Comparer, 8, 8, true> SMQ_8_8;
-    if (worklistname == "smq_8_8")
+    if (worklistname == "smq_8_8" or worklistname == "smq_lj")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_8_8>());
+    typedef StealingMultiQueue<element_t, Comparer, 2, 16, true> SMQ_2_16;
+    if (worklistname == "smq_2_16" or worklistname == "smq_twi")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_2_16>());
+
+    typedef AdaptiveStealingMultiQueue<element_t, Comparer> ASMQ;
+    if (worklistname == "adap-smq")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<ASMQ>());
 
   }
 };

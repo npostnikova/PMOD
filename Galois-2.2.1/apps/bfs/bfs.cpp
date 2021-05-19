@@ -482,7 +482,7 @@ struct AsyncAlgo {
 //    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, false>> PTSL;
 //    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, true>> PPSL;
 //    typedef GlobPQ<WorkItem, LocalPQ<Comparer, WorkItem>> LPQ;
-//    typedef GlobPQ<WorkItem, SwarmPQ<Comparer, WorkItem>> SWARMPQ;
+    typedef GlobPQ<WorkItem, SwarmPQ<Comparer, WorkItem>> SWARMPQ;
 //    typedef GlobPQ<WorkItem, HeapSwarmPQ<Comparer, WorkItem>> HSWARMPQ;
 //    typedef GlobPQ<WorkItem, PartitionPQ<Comparer, Hasher, WorkItem>> PPQ;
 //    typedef SkipListOrderedByIntegerMetric<Indexer, dChunk> SLOBIM;
@@ -607,8 +607,11 @@ struct AsyncAlgo {
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_LL_32_128>());
 
     typedef StealingMultiQueue<element_t, Comparer, 8, 1, true> SMQ_8_1;
-    if (worklistname == "smq_8_1")
+    if (worklistname == "smq_8_1" or worklistname == "smq_ctr")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_8_1>());
+    typedef StealingMultiQueue<element_t, Comparer, 32, 4, true> SMQ_32_4;
+    if (worklistname == "smq_32_4" or worklistname == "smq_usa")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_32_4>());
 
     //////// LJ
     typedef MultiQueueProbProb<element_t, Comparer, 1024, 32, 2, priority_t> MQ2_PP_1024_32;
@@ -625,8 +628,19 @@ struct AsyncAlgo {
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_LL_512_64>());
 
     typedef StealingMultiQueue<element_t, Comparer, 16, 16, true> SMQ_16_16;
-    if (worklistname == "smq_16_16")
+    if (worklistname == "smq_16_16" or worklistname == "smq_lj")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_16_16>());
+    typedef StealingMultiQueue<element_t, Comparer, 8, 16, true> SMQ_8_16;
+    if (worklistname == "smq_8_16" or worklistname == "smq_twi")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_8_16>());
+    typedef StealingMultiQueue<element_t, Comparer, 16, 8, true> SMQ_16_8;
+    if (worklistname == "smq_16_8" or worklistname == "smq_web")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_16_8>());
+
+
+    typedef AdaptiveStealingMultiQueue<element_t, Comparer> ASMQ;
+    if (worklistname == "adap-smq")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<ASMQ>());
 
   }
 };

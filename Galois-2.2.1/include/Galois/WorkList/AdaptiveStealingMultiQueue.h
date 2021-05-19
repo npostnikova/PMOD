@@ -226,23 +226,23 @@ private:
 
     void reportBufferEmpty(size_t size) {
       return;
-      stolenChecksNum++;
-      stolenNum++;
-      bufferCheckReportId++;
-      if (bufferCheckReportId >= STAT_BUFF_SIZE) {
-        checkNeedExtend(size);
-        clearSizeStats(); // todo needed or not
-      }
+//      stolenChecksNum++;
+//      stolenNum++;
+//      bufferCheckReportId++;
+//      if (bufferCheckReportId >= STAT_BUFF_SIZE) {
+//        checkNeedExtend(size);
+//        clearSizeStats(); // todo needed or not
+//      }
     }
 
     void reportBufferFull(size_t size) {
       return;
       stolenChecksNum++;
-      bufferCheckReportId++;
-      if (bufferCheckReportId >= STAT_BUFF_SIZE) {
-        checkNeedExtend(size);
-        clearSizeStats();
-      }
+//      bufferCheckReportId++;
+//      if (bufferCheckReportId >= STAT_BUFF_SIZE) {
+//        checkNeedExtend(size);
+//        clearSizeStats();
+//      }
     }
 
     // Whether stealing size should be extended
@@ -250,21 +250,21 @@ private:
       return;
       // stolen / checks >= inc_percent / 100
       // stolen * 100 >= inc_percent * checks
-      size_t newSize = 0;
-      if (stolenNum * 100 <= 20 * stolenChecksNum) {
-        newSize = 1;
-      } else if (stolenNum * 100 <= 40 * stolenChecksNum) {
-        newSize = 2;
-      } else if (stolenNum * 100 <= 80 * stolenChecksNum) {
-        newSize = 4;
-      } else {
-
-      }
-      if (stolenNum * 100 >= INC_SIZE_PERCENT * stolenChecksNum) {
-//        if (size >= 4 * stealSize) increaseSize();
-      } else if (stolenNum * 100 <= DEC_SIZE_PERCENT * stolenChecksNum) {
-        decreaseSize();
-      }
+//      size_t newSize = 0;
+//      if (stolenNum * 100 <= 20 * stolenChecksNum) {
+//        newSize = 1;
+//      } else if (stolenNum * 100 <= 40 * stolenChecksNum) {
+//        newSize = 2;
+//      } else if (stolenNum * 100 <= 80 * stolenChecksNum) {
+//        newSize = 4;
+//      } else {
+//
+//      }
+//      if (stolenNum * 100 >= INC_SIZE_PERCENT * stolenChecksNum) {
+////        if (size >= 4 * stealSize) increaseSize();
+//      } else if (stolenNum * 100 <= DEC_SIZE_PERCENT * stolenChecksNum) {
+//        decreaseSize();
+//      }
     }
 
     void reportStealStats(size_t ourBetter, size_t otherBetter) {
@@ -369,39 +369,39 @@ private:
       emptyReportId = 0;
     }
 
-    void increaseProb() {
-      *probIncreased += 1;
-      return;
-      if (stealProb > MIN_STEAL_PROB) {
-        stealProb >>= 1u;
-        *probIncreased += 1;
-      }
-    }
-
-    void decreaseProb() {
-      *probDecreased += 1;
-      return;
-      if (stealProb < MAX_STEAL_PROB) {
-        stealProb <<= 1u;
-        *probIncreased += 1;
-        maxProb->setMax(stealProb);
-      }
-    }
-
-    void increaseSize() {
-      if (stealSize < MAX_STEAL_SIZE) {
-        stealSize <<= 1u;
-        *sizeIncrease += 1;
-        maxSize->setMax(stealSize);
-      }
-    }
-
-    void decreaseSize() {
-      if (stealSize > MIN_STEAL_SIZE) {
-        stealSize >>= 1u;
-        *sizeDecrease += 1;
-      }
-    }
+//    void increaseProb() {
+//      *probIncreased += 1;
+//      return;
+//      if (stealProb > MIN_STEAL_PROB) {
+//        stealProb >>= 1u;
+//        *probIncreased += 1;
+//      }
+//    }
+//
+//    void decreaseProb() {
+//      *probDecreased += 1;
+//      return;
+//      if (stealProb < MAX_STEAL_PROB) {
+//        stealProb <<= 1u;
+//        *probIncreased += 1;
+//        maxProb->setMax(stealProb);
+//      }
+//    }
+//
+//    void increaseSize() {
+//      if (stealSize < MAX_STEAL_SIZE) {
+//        stealSize <<= 1u;
+//        *sizeIncrease += 1;
+//        maxSize->setMax(stealSize);
+//      }
+//    }
+//
+//    void decreaseSize() {
+//      if (stealSize > MIN_STEAL_SIZE) {
+//        stealSize >>= 1u;
+//        *sizeDecrease += 1;
+//      }
+//    }
   };
 
   Runtime::PerThreadStorage<PerThread> threadStorage;
@@ -540,8 +540,8 @@ public:
   }
 
   ~AdaptiveStealingMultiQueue() {
-    auto exists = std::filesystem::exists("smq_stats.csv");
-    std::ofstream out("smq_stats.csv" /*result_name*/, std::ios::app);
+    auto exists = std::filesystem::exists("asmq_stats.csv");
+    std::ofstream out("asmq_stats.csv" /*result_name*/, std::ios::app);
     if (!exists) {
       out << "threads,seg_buff,seg_prob,minSize,maxSize,inc_size,decSize,minProb,maxProb,,inc_prob,dec_prob" << std::endl;
     }

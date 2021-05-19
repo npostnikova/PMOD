@@ -8,182 +8,181 @@
 
 #include "StealingQueue.h"
 #include "Heap.h"
-#include "StealingMultiQueue.h"
 
 namespace Galois {
 namespace WorkList {
 
-///**
-// * Class-helper, consists of a sequential heap and
-// * a stealing buffer.
-// *
-// * @tparam T Type of the elements.
-// * @tparam Compare Elements comparator.
-// * @tparam STEAL_NUM Number of elements to steal at once.
-// * @tparam D Arity of the heap.
-// */
-//template<typename T,
-//typename Compare,
-//size_t STEAL_NUM,
-//size_t D = 4>
-//struct HeapWithStealBuffer {
-//  static Compare compare;
-//  // Represents a flag for empty cells.
-//  static T dummy;
-//  DAryHeap<T, Compare, D> heap;
-//
-//  HeapWithStealBuffer(): version(0) {
-//    stealBuffer.fill(dummy);
-//  }
-//
-//  //! Checks whether the element is "null".
-//  static bool isDummy(T const& element) {
-//    return element == dummy;
-//  }
-//
-//  //! Gets current version of the stealing buffer.
-//  size_t getVersion() {
-//    return version.load(std::memory_order_acquire);
-//  }
-//
-//  //! Checks whether elements in the buffer are stolen.
-//  size_t isBufferStolen() {
-//    return getVersion() % 2 == 0;
-//  }
-//
-//  //! Get min among elements that can be stolen.
-//  //! Sets a flag to true, if operation failed because of a race.
-//  T getBufferMin(bool& raceHappened) {
-//    auto v1 = getVersion();
-//    if (v1 % 2 == 0) {
-//      return dummy;
+/**
+ * Class-helper, consists of a sequential heap and
+ * a stealing buffer.
+ *
+ * @tparam T Type of the elements.
+ * @tparam Compare Elements comparator.
+ * @tparam STEAL_NUM Number of elements to steal at once.
+ * @tparam D Arity of the heap.
+ */
+template<typename T,
+typename Compare,
+size_t STEAL_NUM,
+size_t D = 4>
+struct HeapWithStealBufferAdap {
+  static Compare compare;
+  // Represents a flag for empty cells.
+  static T dummy;
+  DAryHeap<T, Compare, D> heap;
+
+  HeapWithStealBufferAdap(): version(0) {
+    stealBuffer.fill(dummy);
+  }
+
+  //! Checks whether the element is "null".
+  static bool isDummy(T const& element) {
+    return element == dummy;
+  }
+
+  //! Gets current version of the stealing buffer.
+  size_t getVersion() {
+    return version.load(std::memory_order_acquire);
+  }
+
+  //! Checks whether elements in the buffer are stolen.
+  size_t isBufferStolen() {
+    return getVersion() % 2 == 0;
+  }
+
+  //! Get min among elements that can be stolen.
+  //! Sets a flag to true, if operation failed because of a race.
+  T getBufferMin(bool& raceHappened) {
+    auto v1 = getVersion();
+    if (v1 % 2 == 0) {
+      return dummy;
+    }
+    auto res = stealBuffer[0];
+//    std::array<T, STEAL_NUM> vals = stealBuffer;
+    auto v2 = getVersion();
+    if (v1 == v2) {
+      return res;
+//      return vals[0];
+    }
+    // Somebody has stolen the elements
+    raceHappened = true;
+    return dummy;
+  }
+
+  //! Returns min element from the buffer, updating the buffer if empty.
+  //! Can be called only by the thread-owner.
+  T getMinWriter(size_t elementsSum) {
+    auto v1 = getVersion();
+    if (v1 % 2 != 0) {
+      auto res = stealBuffer[0];
+//      std::array<T, STEAL_NUM> vals = stealBuffer;
+      auto v2 = getVersion();
+      if (v1 == v2) {
+        return res;
+//        return vals[0];
+      }
+    }
+    return fillBuffer(elementsSum);
+  }
+
+  //! Tries to steal the elements from the stealing buffer.
+  int trySteal(bool& raceHappened, T* arr) {
+//    auto emptyRes = Galois::optional<std::vector<T>>();
+    auto v1 = getVersion();
+    if (v1 % 2 == 0) {
+      // Already stolen
+      return 0; //emptyRes;
+    }
+    size_t ind = 0;
+//     arr[ind] = stealBuffer[0];
+//    static std::vector<T> res;
+//    res.push_back(stealBuffer[0]);
+
+    for (; ind < STEAL_NUM; ind++) {
+      if (!isDummy(stealBuffer[ind])) arr[ind] = stealBuffer[ind];
+      else break;
+    }
 //    }
-//    auto res = stealBuffer[0];
-////    std::array<T, STEAL_NUM> vals = stealBuffer;
-//    auto v2 = getVersion();
-//    if (v1 == v2) {
-//      return res;
-////      return vals[0];
-//    }
-//    // Somebody has stolen the elements
-//    raceHappened = true;
-//    return dummy;
-//  }
-//
-//  //! Returns min element from the buffer, updating the buffer if empty.
-//  //! Can be called only by the thread-owner.
-//  T getMinWriter(size_t elementsSum) {
-//    auto v1 = getVersion();
-//    if (v1 % 2 != 0) {
-//      auto res = stealBuffer[0];
-////      std::array<T, STEAL_NUM> vals = stealBuffer;
-//      auto v2 = getVersion();
-//      if (v1 == v2) {
-//        return res;
-////        return vals[0];
-//      }
-//    }
-//    return fillBuffer(elementsSum);
-//  }
-//
-//  //! Tries to steal the elements from the stealing buffer.
-//  int trySteal(bool& raceHappened, T* arr) {
-////    auto emptyRes = Galois::optional<std::vector<T>>();
-//    auto v1 = getVersion();
-//    if (v1 % 2 == 0) {
-//      // Already stolen
-//      return 0; //emptyRes;
-//    }
-//    size_t ind = 0;
-////     arr[ind] = stealBuffer[0];
-////    static std::vector<T> res;
-////    res.push_back(stealBuffer[0]);
-//
-//    for (; ind < STEAL_NUM; ind++) {
-//      if (!isDummy(stealBuffer[ind])) arr[ind] = stealBuffer[ind];
-//      else break;
-//    }
-////    }
-////    std::array<T, STEAL_NUM> buffer = stealBuffer;
-//    if (version.compare_exchange_weak(v1, v1 + 1, std::memory_order_acq_rel)) {
-//      return ind; //buffer;
-//    }
-//    // Another thread got ahead
-//    raceHappened = true;
-//    return 0; //emptyRes;
-//  }
-//
-//  //! Fills the steal buffer.
-//  //! Called when the elements from the previous epoch are empty.
-//  T fillBuffer(size_t elementsNumber) {
-//    if (heap.empty()) return dummy;
-//    static thread_local size_t prevFill = STEAL_NUM;
-////    std::array<T, STEAL_NUM> elements;
-////    elements.fill(dummy);
-//    size_t curFill = 0;
-//    for (; curFill < elementsNumber && !heap.empty(); curFill++) {
-//      stealBuffer[curFill] = heap.extractMin();
-//    }
-//    for (size_t j = curFill; j < prevFill; j++) {
-//      stealBuffer[j] = dummy;
-//    }
-//    prevFill = curFill;
-////      stealBuffer[0] = heap.extractMin();
-////    stealBuffer = elements;
-//    version.fetch_add(1, std::memory_order_acq_rel);
-//    return stealBuffer[0];
-//  }
-//
-//  //! Extract min from the structure: both the buffer and the heap
-//  //! are considered. Called from the owner-thread.
-//  Galois::optional<T> extractMin(size_t elementsNum, T* arr) {
-//    if (heap.empty()) {
-//      // Only check the steal buffer
-//      return tryStealLocally(arr);
-//    }
-//    bool raceFlag = false; // useless now
-//    auto bufferMin = getBufferMin(raceFlag);
-//    if (!isDummy(bufferMin) && compare(heap.min(), bufferMin)) {
-//      auto stolen = tryStealLocally(arr);
-//      if (stolen.is_initialized()) {
-//        fillBuffer(elementsNum);
-//        return stolen;
-//      }
-//    }
-//    auto localMin = heap.extractMin();
-//    if (isDummy(bufferMin)) fillBuffer(elementsNum);
-//    return localMin;
-//  }
-//
-//private:
-//  //! Tries to steal elements from local buffer.
-//  //! Return minimum among stolen elements.
-//  Galois::optional<T> tryStealLocally(T* arr) {
-//    bool raceFlag = false; // useless now
-//    const auto stolen = trySteal(raceFlag, arr);
-//    if (stolen > 0) {
-////      auto elements = stolen.get();
-////      while (stolen)
-//      for (size_t i = 1; i < stolen; i++) {
-//        /*if (!isDummy(elements[i])) */ heap.push(arr[i]);
-//      }
-//      return arr[0]; //elements[0];
-//    }
-//    return Galois::optional<T>();
-//  }
-//
-//  std::array<T, STEAL_NUM> stealBuffer;
-//  // Represents epoch & stolen flag
-//  // version mod 2 = 0  -- element is stolen
-//  // version mod 2 = 1  -- can steal
-//  std::atomic<size_t> version;
-//};
-//
-//template<typename T,
-//typename Compare,
-//size_t STEAL_NUM,
-//size_t D>
-//T HeapWithStealBuffer<T, Compare, STEAL_NUM, D>::dummy;
+//    std::array<T, STEAL_NUM> buffer = stealBuffer;
+    if (version.compare_exchange_weak(v1, v1 + 1, std::memory_order_acq_rel)) {
+      return ind; //buffer;
+    }
+    // Another thread got ahead
+    raceHappened = true;
+    return 0; //emptyRes;
+  }
+
+  //! Fills the steal buffer.
+  //! Called when the elements from the previous epoch are empty.
+  T fillBuffer(size_t elementsNumber) {
+    if (heap.empty()) return dummy;
+    static thread_local size_t prevFill = STEAL_NUM;
+//    std::array<T, STEAL_NUM> elements;
+//    elements.fill(dummy);
+    size_t curFill = 0;
+    for (; curFill < elementsNumber && !heap.empty(); curFill++) {
+      stealBuffer[curFill] = heap.extractMin();
+    }
+    for (size_t j = curFill; j < prevFill; j++) {
+      stealBuffer[j] = dummy;
+    }
+    prevFill = curFill;
+//      stealBuffer[0] = heap.extractMin();
+//    stealBuffer = elements;
+    version.fetch_add(1, std::memory_order_acq_rel);
+    return stealBuffer[0];
+  }
+
+  //! Extract min from the structure: both the buffer and the heap
+  //! are considered. Called from the owner-thread.
+  Galois::optional<T> extractMin(size_t elementsNum, T* arr) {
+    if (heap.empty()) {
+      // Only check the steal buffer
+      return tryStealLocally(arr);
+    }
+    bool raceFlag = false; // useless now
+    auto bufferMin = getBufferMin(raceFlag);
+    if (!isDummy(bufferMin) && compare(heap.min(), bufferMin)) {
+      auto stolen = tryStealLocally(arr);
+      if (stolen.is_initialized()) {
+        fillBuffer(elementsNum);
+        return stolen;
+      }
+    }
+    auto localMin = heap.extractMin();
+    if (isDummy(bufferMin)) fillBuffer(elementsNum);
+    return localMin;
+  }
+
+private:
+  //! Tries to steal elements from local buffer.
+  //! Return minimum among stolen elements.
+  Galois::optional<T> tryStealLocally(T* arr) {
+    bool raceFlag = false; // useless now
+    const auto stolen = trySteal(raceFlag, arr);
+    if (stolen > 0) {
+//      auto elements = stolen.get();
+//      while (stolen)
+      for (size_t i = 1; i < stolen; i++) {
+        /*if (!isDummy(elements[i])) */ heap.push(arr[i]);
+      }
+      return arr[0]; //elements[0];
+    }
+    return Galois::optional<T>();
+  }
+
+  std::array<T, STEAL_NUM> stealBuffer;
+  // Represents epoch & stolen flag
+  // version mod 2 = 0  -- element is stolen
+  // version mod 2 = 1  -- can steal
+  std::atomic<size_t> version;
+};
+
+template<typename T,
+typename Compare,
+size_t STEAL_NUM,
+size_t D>
+T HeapWithStealBufferAdap<T, Compare, STEAL_NUM, D>::dummy;
 
 template<typename T,
 typename Comparer,
@@ -197,7 +196,7 @@ private:
   static const size_t MAX_STEAL_SIZE = 16;
   static const size_t MIN_STEAL_PROB = 8;
   static const size_t MAX_STEAL_PROB = 8;
-  typedef HeapWithStealBuffer<T, Comparer, MAX_STEAL_SIZE, 4> Heap;
+  typedef HeapWithStealBufferAdap<T, Comparer, MAX_STEAL_SIZE, 4> Heap;
   std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<Heap>[]> heaps;
   std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]> stealBuffers;
   static Comparer compare;

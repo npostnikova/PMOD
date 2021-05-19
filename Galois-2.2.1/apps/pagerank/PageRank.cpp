@@ -669,11 +669,11 @@ struct AsyncPri{
 //    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 2>> HMQ2;
 //    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 3>> HMQ3;
 //    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 4>> HMQ4;
-    typedef MyHMQ<WorkItem, Comparer, 2, true, int> USUAL_HMQ2_TRY1;
-    typedef MyHMQBlocking<WorkItem, Comparer, 2, true, int> USUAL_HMQ2_BLOCKING1;
-    typedef MyHMQTryLock2Q<WorkItem, Comparer, 2, true, int> USUAL_HMQ2_TRY2;
-    typedef MyHMQBlocking2Q<WorkItem, Comparer, 2, true, int> USUAL_HMQ2_BLOCKING2;
-    typedef MyPQ<WorkItem, Comparer, true> USUAL_PQ;
+//    typedef MyHMQ<WorkItem, Comparer, 2, true, int> USUAL_HMQ2_TRY1;
+//    typedef MyHMQBlocking<WorkItem, Comparer, 2, true, int> USUAL_HMQ2_BLOCKING1;
+//    typedef MyHMQTryLock2Q<WorkItem, Comparer, 2, true, int> USUAL_HMQ2_TRY2;
+//    typedef MyHMQBlocking2Q<WorkItem, Comparer, 2, true, int> USUAL_HMQ2_BLOCKING2;
+//    typedef MyPQ<WorkItem, Comparer, true> USUAL_PQ;
 //#define UpdateRequest WorkItem
 
 //#include "Galois/WorkList/AMQ2.h"
@@ -731,26 +731,26 @@ struct AsyncPri{
 //      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
 //                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
 //                     Process(graph, tolerance, amp), Galois::wl<HMQ4>());
-    else if (wl == "hmq2_try1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<USUAL_HMQ2_TRY1>());
-    else if (wl == "hmq2_try2")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<USUAL_HMQ2_TRY2>());
-    else if (wl == "hmq2_blocking1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<USUAL_HMQ2_BLOCKING1>());
-    else if (wl == "hmq2_blocking2")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<USUAL_HMQ2_BLOCKING2>());
-    else if (wl == "pq")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<USUAL_PQ>());
+//    else if (wl == "hmq2_try1")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<USUAL_HMQ2_TRY1>());
+//    else if (wl == "hmq2_try2")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<USUAL_HMQ2_TRY2>());
+//    else if (wl == "hmq2_blocking1")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<USUAL_HMQ2_BLOCKING1>());
+//    else if (wl == "hmq2_blocking2")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<USUAL_HMQ2_BLOCKING2>());
+//    else if (wl == "pq")
+//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+//                     Process(graph, tolerance, amp), Galois::wl<USUAL_PQ>());
 //    else if (wl == "amq2_0.005_0.001")
 //      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
 //                     boost::make_transform_iterator(graph.end(), std::ref(fn)),

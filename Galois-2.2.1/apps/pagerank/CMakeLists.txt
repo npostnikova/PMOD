@@ -1,3 +1,4 @@
+set(CMAKE_CXX_STANDARD 17)
 if(USE_EXP)
   include_directories(../../exp/apps/pagerank .)
 endif()

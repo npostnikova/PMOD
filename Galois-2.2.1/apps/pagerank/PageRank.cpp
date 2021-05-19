@@ -132,7 +132,7 @@ struct SerialAlgo {
 
       for (auto ii = graph.begin(), ei = graph.end(); ii != ei; ++ii) {
         GNode src = *ii;
-//        *nNodesProcessed += 1;
+        // *nNodesProcessed += 1;
         PNode& sdata = graph.getData(src);
         int neighbors = std::distance(graph.edge_begin(src), graph.edge_end(src));
         for (auto jj = graph.edge_begin(src), ej = graph.edge_end(src); jj != ej; ++jj) {
@@ -428,7 +428,7 @@ struct AsyncPri{
     GNode first;
     int second;
 
-    int prior() {
+    int prior() const {
       return second;
     }
 
@@ -573,9 +573,7 @@ struct AsyncPri{
       GNode src = srcn.first;
       LNode& sdata = graph.getData(src);
 
-
       *nNodesProcessed += 1;
-
       (*nOverall)+=1;
       if(sdata.residual < tolerance || pri(src) != srcn.second){
         *nEmpty += 1;
@@ -674,25 +672,6 @@ struct AsyncPri{
     typedef MyHMQTryLock2Q<WorkItem, Comparer, 2, true, int> USUAL_HMQ2_TRY2;
     typedef MyHMQBlocking2Q<WorkItem, Comparer, 2, true, int> USUAL_HMQ2_BLOCKING2;
     typedef MyPQ<WorkItem, Comparer, true> USUAL_PQ;
-    typedef MultiQueueProbProb<WorkItem, Comparer, 2> AMQ2;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 1000>> AMQ2_5_1000_1_1000;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>> AMQ2_1_1000_1_1000;
-    typedef MultiQueueProbProb<WorkItem, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <5, 1000>> AMQ2_5_1000_5_1000;
-    typedef MultiQueueProbProb<WorkItem, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 100>> AMQ2_5_1000_1_100;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 1000>, true> AMQ2CP_5_1000_1_1000;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>, true> AMQ2CP_1_1000_1_1000;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <5, 1000>, true> AMQ2CP_5_1000_5_1000;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 100>, true> AMQ2CP_5_1000_1_100;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 3, false, void, true, false, Prob <5, 1000>, Prob <1, 1000>> AMQ3_5_1000_1_1000;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 3, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>> AMQ3_1_1000_1_1000;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 3, false, void, true, false, Prob <5, 1000>, Prob <5, 1000>> AMQ3_5_1000_5_1000;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 3, false, void, true, false, Prob <5, 1000>, Prob <1, 100>> AMQ3_5_1000_1_100;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 4, false, void, true, false, Prob <5, 1000>, Prob <1, 1000>> AMQ4_5_1000_1_1000;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 4, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>> AMQ4_1_1000_1_1000;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 4, false, void, true, false, Prob <5, 1000>, Prob <5, 1000>> AMQ4_5_1000_5_1000;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 4, false, void, true, false, Prob <5, 1000>, Prob <1, 100>> AMQ4_5_1000_1_100;
-// 
-
 //#define UpdateRequest WorkItem
 
 //#include "Galois/WorkList/AMQ2.h"
@@ -712,9 +691,6 @@ struct AsyncPri{
     if (!mqSuff.empty()) {
       mqSuff = "_" + mqSuff;
     }
-//#include "AMQMatch2.h"
-//#include "AMQMatch3.h"
-//#include "AMQMatch4.h"
 
 //    if (wl == "amq2_1_1")
 //      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
@@ -730,10 +706,6 @@ struct AsyncPri{
 //    if (wl == "amq2_5_1000_5_1000")
 //      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_5_1000_5_1000>());
 
-//
-//#include "StealingIfs.h"
-//#include "StealingTypedefs.h"
-#include "Heatmaps.h"
 
     if (wl == "obim") {
       Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
@@ -757,11 +729,6 @@ struct AsyncPri{
 //      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
 //                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
 //                     Process(graph, tolerance, amp), Galois::wl<HMQ4>());
-
-    else if (wl == "amq2")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<AMQ2>());
     else if (wl == "hmq2_try1")
       Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
                      boost::make_transform_iterator(graph.end(), std::ref(fn)),
@@ -782,27 +749,6 @@ struct AsyncPri{
       Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
                      boost::make_transform_iterator(graph.end(), std::ref(fn)),
                      Process(graph, tolerance, amp), Galois::wl<USUAL_PQ>());
-//    else if (wl == "amq2_0.005_0.001")
-//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-//                     Process(graph, tolerance, amp), Galois::wl<AMQ2_5_1000_1_1000>());
-//    else if (wl == "amq2_0.001_0.001")
-//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-//                     Process(graph, tolerance, amp), Galois::wl<AMQ2_1_1000_1_1000>());
-//    else if (wl == "amq2_0.005_0.005")
-//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-//                     Process(graph, tolerance, amp), Galois::wl<AMQ2_5_1000_5_1000>());
-    else if (wl == "amq2_5_1000_1_100")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<AMQ2_5_1000_1_100>());
-    else if (wl == "amq2cp_5_1000_5_1000")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<AMQ2_5_1000_5_1000>());
-
 //    else if (wl == "slobim") {
 //      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
 //                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
@@ -943,125 +889,17 @@ struct AsyncPri{
 //                     Process(graph, tolerance, amp), Galois::wl<SL>());*/
 //    std::cout<< "here2\n";
 
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 1024>, int> AMQ2_1_1024_1_1024;
-//    if (wl == "amq2_1_1024_1_1024")
-//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-//                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-//                       Process(graph, tolerance, amp), Galois::wl<AMQ2_1_1024_1_1024>());
 
-
-/*
-    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 8>, true, 4, Prob<8, 1>> SMQ_1_8_4_8_1;
-    if (wl == "smq_1_8_4_8_1")
+    typedef AdaptiveStealingMultiQueue<WorkItem, Comparer> ASMQ;
+    if (wl == "adap-smq")
       Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<SMQ_1_8_4_8_1>());
-
-
-
-    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 1024>, Prob <2, 1>, int> AMQ2_1_1024_1_1024_2_1;
-    if (wl == "amq2_1_1024_1_1024_2_1")
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     Process(graph, tolerance, amp), Galois::wl<ASMQ>());
+    typedef AdaptiveStealingMultiQueue<WorkItem, Comparer> SMQ_512_1;
+    if (wl == "smq_512_1" or wl == "smq_lj")
       Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<AMQ2_1_1024_1_1024_2_1>());
-    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 1024>, Prob <4, 1>, int> AMQ2_1_1024_1_1024_4_1;
-    if (wl == "amq2_1_1024_1_1024_4_1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<AMQ2_1_1024_1_1024_4_1>());
-    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 1024>, Prob <8, 1>, int> AMQ2_1_1024_1_1024_8_1;
-    if (wl == "amq2_1_1024_1_1024_8_1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<AMQ2_1_1024_1_1024_8_1>());
-    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 1024>, Prob <16, 1>, int> AMQ2_1_1024_1_1024_16_1;
-    if (wl == "amq2_1_1024_1_1024_16_1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<AMQ2_1_1024_1_1024_16_1>());
-    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 1024>, Prob <32, 1>, int> AMQ2_1_1024_1_1024_32_1;
-    if (wl == "amq2_1_1024_1_1024_32_1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<AMQ2_1_1024_1_1024_32_1>());
-    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 1024>, Prob <64, 1>, int> AMQ2_1_1024_1_1024_64_1;
-    if (wl == "amq2_1_1024_1_1024_64_1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<AMQ2_1_1024_1_1024_64_1>());
-    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 1024>, Prob <128, 1>, int> AMQ2_1_1024_1_1024_128_1;
-    if (wl == "amq2_1_1024_1_1024_128_1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<AMQ2_1_1024_1_1024_128_1>());
-    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 1024>, Prob <256, 1>, int> AMQ2_1_1024_1_1024_256_1;
-    if (wl == "amq2_1_1024_1_1024_256_1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<AMQ2_1_1024_1_1024_256_1>());
-    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 1024>, Prob <512, 1>, int> AMQ2_1_1024_1_1024_512_1;
-    if (wl == "amq2_1_1024_1_1024_512_1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<AMQ2_1_1024_1_1024_512_1>());
-    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <1, 1024>, Prob <1, 1024>, Prob <1024, 1>, int> AMQ2_1_1024_1_1024_1024_1;
-    if (wl == "amq2_1_1024_1_1024_1024_1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<AMQ2_1_1024_1_1024_1024_1>());
-
-    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 512>, true, 1, Prob<2, 1>> SMQ_1_512_1_2_1;
-    if (wl == "smq_1_512_1_2_1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<SMQ_1_512_1_2_1>());
-    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 512>, true, 1, Prob<4, 1>> SMQ_1_512_1_4_1;
-    if (wl == "smq_1_512_1_4_1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<SMQ_1_512_1_4_1>());
-    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 512>, true, 1, Prob<8, 1>> SMQ_1_512_1_8_1;
-    if (wl == "smq_1_512_1_8_1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<SMQ_1_512_1_8_1>());
-    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 512>, true, 1, Prob<16, 1>> SMQ_1_512_1_16_1;
-    if (wl == "smq_1_512_1_16_1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<SMQ_1_512_1_16_1>());
-    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 512>, true, 1, Prob<32, 1>> SMQ_1_512_1_32_1;
-    if (wl == "smq_1_512_1_32_1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<SMQ_1_512_1_32_1>());
-    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 512>, true, 1, Prob<64, 1>> SMQ_1_512_1_64_1;
-    if (wl == "smq_1_512_1_64_1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<SMQ_1_512_1_64_1>());
-    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 512>, true, 1, Prob<128, 1>> SMQ_1_512_1_128_1;
-    if (wl == "smq_1_512_1_128_1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<SMQ_1_512_1_128_1>());
-    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 512>, true, 1, Prob<256, 1>> SMQ_1_512_1_256_1;
-    if (wl == "smq_1_512_1_256_1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<SMQ_1_512_1_256_1>());
-    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 512>, true, 1, Prob<512, 1>> SMQ_1_512_1_512_1;
-    if (wl == "smq_1_512_1_512_1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<SMQ_1_512_1_512_1>());
-    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 512>, true, 1, Prob<1024, 1>> SMQ_1_512_1_1024_1;
-    if (wl == "smq_1_512_1_1024_1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                       Process(graph, tolerance, amp), Galois::wl<SMQ_1_512_1_1024_1>());
-
-*/
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     Process(graph, tolerance, amp), Galois::wl<SMQ_512_1>());
 
   }
 

@@ -726,8 +726,13 @@ struct AsyncAlgo {
 #define element_t UpdateRequest
 
     typedef StealingMultiQueue<element_t, Comparer, 4, 1, true> SMQ_4_1;
-    if (wl == "smq_4_1")
+    if (wl == "smq_4_1" or wl == "smq_west")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_4_1>());
+
+
+    typedef AdaptiveStealingMultiQueue<element_t, Comparer> ASMQ;
+    if (wl == "adap-smq")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<ASMQ>());
 
 
 //    typedef MyHMQ<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_TRY1;

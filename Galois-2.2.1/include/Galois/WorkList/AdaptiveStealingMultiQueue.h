@@ -8,6 +8,7 @@
 
 #include "StealingQueue.h"
 #include "Heap.h"
+#include "StealingMultiQueue.h"
 
 namespace Galois {
 namespace WorkList {

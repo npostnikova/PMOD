@@ -590,7 +590,6 @@ struct AsyncPri{
       int src_nout = nout(graph,src, lockflag);
       PRTy delta = diff*alpha2/src_nout;
 
-
       // for each out-going neighbors
       for (auto jj = graph.edge_begin(src, lockflag), ej = graph.edge_end(src, lockflag); jj != ej; ++jj) {
         GNode dst = graph.getEdgeDst(jj);
@@ -667,10 +666,6 @@ struct AsyncPri{
 //    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 2>> HMQ2;
 //    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 3>> HMQ3;
 //    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 4>> HMQ4;
-    typedef MyHMQ<WorkItem, Comparer, 2, true, int> USUAL_HMQ2_TRY1;
-    typedef MyHMQBlocking<WorkItem, Comparer, 2, true, int> USUAL_HMQ2_BLOCKING1;
-    typedef MyHMQTryLock2Q<WorkItem, Comparer, 2, true, int> USUAL_HMQ2_TRY2;
-    typedef MyHMQBlocking2Q<WorkItem, Comparer, 2, true, int> USUAL_HMQ2_BLOCKING2;
     typedef MyPQ<WorkItem, Comparer, true> USUAL_PQ;
 //#define UpdateRequest WorkItem
 
@@ -691,21 +686,6 @@ struct AsyncPri{
     if (!mqSuff.empty()) {
       mqSuff = "_" + mqSuff;
     }
-
-//    if (wl == "amq2_1_1")
-//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-//                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-//                       Process(graph, tolerance, amp), Galois::wl<AMQ2_1_1_1_1>());
-
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 1, true, DecreaseKeyIndexer<WorkItem>, true, false, Prob <5, 1000>, Prob <1, 100>> AMQ2_5_1000_1_100;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 1, true, DecreaseKeyIndexer<WorkItem>, true, false, Prob <5, 1000>, Prob <5, 1000>> AMQ2_5_1000_5_1000;
-
-//    if (wl == "amq2_5_1000_1_100")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_5_1000_1_100>());
-//
-//    if (wl == "amq2_5_1000_5_1000")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_5_1000_5_1000>());
-
 
     if (wl == "obim") {
       Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
@@ -729,26 +709,6 @@ struct AsyncPri{
 //      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
 //                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
 //                     Process(graph, tolerance, amp), Galois::wl<HMQ4>());
-    else if (wl == "hmq2_try1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<USUAL_HMQ2_TRY1>());
-    else if (wl == "hmq2_try2")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<USUAL_HMQ2_TRY2>());
-    else if (wl == "hmq2_blocking1")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<USUAL_HMQ2_BLOCKING1>());
-    else if (wl == "hmq2_blocking2")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<USUAL_HMQ2_BLOCKING2>());
-    else if (wl == "pq")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<USUAL_PQ>());
 //    else if (wl == "slobim") {
 //      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
 //                     boost::make_transform_iterator(graph.end(), std::ref(fn)),

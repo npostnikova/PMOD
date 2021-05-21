@@ -49,7 +49,7 @@ struct StealDAryHeapHaate {
     //min.store(usedT, std::memory_order_release);
   }
 
-  bool isUsed(T const& element) {
+  static bool isUsed(T const& element) {
     return element == usedT;
   }
 
@@ -603,7 +603,8 @@ class StealingMultiQueue {
 private:
   typedef Container Heap;
   std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<Heap>[]> heaps;
-  Comparer compare;
+  std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]> stealBuffers;
+  static Comparer compare;
   const size_t nQ;
 
   //! Thread local random.
@@ -684,6 +685,47 @@ private:
 //    }
   }
 
+  //! Tries to steal from a random queue.
+  //! Repeats if failed because of a race.
+  Galois::optional<T> trySteal() {
+    static thread_local size_t tId = Galois::Runtime::LL::getTID();
+    Heap *localH = &heaps[tId].data;
+
+    bool again = true;
+    while (again) {
+      again = false;
+      // we try to steal
+      auto randId = (tId + 1 + (random() % (nQ - 1))) % nQ;
+      Heap *randH = &heaps[randId].data;
+      auto randMin = randH->getMin(again);
+      if (randH->isUsed(randMin)) {
+        // steal is not successfull
+      } else {
+        bool useless = false;
+        auto localMin = localH->getMin(useless);
+        if (localH->isUsed(localMin)) {
+          localMin = localH->updateMin();
+        }
+        if (randH->isUsed(localMin) || compare(localMin, randMin)) {
+          auto stolen = randH->steal(again);
+          if (stolen.is_initialized()) {
+            auto &buffer = stealBuffers[tId].data;
+            typename Heap::stealing_array_t vals = stolen.get();
+            auto minId = localH->getMinId(vals);
+            for (size_t i = 0; i < vals.size(); i++) {
+              if (i == minId || localH->isUsed(vals[i])) continue;
+              buffer.push_back(vals[i]);
+            }
+            std::sort(buffer.begin(), buffer.end(), [](T const &e1, T const &e2) { return e1.prior() > e2.prior(); });
+            return vals[minId];
+          }
+        }
+      }
+    }
+      return Galois::optional<T>();
+  }
+
+
 
   static Galois::Statistic* popNull;
   static Galois::Statistic* popRes;
@@ -700,6 +742,7 @@ public:
     for (size_t i = 0; i < nQ; i++) {
       heaps[i].data.set_id(i);
     }
+    stealBuffers = std::make_unique<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]>(nQ);
     std::cout << "Queues: " << nQ << std::endl;
     initStatistic(popNull, "popNull");
     initStatistic(popRes, "popRes");
@@ -776,43 +819,35 @@ public:
   Galois::optional<T> pop() {
     static thread_local size_t tId = Galois::Runtime::LL::getTID(); // todo bounds? can be changed?
 
+    auto& buffer = stealBuffers[tId].data;
+    if (!buffer.empty()) {
+      auto val = buffer.back();
+      buffer.pop_back();
+      Heap& local = heaps[tId].data;
+      bool useless = false;
+      auto curMin = local.getMin(useless);
+      if (Heap::isUsed(curMin) /**&& cmp(curMin, heap[0])*/ && !local.heap.empty()) { // todo i don't want to do it now
+//      auto stolen = steal(); // todo i suppose its stolen
+        local.writeMin(local.extractMinLocally());
+//      auto exchanged = min.exchange(extractMinLocally(), std::memory_order_acq_rel);
+//      if (!isUsed(stolen))
+//        pushHelper(stolen);
+//    } else if (isUsed(curMin)) {
+//      writeMin(extractMinLocally());
+//      min.store(extractMinLocally(), std::memory_order_release);
+//    }
+      }
+//      if (heaps[tId].data.isBufferStolen()) heaps[tId].data.fillBuffer();
+      return val;
+    }
     Galois::optional<T> result;
 
     if (nQ > 1) {
       size_t change = random() % StealProb;
       if (change < 1) {
+        auto el = trySteal();
+        if (el.is_initialized()) return el;
 
-        bool again = true;
-        while (again) {
-          again = false;
-          // we try to steal
-          auto randId = (tId + 1 + (random() % (nQ - 1))) % nQ;
-          Heap *randH = &heaps[randId].data;
-          auto randMin = randH->getMin(again);
-          if (randH->isUsed(randMin)) {
-            // steal is not successfull
-          } else {
-            Heap *localH = &heaps[tId].data;
-            bool useless;
-            auto localMin = localH->getMin(useless);
-            if (localH->isUsed(localMin)) {
-              localMin = localH->updateMin();
-            }
-            if (randH->isUsed(localMin) || compare(localMin, randMin)) {
-              auto stolen = randH->steal(again);
-              if (stolen.is_initialized()) {
-                typename Heap::stealing_array_t vals = stolen.get();
-                auto minId = localH->getMinId(vals);
-                for (size_t i = 0; i < vals.size(); i++) {
-                  if (i == minId || localH->isUsed(vals[i])) continue;
-                  localH->pushHelper(vals[i]);
-                }
-                *popRes += 1;
-                return vals[minId];
-              }
-            }
-          }
-        }
       }
     }
     auto minVal = heaps[tId].data.extractMin();
@@ -826,33 +861,8 @@ public:
       return result;
     }
 
-    const size_t RANDOM_ATTEMPTS = nQ > 2 ? 4 : 1;
-    bool again = true;
-//    for (size_t r = 0; r < RANDOM_ATTEMPTS; r++) {
-    while (again) {
-      again = false;
-      auto randH = rand_heap();
-      if (randH == tId) continue;
-      auto stolen = heaps[randH].data.steal(again);
-      if (stolen.is_initialized()) {
-        Heap* localH = &heaps[tId].data;
-        typename Heap::stealing_array_t vals = stolen.get();
-        auto minId = localH->getMinId(vals);
-        for (size_t i = 0; i < vals.size(); i++) {
-          if (i == minId || localH->isUsed(vals[i])) continue;
-          localH->pushHelper(vals[i]);
-        }
-        *popRes += 1;
-        return vals[minId];
-      }
-    }
-//    for (size_t i = 0; i < nQ; i++) {
-//      if (i == tId) continue;
-//      auto stolen = heaps[i].data.steal();
-//      if (!heaps[i].data.isUsed(stolen))
-//        return stolen;
-//    }
-    *popNull += 1;
+    auto el = trySteal();
+    if (el.is_initialized()) return el;
     return result;
   }
 };

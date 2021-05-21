@@ -73,19 +73,23 @@ struct StealDAryHeapRrr {
 //    }
   }
 
-  Galois::optional<std::array<T, STEAL_NUM>> steal(bool& failedBecauseOthers) {
+  int steal(bool& failedBecauseOthers, T* arr) {
 //    while (true) { // todo do i want to use while(true) here?
     auto res = Galois::optional<std::array<T, STEAL_NUM>>();
     auto v1 = getVersion();
     if (v1 % 2 == 0) {
-      return res;
+      return 0;
     }
-    std::array<T, STEAL_NUM> val = mins;
+    size_t ind = 0;
+    for (; ind < STEAL_NUM; ind++) {
+      if (!isUsed(mins[ind])) arr[ind] = mins[ind];
+      else break;
+    }
     if (version.compare_exchange_weak(v1, v1 + 1, std::memory_order_acq_rel)) {
-      return val;
+      return ind;
     }
     failedBecauseOthers = true;
-    return res;
+    return 0;
 //    }
   }
 
@@ -115,6 +119,16 @@ struct StealDAryHeapRrr {
     version.fetch_add(1, std::memory_order_acq_rel);
     return mins[getMinId(arr)];
   }
+  //! Fills the steal buffer.
+  //! Called when the elements from the previous epoch are empty.
+  T fillBufferWithArray(T* arr) {
+    for (size_t i = 0; i < STEAL_NUM; i++) {
+      mins[i] = arr[i];
+    }
+//    mins = arr;
+    version.fetch_add(1, std::memory_order_acq_rel);
+    return mins[0];
+  }
 
 
   T extractOneMinLocally() {
@@ -139,6 +153,15 @@ struct StealDAryHeapRrr {
     return id;
   }
 
+  size_t getMinId(T* val, size_t stolen) {
+    size_t id = 0;
+    for (size_t i = 1; i < stolen; i++) {
+      if ((cmp(val[id], val[i]) && !isUsed(val[i]))|| isUsed(val[id]))
+        id = i;
+    }
+    return id;
+  }
+
 //	template <typename Indexer>
 //  T updateMin(Indexer const& indexer) {
 //    if (heap.size() == 0) return usedT;
@@ -156,48 +179,48 @@ struct StealDAryHeapRrr {
     return usedT; // todo
   }
 
-  T extractMin(size_t size) {
+  T extractMin(size_t size, T* arr) {
 
     bool useless = false;
     if (heap.size() > 0) {
 //      auto secondMin = extractMinLocally();
-      auto stolen = steal(useless); // min.exchange(secondMin, std::memory_order_acq_rel);
+      auto stolen = steal(useless, arr); // min.exchange(secondMin, std::memory_order_acq_rel);
 //      writeMin(secondMin);
-      if (!stolen.is_initialized()) {
+      if (stolen == 0) {
         auto res = extractOneMinLocally();
         if (heap.size() > 0) {
           fillBuffer(size);
         }
         return res;
       } else {
-        auto stolenVal = stolen.get();
-        auto firstMinId = getMinId(stolenVal);
+        auto firstMinId = getMinId(arr, stolen);
         auto extracted = extractOneMinLocally();
-        if (cmp(extracted, stolenVal[firstMinId])) {
-          auto res = stolenVal[firstMinId];
-          stolenVal[firstMinId] = extracted;
-          fillBufferWithArray(stolenVal);
+        if (cmp(extracted, arr[firstMinId])) {
+          auto res = arr[firstMinId];
+          arr[firstMinId] = extracted;
+          for (size_t r = stolen; r < STEAL_NUM; r++) {
+            arr[r] = usedT;
+          }
+          fillBufferWithArray(arr);
           return res;
         }
-        fillBufferWithArray(stolenVal);
+//        fillBufferWithArray(arr);
+        version.fetch_add(1, std::memory_order_acq_rel);
         return extracted;
       }
     } else {
       // No elements in the heap, just take min if we can
-      auto stolen = steal(useless);
-      if (!stolen.is_initialized()) {
+      auto stolen = steal(useless, arr);
+      if (stolen == 0) {
         return usedT;
       }
       // todo it's not cool
-      auto els = stolen.get();
-      auto id = getMinId(els);
-      for (size_t i = 0; i < STEAL_NUM; i++) {
+      auto id = getMinId(arr, stolen);
+      for (size_t i = 0; i < stolen; i++) {
         if (id == i) continue;
-        if (!isUsed(els[i])) {
-          pushHelper(els[i]);
-        }
+        pushHelper(arr[i]);
       }
-      return els[id];
+      return arr[id];
     }
   }
 
@@ -650,28 +673,21 @@ private:
         localMin = localH->fillBuffer(threadStorage.getLocal()->stealSize);
       }
       if (randH->isUsed(localMin) || compare(localMin, randMin)) {
+        T* stolenBuff = threadStorage.getLocal()->stolen;
         otherBetter++;
-        auto stolen = randH->steal(again);
-        if (stolen.is_initialized()) {
+        auto stolen = randH->steal(again, stolenBuff);
+        if (stolen > 0) {
           auto &buffer = stealBuffers[tId].data;
-          typename Heap::stealing_array_t vals = stolen.get();
-          auto minId = localH->getMinId(vals);
-          for (size_t i = 0; i < vals.size(); i++) {
-            if (i == minId || localH->isUsed(vals[i])) continue;
-            buffer.push_back(vals[i]);
+          auto minId = localH->getMinId(stolenBuff, stolen);
+          for (size_t i = 0; i < stolen; i++) {
+            if (i == minId) continue;
+            buffer.push_back(stolenBuff[i]);
           }
           std::sort(buffer.begin(), buffer.end(), [](T const &e1, T const &e2) { return e1.prior() > e2.prior(); });
 
           threadStorage.getLocal()->reportStealStats(ourBetter, otherBetter);
           threadStorage.getLocal()->reportEmpty(wasEmpty, tried, localH->heap.size());
-          return vals[minId];
-//          typename Heap::stealing_array_t vals = stolen.get();
-//          auto minId = localH->getMinId(vals);
-//          for (size_t i = 0; i < vals.size(); i++) {
-//            if (i == minId || localH->isUsed(vals[i])) continue;
-//            localH->pushHelper(vals[i]);
-//          }
-//          return vals[minId];
+          return stolenBuff[minId];
         }
       } else {
         ourBetter++;
@@ -847,7 +863,7 @@ public:
         if (stolen.is_initialized()) return stolen;
       }
     }
-    auto minVal = heaps[tId].data.extractMin(threadStorage.getLocal()->stealSize);
+    auto minVal = heaps[tId].data.extractMin(threadStorage.getLocal()->stealSize, threadStorage.getLocal()->stolen);
     if (!heaps[tId].data.isUsed(minVal)) {
       return minVal;
     }

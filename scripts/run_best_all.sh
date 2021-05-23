@@ -25,28 +25,36 @@ boruvka=/home/ubuntu/PMOD/Galois-2.2.1/build/apps/boruvka/boruvka-merge
 astar=/home/ubuntu/PMOD/Galois-2.2.1/build/apps/astar/astar
 pagerank=/home/ubuntu/PMOD/Galois-2.2.1/build/apps/pagerank/pagerank
 
+THREADS=( 1 2 4 8 16 32 64 96 )
+
 runs=10
 
 algo=bfs
-for graph in ctr lj usa web twi
+for graph in ctr lj
 do
   for wl in "smq_$graph" adap-smq adap-obim
   do
-    for run in $(seq 1 $runs)
+    for t in "${THREADS[@]}"
     do
-      ${!algo} ${!graph} -wl $wl -t 96 -resultFile "${algo}_${graph}_96"
+      for run in $(seq 1 $runs)
+      do
+        ${!algo} ${!graph} -wl $wl -t $t -resultFile "${algo}_${graph}"
+      done
     done
   done
 done
 
 algo=sssp
-for graph in ctr lj usa twi
+for graph in ctr lj
 do
   for wl in "smq_$graph" adap-smq adap-obim
   do
-    for run in $(seq 1 $runs)
+    for t in "${THREADS[@]}"
     do
-      ${!algo} ${!graph} -wl $wl -t 96 -resultFile "${algo}_${graph}_96"
+      for run in $(seq 1 $runs)
+      do
+        ${!algo} ${!graph} -wl $wl -t $t -resultFile "${algo}_${graph}"
+      done
     done
   done
 done
@@ -56,21 +64,27 @@ algo=astar
 graph=west
 for wl in "smq_$graph" adap-smq adap-obim
 do
-  for run in $(seq 1 $runs)
+  for t in "${THREADS[@]}"
   do
-    eval coord=\$$"${graph}_coord"
-    ${!algo} ${!graph} -wl $wl -t 96 -resultFile "${algo}_${graph}_96" -coordFilename $coord -startNode 1 -destNode 5639706  -reportNode 5639706
+    for run in $(seq 1 $runs)
+    do
+      eval coord=\$$"${graph}_coord"
+      ${!algo} ${!graph} -wl $wl -t $t -resultFile "${algo}_${graph}" -coordFilename $coord -startNode 1 -destNode 5639706  -reportNode 5639706
+    done
   done
 done
 
 algo=boruvka
-for graph in west usa
+for graph in west
 do
   for wl in smq_west adap-smq adap-obim
   do
-    for run in $(seq 1 $runs)
+    for t in "${THREADS[@]}"
     do
-      ${!algo} ${!graph} -wl $wl -t 96 -resultFile "${algo}_${graph}_96"
+      for run in $(seq 1 $runs)
+      do
+        ${!algo} ${!graph} -wl $wl -t $t -resultFile "${algo}_${graph}"
+      done
     done
   done
 done
@@ -78,14 +92,33 @@ done
 runs=5
 
 algo=pagerank
-for graph in lj web twi
+for graph in lj
 do
   for wl in smq_lj adap-smq adap-obim
   do
-    for run in $(seq 1 $runs)
+    for t in "${THREADS[@]}"
     do
-      eval tr=\$$"${graph}_tr"
-      ${!algo} ${!graph} -wl $wl -t 96 -resultFile "${algo}_${graph}_96" -graphTranspose $tr -amp 1000 -tolerance 0.01
+      for run in $(seq 1 $runs)
+      do
+        eval tr=\$$"${graph}_tr"
+        ${!algo} ${!graph} -wl $wl -t $t -resultFile "${algo}_${graph}_1000" -graphTranspose $tr -amp 1000 -tolerance 0.01
+      done
+    done
+  done
+done
+
+algo=pagerank
+for graph in lj
+do
+  for wl in smq_lj adap-smq adap-obim
+  do
+    for t in "${THREADS[@]}"
+    do
+      for run in $(seq 1 $runs)
+      do
+        eval tr=\$$"${graph}_tr"
+        ${!algo} ${!graph} -wl $wl -t $t -resultFile "${algo}_${graph}_1" -graphTranspose $tr -amp 1 -tolerance 0.01
+      done
     done
   done
 done

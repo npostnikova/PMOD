@@ -510,7 +510,7 @@ struct AsyncAlgo {
     std::advance(it, destNode);
     GNode report = *it;
 
-    // Dist reportDist = graph.getData(report, Galois::MethodFlag::NONE).dist;
+     Dist reportDist = graph.getData(report, Galois::MethodFlag::NONE).dist;
 
     unsigned int heu_val = heuristic(sdata, graph);
 

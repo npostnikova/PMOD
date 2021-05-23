@@ -1,5 +1,4 @@
 set(CMAKE_CXX_STANDARD 17)
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O4")
 if(USE_EXP)
   include_directories(../../exp/apps/bfs .)
 endif()

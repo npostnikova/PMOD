@@ -360,8 +360,12 @@ long long runBodyParallel() {
    typedef GlobPQ<WorkItem, LockFreeSkipList<seq_gt, WorkItem>> GPQ;
    typedef GlobPQ<WorkItem, SprayList<seq_gt, WorkItem>> SL;
    typedef GlobPQ<WorkItem, MultiQueue<seq_gt, WorkItem, 1>> MQ1;
+   typedef GlobPQ<WorkItem, MultiQueue<seq_gt, WorkItem, 2>> MQ2;
+   typedef GlobPQ<WorkItem, MultiQueue<seq_gt, WorkItem, 3>> MQ3;
    typedef GlobPQ<WorkItem, MultiQueue<seq_gt, WorkItem, 4>> MQ4;
    typedef GlobPQ<WorkItem, HeapMultiQueue<seq_gt, WorkItem, 1>> HMQ1;
+   typedef GlobPQ<WorkItem, HeapMultiQueue<seq_gt, WorkItem, 2>> HMQ2;
+   typedef GlobPQ<WorkItem, HeapMultiQueue<seq_gt, WorkItem, 3>> HMQ3;
    typedef GlobPQ<WorkItem, HeapMultiQueue<seq_gt, WorkItem, 4>> HMQ4;
    typedef GlobPQ<WorkItem, DistQueue<seq_gt, WorkItem, false>> PTSL;
    typedef GlobPQ<WorkItem, DistQueue<seq_gt, WorkItem, true>> PPSL;
@@ -447,10 +451,18 @@ long long runBodyParallel() {
      Galois::for_each_local(initial, process(), Galois::wl<GPQ>());
    else if (wl == "spraylist")
      Galois::for_each_local(initial, process(), Galois::wl<SL>());
+   else if (wl == "mq2")
+     Galois::for_each_local(initial, process(), Galois::wl<MQ2>());
+   else if (wl == "mq3")
+     Galois::for_each_local(initial, process(), Galois::wl<MQ3>());
    else if (wl == "multiqueue1")
      Galois::for_each_local(initial, process(), Galois::wl<MQ1>());
    else if (wl == "multiqueue4")
      Galois::for_each_local(initial, process(), Galois::wl<MQ4>());
+   else if (wl == "hmq2")
+     Galois::for_each_local(initial, process(), Galois::wl<HMQ2>());
+   else if (wl == "hmq3")
+     Galois::for_each_local(initial, process(), Galois::wl<HMQ3>());
    else if (wl == "heapmultiqueue1")
      Galois::for_each_local(initial, process(), Galois::wl<HMQ1>());
    else if (wl == "heapmultiqueue4")
@@ -467,21 +479,21 @@ long long runBodyParallel() {
      Galois::for_each_local(initial, process(), Galois::wl<HSWARMPQ>());
 //   else
 //     std::cerr << "No work list!" << "\n";
-//    typedef MyHMQ<WorkItem, seq_gt, 2, true> USUAL_HMQ2_TRY1;
-//    if (worklistname == "hmq2_try1")
-//      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_TRY1>());
-//    typedef MyHMQBlocking<WorkItem, seq_gt, 2, true> USUAL_HMQ2_BLOCKING1;
-//    if (worklistname == "hmq2_blocking1")
-//      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_BLOCKING1>());
-//    typedef MyHMQTryLock2Q<WorkItem, seq_gt, 2, true> USUAL_HMQ2_TRY2;
-//    if (worklistname == "hmq2_try2")
-//      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_TRY2>());
-//    typedef MyHMQBlocking2Q<WorkItem, seq_gt, 2, true> USUAL_HMQ2_BLOCKING2;
-//    if (worklistname == "hmq2_blocking2")
-//      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_BLOCKING2>());
-//  typedef MyPQ<WorkItem, seq_gt, true> USUAL_PQ;
-//  if (worklistname == "pq")
-//    Galois::for_each_local(initial, process(), Galois::wl<USUAL_PQ>());
+    typedef MyHMQ<WorkItem, seq_gt, 2, true> USUAL_HMQ2_TRY1;
+    if (worklistname == "hmq2_try1")
+      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_TRY1>());
+    typedef MyHMQBlocking<WorkItem, seq_gt, 2, true> USUAL_HMQ2_BLOCKING1;
+    if (worklistname == "hmq2_blocking1")
+      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_BLOCKING1>());
+    typedef MyHMQTryLock2Q<WorkItem, seq_gt, 2, true> USUAL_HMQ2_TRY2;
+    if (worklistname == "hmq2_try2")
+      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_TRY2>());
+    typedef MyHMQBlocking2Q<WorkItem, seq_gt, 2, true> USUAL_HMQ2_BLOCKING2;
+    if (worklistname == "hmq2_blocking2")
+      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_BLOCKING2>());
+  typedef MyPQ<WorkItem, seq_gt, true> USUAL_PQ;
+  if (worklistname == "pq")
+    Galois::for_each_local(initial, process(), Galois::wl<USUAL_PQ>());
 
   typedef StealingMultiQueue<WorkItem, seq_gt, 4, 8, true> SMQ_4_8;
   if (wl == "smq_4_8" or wl == "smq_usa")

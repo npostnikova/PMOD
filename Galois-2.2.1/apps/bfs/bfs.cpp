@@ -473,17 +473,20 @@ struct AsyncAlgo {
 //    typedef OrderedByIntegerMetric<Indexer,dChunk, 0,true, true> OBIM_UBSP;
 //    typedef OrderedByIntegerMetric<Indexer,visChunk, 0,true, true> OBIM_VISCHUNK;
 //    typedef GlobPQ<WorkItem, LockFreeSkipList<Comparer, WorkItem>> GPQ;
-//    typedef GlobPQ<WorkItem, SprayList<NodeComparer, WorkItem>> SL;
-//    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 1>> MQ1;
+    typedef GlobPQ<WorkItem, SprayList<NodeComparer, WorkItem>> SL;
+    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 1>> MQ1;
+    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 2>> MQ2;
+    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 3>> MQ3;
 //    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 4>> MQ4;
 //    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 1>> HMQ1;
-//	  typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 2>> HMQ2;
+	  typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 2>> HMQ2;
+	  typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 3>> HMQ3;
 //    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 4>> HMQ4;
 //    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, false>> PTSL;
 //    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, true>> PPSL;
 //    typedef GlobPQ<WorkItem, LocalPQ<Comparer, WorkItem>> LPQ;
     typedef GlobPQ<WorkItem, SwarmPQ<Comparer, WorkItem>> SWARMPQ;
-//    typedef GlobPQ<WorkItem, HeapSwarmPQ<Comparer, WorkItem>> HSWARMPQ;
+    typedef GlobPQ<WorkItem, HeapSwarmPQ<Comparer, WorkItem>> HSWARMPQ;
 //    typedef GlobPQ<WorkItem, PartitionPQ<Comparer, Hasher, WorkItem>> PPQ;
 //    typedef SkipListOrderedByIntegerMetric<Indexer, dChunk> SLOBIM;
 //    typedef SkipListOrderedByIntegerMetric<Indexer, noChunk> SLOBIM_NOCHUNK;
@@ -508,21 +511,21 @@ struct AsyncAlgo {
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM>());
     else if (wl == "adap-obim")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<ADAPOBIM>());
-//    typedef MyHMQ<WorkItem, Comparer, 2, true> USUAL_HMQ2_TRY1;
-//    if (worklistname == "hmq2_try1")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<USUAL_HMQ2_TRY1>());
-//    typedef MyHMQBlocking<WorkItem, Comparer, 2, true> USUAL_HMQ2_BLOCKING1;
-//    if (worklistname == "hmq2_blocking1")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<USUAL_HMQ2_BLOCKING1>());
-//    typedef MyHMQTryLock2Q<WorkItem, Comparer, 2, true> USUAL_HMQ2_TRY2;
-//    if (worklistname == "hmq2_try2")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<USUAL_HMQ2_TRY2>());
-//    typedef MyHMQBlocking2Q<WorkItem, Comparer, 2, true> USUAL_HMQ2_BLOCKING2;
-//    if (worklistname == "hmq2_blocking2")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<USUAL_HMQ2_BLOCKING2>());
-//    typedef MyPQ<WorkItem, Comparer, true> USUAL_PQ;
-//    if (worklistname == "pq")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<USUAL_PQ>());
+    typedef MyHMQ<WorkItem, Comparer, 2, true> USUAL_HMQ2_TRY1;
+    if (worklistname == "hmq2_try1")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<USUAL_HMQ2_TRY1>());
+    typedef MyHMQBlocking<WorkItem, Comparer, 2, true> USUAL_HMQ2_BLOCKING1;
+    if (worklistname == "hmq2_blocking1")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<USUAL_HMQ2_BLOCKING1>());
+    typedef MyHMQTryLock2Q<WorkItem, Comparer, 2, true> USUAL_HMQ2_TRY2;
+    if (worklistname == "hmq2_try2")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<USUAL_HMQ2_TRY2>());
+    typedef MyHMQBlocking2Q<WorkItem, Comparer, 2, true> USUAL_HMQ2_BLOCKING2;
+    if (worklistname == "hmq2_blocking2")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<USUAL_HMQ2_BLOCKING2>());
+    typedef MyPQ<WorkItem, Comparer, true> USUAL_PQ;
+    if (worklistname == "pq")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<USUAL_PQ>());
 
 //    else if (wl == "slobim")
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SLOBIM>());
@@ -556,12 +559,20 @@ struct AsyncAlgo {
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM_GLOB_NOCHUNK>());
 //    else if (wl == "skiplist")
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<GPQ>());
-//    else if (wl == "spraylist")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SL>());
+    else if (wl == "spraylist")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SL>());
+    else if (wl == "mq2")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2>());
+    else if (wl == "mq3")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ3>());
 //    else if (wl == "multiqueue1")
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ1>());
 //    else if (wl == "multiqueue4")
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ4>());
+    else if (wl == "hmq2")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ2>());
+    else if (wl == "hmq3")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ3>());
 //    else if (wl == "heapmultiqueue1")
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ1>());
 //    else if (wl == "heapmultiqueue2")
@@ -574,10 +585,10 @@ struct AsyncAlgo {
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<PPSL>());
 //    else if (wl == "lpq")
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<LPQ>());
-//    else if (wl == "swarm")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SWARMPQ>());
-//    else if (wl == "heapswarm")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HSWARMPQ>());
+    else if (wl == "swarm")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SWARMPQ>());
+    else if (wl == "heapswarm")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HSWARMPQ>());
 //    else if (wl == "ppq")
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<PPQ>());
 //    else if (wl == "klsm256")

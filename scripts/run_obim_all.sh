@@ -78,7 +78,7 @@ done
 
 algo=astar
 graph=west
-for wl in "smq_$graph" adap-smq adap-obim
+for wl in obim
 do
   for t in "${THREADS[@]}"
   do
@@ -93,7 +93,7 @@ done
 algo=boruvka
 for graph in west
 do
-  for wl in smq_west adap-smq adap-obim
+  for wl in obim
   do
     for t in "${THREADS[@]}"
     do
@@ -110,7 +110,7 @@ runs=5
 algo=pagerank
 for graph in lj
 do
-  for wl in smq_lj adap-smq adap-obim
+  for wl in obim
   do
     for t in "${THREADS[@]}"
     do
@@ -126,7 +126,7 @@ done
 algo=pagerank
 for graph in lj
 do
-  for wl in smq_lj adap-smq adap-obim
+  for wl in obim
   do
     for t in "${THREADS[@]}"
     do

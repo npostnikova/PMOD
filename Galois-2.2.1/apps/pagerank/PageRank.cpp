@@ -590,6 +590,7 @@ struct AsyncPri{
       int src_nout = nout(graph,src, lockflag);
       PRTy delta = diff*alpha2/src_nout;
 
+
       // for each out-going neighbors
       for (auto jj = graph.edge_begin(src, lockflag), ej = graph.edge_end(src, lockflag); jj != ej; ++jj) {
         GNode dst = graph.getEdgeDst(jj);
@@ -637,22 +638,26 @@ struct AsyncPri{
 //    typedef OrderedByIntegerMetric<sndPri, Chunk, 10, true, true> OBIM_UBSP;
 //    typedef OrderedByIntegerMetric<sndPri, visChunk, 10, true, true> OBIM_VISCHUNK;
     typedef UpdateRequestComparer<WorkItem> Comparer;
-//    typedef UpdateRequestNodeComparer<WorkItem> NodeComparer;
+    typedef UpdateRequestNodeComparer<WorkItem> NodeComparer;
 //    typedef UpdateRequestHasher<WorkItem> Hasher;
 //    typedef GlobPQ<WorkItem, LockFreeSkipList<Comparer, WorkItem>> GPQ;
 //    typedef GlobPQ<WorkItem, LockFreeSkipList<NodeComparer, WorkItem>> GPQ_NC;
-//    typedef GlobPQ<WorkItem, SprayList<NodeComparer, WorkItem>> SL;
+    typedef GlobPQ<WorkItem, SprayList<NodeComparer, WorkItem>> SL;
 //    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 1>> MQ1;
+    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 2>> MQ2;
+    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 3>> MQ3;
 //    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 4>> MQ4;
 //    typedef GlobPQ<WorkItem, MultiQueue<NodeComparer, WorkItem, 4>> MQ4_NC;
 //    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 1>> HMQ1;
+    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 2>> HMQ2;
+    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 3>> HMQ3;
 //    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 4>> HMQ4;
 //    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, false>> PTSL;
 //    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, true>> PPSL;
 //    typedef GlobPQ<WorkItem, LocalPQ<Comparer, WorkItem>> LPQ;
-//    typedef GlobPQ<WorkItem, SwarmPQ<Comparer, WorkItem>> SWARMPQ;
+    typedef GlobPQ<WorkItem, SwarmPQ<Comparer, WorkItem>> SWARMPQ;
 //    typedef GlobPQ<WorkItem, SwarmPQ<NodeComparer, WorkItem>> SWARMPQ_NC;
-//    typedef GlobPQ<WorkItem, HeapSwarmPQ<Comparer, WorkItem>> HSWARMPQ;
+    typedef GlobPQ<WorkItem, HeapSwarmPQ<Comparer, WorkItem>> HSWARMPQ;
 //    typedef GlobPQ<WorkItem, PartitionPQ<Comparer, Hasher, WorkItem>> PPQ;
 //    typedef SkipListOrderedByIntegerMetric<sndPri, Chunk, 10> SLOBIM;
 //    typedef SkipListOrderedByIntegerMetric<sndPri, noChunk, 10> SLOBIM_NOCHUNK;
@@ -666,7 +671,6 @@ struct AsyncPri{
 //    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 2>> HMQ2;
 //    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 3>> HMQ3;
 //    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 4>> HMQ4;
-    typedef MyPQ<WorkItem, Comparer, true> USUAL_PQ;
 //#define UpdateRequest WorkItem
 
 //#include "Galois/WorkList/AMQ2.h"
@@ -778,10 +782,10 @@ struct AsyncPri{
 //      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
 //                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
 //                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<GPQ_NC>());
-//    else if (wl == "spraylist")
-//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<SL>());
+    else if (wl == "spraylist")
+      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<SL>());
 //    else if (wl == "multiqueue1")
 //      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
 //                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
@@ -814,18 +818,18 @@ struct AsyncPri{
 //      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
 //                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
 //                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<LPQ>());
-//    else if (wl == "swarm")
-//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<SWARMPQ>());
+    else if (wl == "swarm")
+      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<SWARMPQ>());
 //    else if (wl == "swarm-nc")
 //      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
 //                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
 //                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<SWARMPQ_NC>());
-//    else if (wl == "heapswarm")
-//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<HSWARMPQ>());
+    else if (wl == "heapswarm")
+      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<HSWARMPQ>());
 //    else if (wl == "ppq")
 //      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
 //                     boost::make_transform_iterator(graph.end(), std::ref(fn)),

@@ -624,8 +624,12 @@ struct AsyncAlgo {
     typedef GlobPQ<UpdateRequest, LockFreeSkipList<Comparer, UpdateRequest>> GPQ;
     typedef GlobPQ<UpdateRequest, SprayList<NodeComparer, UpdateRequest>> SL;
     typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 1>> MQ1;
+    typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 2>> MQ2;
+    typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 3>> MQ3;
     typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 4>> MQ4;
     typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 1>> HMQ1;
+    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 2>> HMQ2;
+    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 3>> HMQ3;
     typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 4>> HMQ4;
     typedef GlobPQ<UpdateRequest, DistQueue<Comparer, UpdateRequest, false>> PTSL;
     typedef GlobPQ<UpdateRequest, DistQueue<Comparer, UpdateRequest, true>> PPSL;
@@ -692,10 +696,18 @@ struct AsyncAlgo {
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<GPQ>());
     else if (wl == "spraylist")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<SL>());
+    else if (wl == "mq2")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ2>());
+    else if (wl == "mq3")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ3>());
     else if (wl == "multiqueue1")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ1>());
     else if (wl == "multiqueue4")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ4>());
+    else if (wl == "hmq2")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ2>());
+    else if (wl == "hmq3")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ3>());
     else if (wl == "heapmultiqueue1")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ1>());
     else if (wl == "heapmultiqueue4")

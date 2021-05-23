@@ -587,21 +587,21 @@ struct AsyncAlgo {
 //    else
 //      std::cerr << "No work list!" << "\n";
 //
-//    typedef MyHMQ<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_TRY1;
-//    if (worklistname == "hmq2_try1")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_TRY1>());
-//    typedef MyHMQBlocking<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_BLOCKING1;
-//    if (worklistname == "hmq2_blocking1")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_BLOCKING1>());
-//    typedef MyHMQTryLock2Q<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_TRY2;
-//    if (worklistname == "hmq2_try2")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_TRY2>());
-//    typedef MyHMQBlocking2Q<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_BLOCKING2;
-//    if (worklistname == "hmq2_blocking2")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_BLOCKING2>());
-//    typedef MyPQ<UpdateRequest, Comparer, true> USUAL_PQ;
-//    if (worklistname == "pq")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_PQ>());
+    typedef MyHMQ<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_TRY1;
+    if (worklistname == "hmq2_try1")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_TRY1>());
+    typedef MyHMQBlocking<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_BLOCKING1;
+    if (worklistname == "hmq2_blocking1")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_BLOCKING1>());
+    typedef MyHMQTryLock2Q<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_TRY2;
+    if (worklistname == "hmq2_try2")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_TRY2>());
+    typedef MyHMQBlocking2Q<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_BLOCKING2;
+    if (worklistname == "hmq2_blocking2")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_HMQ2_BLOCKING2>());
+    typedef MyPQ<UpdateRequest, Comparer, true> USUAL_PQ;
+    if (worklistname == "pq")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_PQ>());
 
 #define priority_t Dist
 #define element_t UpdateRequest

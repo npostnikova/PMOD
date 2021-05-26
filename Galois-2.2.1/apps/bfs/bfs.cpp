@@ -634,6 +634,9 @@ struct AsyncAlgo {
     typedef MultiQueueProbLocal<element_t, Comparer, 1024, 32, 2, priority_t> MQ2_PL_1024_32;
     if (worklistname == "mq2_pl_1024_32" or worklistname == "mq2_pl_lj")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_1024_32>());
+   typedef MultiQueueProbLocalNuma<element_t, Comparer, 1024, 32, 2, priority_t> MQ2_PL_1024_32_NUMA;
+    if (worklistname == "mq2_pl_1024_32_numa" or worklistname == "mq2_pl_numa_lj")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_1024_32_NUMA>());
     typedef MultiQueueLocalProb<element_t, Comparer, 8, 256, 2, priority_t> MQ2_LP_8_256;
     if (worklistname == "mq2_lp_8_256")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_LP_8_256>());
@@ -655,6 +658,9 @@ struct AsyncAlgo {
     typedef MultiQueueProbLocal<element_t, Comparer, 1024, 1024, 2, priority_t> MQ2_PL_1024_1024;
     if (worklistname == "mq2_pl_1024_1024" or worklistname == "mq2_pl_twi"  or worklistname == "mq2_pl_web")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_1024_1024>());
+    typedef MultiQueueProbLocalNuma<element_t, Comparer, 1024, 1024, 2, priority_t> MQ2_PL_1024_1024_NUMA;
+        if (worklistname == "mq2_pl_1024_1024_numa" or worklistname == "mq2_pl_numa_twi"  or worklistname == "mq2_pl_numa_web")
+          Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_1024_1024_NUMA>());
 
 
 

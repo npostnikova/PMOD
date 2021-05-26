@@ -115,8 +115,6 @@ private:
 
   inline size_t rand_heap() {
     static thread_local size_t tId = Galois::Runtime::LL::getTID();
-    static const size_t LOCAL_W = Numa::P;
-    static const size_t OTHER_W = Numa::Q;
 
     size_t isFirst = is1Node(tId);
     size_t localCnt = isFirst ? node1Cnt() : node2Cnt();

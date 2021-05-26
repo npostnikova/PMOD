@@ -505,6 +505,13 @@ long long runBodyParallel() {
   if (wl == "smq_8_8" or wl == "smq_west")
     Galois::for_each_local(initial, process(), Galois::wl<SMQ_8_8>());
 
+  typedef MultiQueueProbLocal<WorkItem, seq_gt, 1024, 256, 2, unsigned> MQ2_PL_1024_256;
+  if (worklistname == "mq2_pl_1024_256" or worklistname == "mq2_pl_west")
+    Galois::for_each_local(initial, process(), Galois::wl<MQ2_PL_1024_256>());
+  typedef MultiQueueProbLocalNuma<WorkItem, seq_gt, 1024, 256, 2, unsigned> MQ2_PL_1024_256_NUMA;
+  if (worklistname == "mq2_pl_1024_256_numa" or worklistname == "mq2_pl_numa_west")
+    Galois::for_each_local(initial, process(), Galois::wl<MQ2_PL_1024_256_NUMA>());
+
 
   typedef AdaptiveStealingMultiQueue<WorkItem, seq_gt> ASMQ;
   if (wl == "adap-smq")

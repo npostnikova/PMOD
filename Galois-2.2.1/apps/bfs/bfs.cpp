@@ -608,7 +608,7 @@ struct AsyncAlgo {
     if (worklistname == "mq2_pp_1024_512")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PP_1024_512>());
     typedef MultiQueueProbLocal<element_t, Comparer, 1024, 512, 2, priority_t> MQ2_PL_1024_512;
-    if (worklistname == "mq2_pl_1024_512")
+    if (worklistname == "mq2_pl_1024_512" or worklistname == "mq2_pl_ctr")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_1024_512>());
     typedef MultiQueueLocalProb<element_t, Comparer, 256, 512, 2, priority_t> MQ2_LP_256_512;
     if (worklistname == "mq2_lp_256_512")
@@ -629,7 +629,7 @@ struct AsyncAlgo {
     if (worklistname == "mq2_pp_1024_32")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PP_1024_32>());
     typedef MultiQueueProbLocal<element_t, Comparer, 1024, 32, 2, priority_t> MQ2_PL_1024_32;
-    if (worklistname == "mq2_pl_1024_32")
+    if (worklistname == "mq2_pl_1024_32" or worklistname == "mq2_pl_lj")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_1024_32>());
     typedef MultiQueueLocalProb<element_t, Comparer, 8, 256, 2, priority_t> MQ2_LP_8_256;
     if (worklistname == "mq2_lp_8_256")
@@ -647,6 +647,12 @@ struct AsyncAlgo {
     typedef StealingMultiQueue<element_t, Comparer, 16, 8, true> SMQ_16_8;
     if (worklistname == "smq_16_8" or worklistname == "smq_web")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_16_8>());
+
+    /// TWI
+    typedef MultiQueueProbLocal<element_t, Comparer, 1024, 1024, 2, priority_t> MQ2_PL_1024_1024;
+    if (worklistname == "mq2_pl_1024_1024" or worklistname == "mq2_pl_twi"  or worklistname == "mq2_pl_web")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_1024_1024>());
+
 
 
     typedef AdaptiveStealingMultiQueue<element_t, Comparer> ASMQ;

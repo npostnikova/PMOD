@@ -502,8 +502,14 @@ long long runBodyParallel() {
   if (wl == "smq_16_16"/* or wl == "smq_west"*/)
     Galois::for_each_local(initial, process(), Galois::wl<SMQ_16_16>());
   typedef StealingMultiQueue<WorkItem, seq_gt, 8, 8, true> SMQ_8_8;
-  if (wl == "smq_8_8" or wl == "smq_west")
+  if (wl == "smq_8_8")
     Galois::for_each_local(initial, process(), Galois::wl<SMQ_8_8>());
+  typedef StealingMultiQueue<WorkItem, seq_gt, 32, 32, true> SMQ_32_32;
+  if (wl == "smq_32_32" or wl == "smq_west")
+    Galois::for_each_local(initial, process(), Galois::wl<SMQ_32_32>());
+  typedef StealingMultiQueue<WorkItem, seq_gt, 4, 16, true> SMQ_4_16;
+  if (wl == "smq_4_16" or wl == "smq_west_amd")
+    Galois::for_each_local(initial, process(), Galois::wl<SMQ_4_16>());
 
   typedef MultiQueueProbLocal<WorkItem, seq_gt, 1024, 256, 2, unsigned> MQ2_PL_1024_256;
   if (worklistname == "mq2_pl_1024_256" or worklistname == "mq2_pl_west")

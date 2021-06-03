@@ -740,6 +740,9 @@ struct AsyncAlgo {
     typedef StealingMultiQueue<element_t, Comparer, 4, 1, true> SMQ_4_1;
     if (wl == "smq_4_1" or wl == "smq_west")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_4_1>());
+    typedef StealingMultiQueue<element_t, Comparer, 4, 1, true> SMQ_8_1;
+    if (wl == "smq_8_1" or wl == "smq_west_amd")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_8_1>());
 
 
     typedef AdaptiveStealingMultiQueue<element_t, Comparer> ASMQ;

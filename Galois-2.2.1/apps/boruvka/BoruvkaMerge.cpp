@@ -511,6 +511,8 @@ long long runBodyParallel() {
   if (wl == "smq_4_16" or wl == "smq_west_amd")
     Galois::for_each_local(initial, process(), Galois::wl<SMQ_4_16>());
 
+  #define priority_t unsigned
+
   typedef MultiQueueProbLocal<WorkItem, seq_gt, 1024, 256, 2, unsigned> MQ2_PL_1024_256;
   if (worklistname == "mq2_pl_1024_256" or worklistname == "mq2_pl_west")
     Galois::for_each_local(initial, process(), Galois::wl<MQ2_PL_1024_256>());

@@ -521,6 +521,11 @@ long long runBodyParallel() {
     Galois::for_each_local(initial, process(), Galois::wl<MQ2_PL_1024_256_NUMA>());
 
 
+  typedef MultiQueueProbLocal<WorkItem, seq_gt, 1024, 1024, 2, unsigned> MQ2_PL_1024_1024;
+  if (worklistname == "mq2_pl_1024_1024" or worklistname == "mq2_pl_west_amd")
+    Galois::for_each_local(initial, process(), Galois::wl<MQ2_PL_1024_1024>());
+
+
   typedef AdaptiveStealingMultiQueue<WorkItem, seq_gt> ASMQ;
   if (wl == "adap-smq")
     Galois::for_each_local(initial, process(), Galois::wl<ASMQ>());

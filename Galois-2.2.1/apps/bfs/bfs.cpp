@@ -620,6 +620,11 @@ struct AsyncAlgo {
     if (worklistname == "mq2_ll_32_128")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_LL_32_128>());
 
+
+    typedef MultiQueueProbLocal<element_t, Comparer, 512, 512, 2, priority_t> MQ2_PL_512_512;
+    if (worklistname == "mq2_pl_512_512" or worklistname == "mq2_pl_ctr_amd")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_512_512>());
+
     typedef StealingMultiQueue<element_t, Comparer, 8, 1, true> SMQ_8_1;
     if (worklistname == "smq_8_1")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_8_1>());
@@ -644,6 +649,11 @@ struct AsyncAlgo {
     if (worklistname == "mq2_ll_512_64")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_LL_512_64>());
 
+
+    typedef MultiQueueProbLocal<element_t, Comparer, 4, 16, 2, priority_t> MQ2_PL_4_16;
+    if (worklistname == "mq2_pl_4_16" or worklistname == "mq2_pl_lj_amd")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_4_16>());
+
     typedef StealingMultiQueue<element_t, Comparer, 16, 16, true> SMQ_16_16;
     if (worklistname == "smq_16_16" or worklistname == "smq_lj_amd")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_16_16>());
@@ -667,6 +677,12 @@ struct AsyncAlgo {
     typedef MultiQueueProbLocalNuma<element_t, Comparer, 1024, 1024, 2, priority_t> MQ2_PL_1024_1024_NUMA;
         if (worklistname == "mq2_pl_1024_1024_numa" or worklistname == "mq2_pl_numa_twi"  or worklistname == "mq2_pl_numa_web")
           Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_1024_1024_NUMA>());
+
+
+    typedef MultiQueueProbLocal<element_t, Comparer, 1024, 256, 2, priority_t> MQ2_PL_1024_256;
+    if (worklistname == "mq2_pl_1024_256" or worklistname == "mq2_pl_twi_amd" or worklistname == "mq2_pl_web_amd")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_1024_256>());
+
 
     typedef MultiQueueProbLocal<element_t, Comparer, 2048, 2048, 2, priority_t> MQ2_PL_2048_2048;
     if (worklistname == "mq2_pl_2048_2048")

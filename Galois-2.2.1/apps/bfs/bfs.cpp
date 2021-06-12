@@ -477,11 +477,13 @@ struct AsyncAlgo {
     typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 1>> MQ1;
     typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 2>> MQ2;
     typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 3>> MQ3;
-//    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 4>> MQ4;
-//    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 1>> HMQ1;
+    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 4>> MQ4;
+    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 5>> MQ5;
+    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 1>> HMQ1;
 	  typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 2>> HMQ2;
 	  typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 3>> HMQ3;
-//    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 4>> HMQ4;
+    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 4>> HMQ4;
+    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 5>> HMQ5;
 //    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, false>> PTSL;
 //    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, true>> PPSL;
 //    typedef GlobPQ<WorkItem, LocalPQ<Comparer, WorkItem>> LPQ;
@@ -565,20 +567,22 @@ struct AsyncAlgo {
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2>());
     else if (wl == "mq3")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ3>());
-//    else if (wl == "multiqueue1")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ1>());
-//    else if (wl == "multiqueue4")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ4>());
+    else if (wl == "mq1")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ1>());
+    else if (wl == "mq4")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ4>());
+    else if (wl == "mq5")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ5>());
     else if (wl == "hmq2")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ2>());
     else if (wl == "hmq3")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ3>());
-//    else if (wl == "heapmultiqueue1")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ1>());
-//    else if (wl == "heapmultiqueue2")
-//	    Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ2>());
-//     if (wl == "heapmultiqueue4")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ1>());
+    else if (wl == "hmq1")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ1>());
+    else if (wl == "hmq4")
+	    Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ4>());
+     if (wl == "hmq5")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ5>());
 //    else if (wl == "thrskiplist")
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<PTSL>());
 //    else if (wl == "pkgskiplist")

@@ -363,10 +363,12 @@ long long runBodyParallel() {
    typedef GlobPQ<WorkItem, MultiQueue<seq_gt, WorkItem, 2>> MQ2;
    typedef GlobPQ<WorkItem, MultiQueue<seq_gt, WorkItem, 3>> MQ3;
    typedef GlobPQ<WorkItem, MultiQueue<seq_gt, WorkItem, 4>> MQ4;
+   typedef GlobPQ<WorkItem, MultiQueue<seq_gt, WorkItem, 5>> MQ5;
    typedef GlobPQ<WorkItem, HeapMultiQueue<seq_gt, WorkItem, 1>> HMQ1;
    typedef GlobPQ<WorkItem, HeapMultiQueue<seq_gt, WorkItem, 2>> HMQ2;
    typedef GlobPQ<WorkItem, HeapMultiQueue<seq_gt, WorkItem, 3>> HMQ3;
    typedef GlobPQ<WorkItem, HeapMultiQueue<seq_gt, WorkItem, 4>> HMQ4;
+   typedef GlobPQ<WorkItem, HeapMultiQueue<seq_gt, WorkItem, 5>> HMQ5;
    typedef GlobPQ<WorkItem, DistQueue<seq_gt, WorkItem, false>> PTSL;
    typedef GlobPQ<WorkItem, DistQueue<seq_gt, WorkItem, true>> PPSL;
    typedef GlobPQ<WorkItem, LocalPQ<seq_gt, WorkItem>> LPQ;
@@ -455,18 +457,22 @@ long long runBodyParallel() {
      Galois::for_each_local(initial, process(), Galois::wl<MQ2>());
    else if (wl == "mq3")
      Galois::for_each_local(initial, process(), Galois::wl<MQ3>());
-   else if (wl == "multiqueue1")
+   else if (wl == "mq1")
      Galois::for_each_local(initial, process(), Galois::wl<MQ1>());
-   else if (wl == "multiqueue4")
+   else if (wl == "mq4")
      Galois::for_each_local(initial, process(), Galois::wl<MQ4>());
+   else if (wl == "mq5")
+     Galois::for_each_local(initial, process(), Galois::wl<MQ5>());
    else if (wl == "hmq2")
      Galois::for_each_local(initial, process(), Galois::wl<HMQ2>());
    else if (wl == "hmq3")
      Galois::for_each_local(initial, process(), Galois::wl<HMQ3>());
-   else if (wl == "heapmultiqueue1")
+   else if (wl == "hmq1")
      Galois::for_each_local(initial, process(), Galois::wl<HMQ1>());
-   else if (wl == "heapmultiqueue4")
+   else if (wl == "hmq4")
      Galois::for_each_local(initial, process(), Galois::wl<HMQ4>());
+   else if (wl == "hmq5")
+     Galois::for_each_local(initial, process(), Galois::wl<HMQ5>());
    else if (wl == "thrskiplist")
      Galois::for_each_local(initial, process(), Galois::wl<PTSL>());
    else if (wl == "pkgskiplist")

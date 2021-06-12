@@ -467,11 +467,13 @@ struct AsyncAlgo {
     typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 2>> MQ2;
     typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 3>> MQ3;
     typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 4>> MQ4;
+    typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 5>> MQ5;
 //    typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 4>> MQ4;
     typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 1>> HMQ1;
     typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 2>> HMQ2;
     typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 3>> HMQ3;
     typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 4>> HMQ4;
+    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 5>> HMQ5;
 //    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 64>> HMQ64;
 //    typedef GlobPQ<UpdateRequest, DistQueue<Comparer, UpdateRequest, false>> PTSL;
 //    typedef GlobPQ<UpdateRequest, DistQueue<Comparer, UpdateRequest, true>> PPSL;
@@ -558,6 +560,8 @@ struct AsyncAlgo {
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ3>());
     else if (wl == "mq4")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ4>());
+    else if (wl == "mq5")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ5>());
     else if (wl == "hmq1")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ1>());
     else if (wl == "hmq2")
@@ -566,6 +570,8 @@ struct AsyncAlgo {
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ3>());
     else if (wl == "hmq4")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ4>());
+    else if (wl == "hmq5")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ5>());
 //    else if (wl == "thrskiplist")
 //      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<PTSL>());
 //    else if (wl == "pkgskiplist")

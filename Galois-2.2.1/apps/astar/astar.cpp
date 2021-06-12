@@ -627,10 +627,12 @@ struct AsyncAlgo {
     typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 2>> MQ2;
     typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 3>> MQ3;
     typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 4>> MQ4;
+    typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 5>> MQ5;
     typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 1>> HMQ1;
     typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 2>> HMQ2;
     typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 3>> HMQ3;
     typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 4>> HMQ4;
+    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 5>> HMQ5;
     typedef GlobPQ<UpdateRequest, DistQueue<Comparer, UpdateRequest, false>> PTSL;
     typedef GlobPQ<UpdateRequest, DistQueue<Comparer, UpdateRequest, true>> PPSL;
     typedef GlobPQ<UpdateRequest, LocalPQ<Comparer, UpdateRequest>> LPQ;
@@ -700,12 +702,16 @@ struct AsyncAlgo {
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ2>());
     else if (wl == "mq3")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ3>());
-    else if (wl == "multiqueue1")
+    else if (wl == "mq1")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ1>());
-    else if (wl == "multiqueue4")
+    else if (wl == "mq4")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ4>());
+    else if (wl == "mq5")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ5>());
     else if (wl == "hmq2")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ2>());
+    else if (wl == "hmq5")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ5>());
     else if (wl == "hmq3")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ3>());
     else if (wl == "heapmultiqueue1")

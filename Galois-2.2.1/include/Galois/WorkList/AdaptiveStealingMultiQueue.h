@@ -107,7 +107,7 @@ typename Compare,
 size_t STEAL_NUM,
 size_t D = 4>
 struct HeapWithStealBufferAdap {
-  static Compare compare;
+  Compare compare;
   // Represents a flag for empty cells.
   static T dummy;
   DAryHeap<T, Compare, D> heap;
@@ -371,7 +371,7 @@ private:
   typedef HeapWithStealBufferAdap<T, Comparer, MAX_STEAL_SIZE, 4> Heap;
   std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<Heap>[]> heaps;
   std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]> stealBuffers;
-  static Comparer compare;
+  Comparer compare;
   const size_t nQ;
 
   struct PerThread {
@@ -463,16 +463,18 @@ private:
 
     void checkEmpty(size_t localSize) {
       size_t size = 0;
-      if (emptyNum * 100 <= tryNum * 10) {
+      if (emptyNum * 100 <= tryNum * 30) {
         size = 1;
-      } else if (emptyNum * 100 <= tryNum * 30) {
-        size = 1;
+        *size1 += 1;
       } else if (emptyNum * 100 <= tryNum * 60) {
         size = 2;
+        *size2 += 1;
       } else if (emptyNum * 100 <= tryNum * 90) {
         size = 8;
+        *size8 += 1;
       } else {
         size = 16;
+        *size16 += 1;
       }
       if (stealSize < size) {
         *sizeIncrease += 1;
@@ -494,18 +496,19 @@ private:
       size_t newProb = 0;
       if (otherMinLessNum * 100 <= stealAttemptsNum * 5) {
         newProb = 32;
-      } else if (otherMinLessNum * 100 <= stealAttemptsNum * 10) {
-        newProb = 16;
+        *prob32 += 1;
       } else if (otherMinLessNum * 100 <= stealAttemptsNum * 20) {
         newProb = 16;
-      } else if (otherMinLessNum * 100 <= stealAttemptsNum * 60) {
-        newProb = 8;
+        *prob16 += 1;
       } else if (otherMinLessNum * 100 <= stealAttemptsNum * 80) {
         newProb = 8;
+        *prob8 += 1;
       } else if (otherMinLessNum * 100 <= stealAttemptsNum * 90) {
         newProb = 4;
+        *prob4 += 1;
       } else {
         newProb = 2;
+        *prob2 += 1;
       }
       maxProb->setMax(newProb);
       minProb->setMin(newProb);
@@ -664,6 +667,15 @@ private:
   }
 
 public:
+  static Galois::Statistic* size1;
+  static Galois::Statistic* size2;
+  static Galois::Statistic* size8;
+  static Galois::Statistic* size16;
+  static Galois::Statistic* prob2;
+  static Galois::Statistic* prob4;
+  static Galois::Statistic* prob8;
+  static Galois::Statistic* prob16;
+  static Galois::Statistic* prob32;
   static Galois::Statistic* maxSize;
   static Galois::Statistic* minSize;
   static Galois::Statistic* maxProb;
@@ -683,6 +695,15 @@ public:
     heaps = std::make_unique<Galois::Runtime::LL::CacheLineStorage<Heap>[]>(nQ);
     stealBuffers = std::make_unique<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]>(nQ);
 
+    initStatistic(size1, "size1");
+    initStatistic(size2, "size2");
+    initStatistic(size8, "size8");
+    initStatistic(size16, "size16");
+    initStatistic(prob2, "prob2");
+    initStatistic(prob4, "prob4");
+    initStatistic(prob8, "prob8");
+    initStatistic(prob16, "prob16");
+    initStatistic(prob32, "prob32");
     initStatistic(maxSize, "maxSize");
     initStatistic(minSize, "minSize");
     initStatistic(maxProb, "maxProb");
@@ -715,23 +736,29 @@ public:
     auto exists = std::filesystem::exists("asmq_stats.csv");
     std::ofstream out("asmq_stats.csv" /*result_name*/, std::ios::app);
     if (!exists) {
-      out << "threads,seg_buff,seg_prob,minSize,maxSize,inc_size,decSize,minProb,maxProb,,inc_prob,dec_prob" << std::endl;
+      out << "threads,s1,s2,s8,s16,p2,p4,p8,p16,p32" << std::endl;
+//      out << "threads,seg_buff,seg_prob,minSize,maxSize,inc_size,decSize,minProb,maxProb,,inc_prob,dec_prob" << std::endl;
     }
-    out << nQ << "," << STAT_BUFF_SIZE  << "," << STAT_PROB_SIZE << ",";
+    out << nQ << ","; // << STAT_BUFF_SIZE  << "," << STAT_PROB_SIZE << ",";
+    deleteStatistic(size1, out);
+    deleteStatistic(size2, out);
+    deleteStatistic(size8, out);
+    deleteStatistic(size16, out);
+    deleteStatistic(prob2, out);
+    deleteStatistic(prob4, out);
+    deleteStatistic(prob8, out);
+    deleteStatistic(prob16, out);
+    deleteStatistic(prob32, out);
 //
-//    out << nQ << "," << STAT_BUFF_SIZE  << "," << STAT_PROB_SIZE << "," << INC_PROB_PERCENT
-//    << "," << DEC_PROB_PERCENT;
+//    deleteStatistic(minSize, out);
+//    deleteStatistic(maxSize, out);
 //    deleteStatistic(sizeIncrease, out);
-//    out << "," << MIN_STEAL_SIZE;
-    deleteStatistic(minSize, out);
-    deleteStatistic(maxSize, out);
-    deleteStatistic(sizeIncrease, out);
-    deleteStatistic(sizeDecrease, out);
-//    out << "," << MIN_STEAL_PROB;
-    deleteStatistic(minProb, out);
-    deleteStatistic(maxProb, out);
-    deleteStatistic(probIncreased, out);
-    deleteStatistic(probDecreased, out);
+//    deleteStatistic(sizeDecrease, out);
+////    out << "," << MIN_STEAL_PROB;
+//    deleteStatistic(minProb, out);
+//    deleteStatistic(maxProb, out);
+//    deleteStatistic(probIncreased, out);
+//    deleteStatistic(probDecreased, out);
     out << std::endl;
     out.close();
   }
@@ -861,6 +888,52 @@ template<typename T,
 typename Comparer,
 bool Concurrent> Statistic* AdaptiveStealingMultiQueue<
 T, Comparer, Concurrent>::maxProb;
+
+template<typename T,
+typename Comparer,
+bool Concurrent> Statistic* AdaptiveStealingMultiQueue<
+T, Comparer, Concurrent>::size1;
+
+template<typename T,
+typename Comparer,
+bool Concurrent> Statistic* AdaptiveStealingMultiQueue<
+T, Comparer, Concurrent>::size2;
+
+template<typename T,
+typename Comparer,
+bool Concurrent> Statistic* AdaptiveStealingMultiQueue<
+T, Comparer, Concurrent>::size8;
+
+template<typename T,
+typename Comparer,
+bool Concurrent> Statistic* AdaptiveStealingMultiQueue<
+T, Comparer, Concurrent>::size16;
+
+template<typename T,
+typename Comparer,
+bool Concurrent> Statistic* AdaptiveStealingMultiQueue<
+T, Comparer, Concurrent>::prob2;
+
+template<typename T,
+typename Comparer,
+bool Concurrent> Statistic* AdaptiveStealingMultiQueue<
+T, Comparer, Concurrent>::prob4;
+
+template<typename T,
+typename Comparer,
+bool Concurrent> Statistic* AdaptiveStealingMultiQueue<
+T, Comparer, Concurrent>::prob8;
+
+template<typename T,
+typename Comparer,
+bool Concurrent> Statistic* AdaptiveStealingMultiQueue<
+T, Comparer, Concurrent>::prob16;
+
+template<typename T,
+typename Comparer,
+bool Concurrent> Statistic* AdaptiveStealingMultiQueue<
+T, Comparer, Concurrent>::prob32;
+
 
 
 } // namespace WorkList

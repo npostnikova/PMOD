@@ -67,6 +67,7 @@ enum ConvertMode {
   intedgelist2gr,
   mtx2doublegr,
   mtx2floatgr,
+  mtx2intgr,
   mtx2vgr,
   nodelist2vgr,
   pbbs2vgr,
@@ -116,6 +117,7 @@ static cll::opt<ConvertMode> convertMode(cll::desc("Choose a conversion mode:"),
       clEnumVal(intedgelist2gr, "Convert weighted (int) edge list to binary gr"),
       clEnumVal(mtx2doublegr, "Convert matrix market format to binary gr"),
       clEnumVal(mtx2floatgr, "Convert matrix market format to binary gr"),
+      clEnumVal(mtx2intgr, "Convert matrix market format to binary gr"),
       clEnumVal(mtx2vgr, "Convert unweighted matrix market format to binary gr"),
       clEnumVal(nodelist2vgr, "Convert node list to binary gr"),
       clEnumVal(pbbs2vgr, "Convert pbbs graph to binary void gr"),
@@ -1775,6 +1777,7 @@ int main(int argc, char** argv) {
     case intedgelist2gr: convert_edgelist2gr<int>(inputfilename, outputfilename); break;
     case mtx2doublegr: convert_mtx2gr<double>(inputfilename, outputfilename); break;
     case mtx2floatgr: convert_mtx2gr<float>(inputfilename, outputfilename); break;
+    case mtx2intgr: convert_mtx2gr<int32_t>(inputfilename, outputfilename); break;
     case mtx2vgr: convert_mtx2gr<void>(inputfilename, outputfilename); break;
     case nodelist2vgr: convert_nodelist2vgr(inputfilename, outputfilename); break;
     case pbbs2vgr: convert_pbbs2vgr(inputfilename, outputfilename); break;

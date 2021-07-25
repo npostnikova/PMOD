@@ -171,6 +171,10 @@ void convert_edgelist2gr(const std::string& infilename, const std::string& outfi
   size_t numNodes = 0;
   size_t numEdges = 0;
 
+  // Skip opening comments.
+  while (infile && infile.peek() == '#') {
+    infile.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+  }
   while (infile) {
     size_t src;
     size_t dst;
@@ -199,6 +203,10 @@ void convert_edgelist2gr(const std::string& infilename, const std::string& outfi
   infile.clear();
   infile.seekg(0, std::ios::beg);
   p.phase1();
+  // Skip opening comments.
+  while (infile && infile.peek() == '#') {
+    infile.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+  }
   while (infile) {
     size_t src;
     size_t dst;
@@ -217,6 +225,10 @@ void convert_edgelist2gr(const std::string& infilename, const std::string& outfi
   infile.clear();
   infile.seekg(0, std::ios::beg);
   p.phase2();
+  // Skip opening comments.
+  while (infile && infile.peek() == '#') {
+    infile.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+  }
   if constexpr (RandomEdge) {
     // Random weight will be generated each edges.
     typedef int edge_value_type;

@@ -2,6 +2,7 @@ set -e
 
 # Run the script from the project root for set up.
 export MQ_ROOT=$(pwd)
+export GALOIS_HOME=$MQ_ROOT/Galois-2.2.1
 
 # Install required packages.
 sudo apt update
@@ -20,4 +21,3 @@ chmod +x *.sh
 # Download and prepare graphs.
 chmod +x scripts/*.sh
 scripts/datasets.sh
-

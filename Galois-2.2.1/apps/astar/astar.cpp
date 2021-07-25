@@ -714,9 +714,9 @@ struct AsyncAlgo {
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ5>());
     else if (wl == "hmq3")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ3>());
-    else if (wl == "heapmultiqueue1")
+    else if (wl == "hmq1")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ1>());
-    else if (wl == "heapmultiqueue4")
+    else if (wl == "hmq4")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ4>());
     else if (wl == "thrskiplist")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<PTSL>());

@@ -353,6 +353,14 @@ struct AsyncAlgo {
     }
   };
 
+  template<typename UpdateRequest, size_t N>
+  struct ParameterizedUpdateRequestIndexer: public std::unary_function<UpdateRequest, Dist> {
+    Dist operator() (const UpdateRequest& val) const {
+      Dist t = val.w >> N;
+      return t;
+    }
+  };
+
   struct Hasher: public std::unary_function<WorkItem,unsigned long> {
     unsigned long operator()(const WorkItem& val) const {
       return (unsigned long) val.first;
@@ -448,6 +456,7 @@ struct AsyncAlgo {
 
   void operator()(Graph& graph, const GNode& source) const {
     using namespace Galois::WorkList;
+    typedef WorkItem UpdateRequest;
     typedef dChunkedFIFO<CHUNK_SIZE> dChunk;
     typedef dVisChunkedFIFO<64> visChunk;
     typedef dChunkedPTFIFO<1> noChunk;
@@ -455,6 +464,7 @@ struct AsyncAlgo {
     typedef ChunkedFIFO<1> globNoChunk;
     typedef OrderedByIntegerMetric<Indexer,dChunk> OBIM;
     typedef AdaptiveOrderedByIntegerMetric<Indexer, dChunk, 0, true, false, CHUNK_SIZE> ADAPOBIM;
+
 
 //    typedef StealingMultiQueue<WorkItem, ComparerFIFO, Prob<1, 4>, true, false, void, smq::StealingQueue<WorkItem, ComparerFIFO>> SMQ_1_4_qfifo;
 //    typedef StealingMultiQueue<WorkItem, ComparerFIFO, Prob<1, 8>, true, false, void, smq::StealingQueue<WorkItem, ComparerFIFO>> SMQ_1_8_qfifo;
@@ -501,8 +511,10 @@ struct AsyncAlgo {
 //    typedef GlobPQ<WorkItem, kLSMQ<WorkItem, Indexer, 4194304>> kLSM4m;
 
     graph.getData(source).dist = 0;
-
     std::string wl = worklistname;
+
+#define RUN_WL(WL) Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<WL>())
+#include "Experiments.h"
     if (!mqSuff.empty()) {
       mqSuff = "_" + mqSuff;
     }

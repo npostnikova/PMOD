@@ -169,6 +169,14 @@ struct UpdateRequestIndexer: public std::unary_function<UpdateRequest, unsigned 
   }
 };
 
+template<typename UpdateRequest, size_t N>
+struct ParameterizedUpdateRequestIndexer: public std::unary_function<UpdateRequest, unsigned int> {
+  unsigned int operator() (const UpdateRequest& val) const {
+    unsigned int t = val.w >> N;
+    return t;
+  }
+};
+
 template<typename UpdateRequest>
 struct UpdateRequestHasher: public std::unary_function<UpdateRequest, unsigned long> {
   unsigned long operator() (const UpdateRequest& val) const {
@@ -599,6 +607,7 @@ struct AsyncAlgo {
 
 
     using namespace Galois::WorkList;
+    typedef UpdateRequestIndexer<UpdateRequest> Indexer;
     typedef dChunkedFIFO<CHUNK_SIZE> Chunk;
     typedef dVisChunkedFIFO<64> visChunk;
     typedef dChunkedPTFIFO<1> noChunk;
@@ -660,6 +669,10 @@ struct AsyncAlgo {
     if (!mqSuff.empty()) {
       mqSuff = "_" + mqSuff;
     }
+
+#define RUN_WL(WL) Galois::for_each_local(initial, Process(this, graph), Galois::wl<WL>())
+#include "Experiments.h"
+
     if (wl == "obim")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<OBIM>());
     else if (wl == "adap-obim")

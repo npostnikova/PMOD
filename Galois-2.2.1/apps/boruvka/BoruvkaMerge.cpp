@@ -221,6 +221,15 @@ struct Indexer: public std::unary_function<WorkItem, unsigned> {
 };
 
 
+template<typename UpdateRequest, size_t N>
+struct ParameterizedUpdateRequestIndexer: public std::unary_function<UpdateRequest, unsigned> {
+   unsigned operator()(const UpdateRequest& n) {
+      unsigned t = stepShift ? (n.second >> N) : n.second;
+      return t;
+   }
+};
+
+
 
 Galois::Runtime::PerThreadStorage<long long> MSTWeight;
 struct process {
@@ -339,6 +348,7 @@ struct seq_gt: public std::binary_function<const WorkItem&, const WorkItem&, boo
 ///////////////////////////////////////////////////////////////////////////////////////
 long long runBodyParallel() {
    using namespace Galois::WorkList;
+   typedef WorkItem UpdateRequest;
 
    typedef dChunkedFIFO<CHUNK_SIZE> Chunk;
    typedef dVisChunkedFIFO<64> visChunk;
@@ -409,6 +419,9 @@ long long runBodyParallel() {
    std::cout<<"Starting......"<<std::endl;
    Galois::do_all(graph.begin(), graph.end(), InitialProcess(graph, initial));
    std::cout<<"Done initialization"<<std::endl;
+
+#define RUN_WL(WL) Galois::for_each_local(initial, process(), Galois::wl<WL>())
+#include "Experiments.h"
 
    Galois::StatTimer T;
    T.start();

@@ -356,7 +356,7 @@ struct AsyncAlgo {
   template<typename UpdateRequest, size_t N>
   struct ParameterizedUpdateRequestIndexer: public std::unary_function<UpdateRequest, Dist> {
     Dist operator() (const UpdateRequest& val) const {
-      Dist t = val.w >> N;
+      Dist t = N ? val.second >> N : val.second;
       return t;
     }
   };

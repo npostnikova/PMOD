@@ -26,9 +26,9 @@ pagerank=$GALOIS_HOME/build/apps/pagerank/pagerank
 #fi
 
 # Generated deltas
-DELTAS=( 0 1 2 4 6 8 12 14 16 18 )
+DELTAS=( 0 1 2 ) # 4 6 8 12 14 16 18 )
 # Generated chunk sizes
-CHUNK_SIZE=( 1 2 4  8 16 32 64 128 256 512 )
+CHUNK_SIZE=( 1 2 ) # 4  8 16 32 64 128 256 512 )
 # Supported algorithms
 ALGOS=( "bfs" "sssp" "boruvka" "astar" )
 
@@ -40,7 +40,7 @@ generate_chunks () {
   for cs in "${CHUNK_SIZE[@]}"
   do
     echo "typedef dChunkedFIFO<$cs> dChunk_fifo_$cs;" >> $1
-    echo "typedef dChunkedLIFO<$cs> dChunk_lifo_$cs;" >> $1
+#    echo "typedef dChunkedLIFO<$cs> dChunk_lifo_$cs;" >> $1
   done
 }
 
@@ -49,7 +49,7 @@ generate_obims () {
   do
     for d in "${DELTAS[@]}"
       do
-        for ct in "fifo" "lifo"
+        for ct in "fifo" # "lifo"
         do
           obim_name="obim_${cs}_${d}_${ct}"
           indexer="ParameterizedUpdateRequestIndexer<UpdateRequest, $d>"
@@ -65,7 +65,7 @@ generate_pmods () {
   do
     for d in "${DELTAS[@]}"
       do
-        for ct in "fifo" "lifo"
+        for ct in "fifo" # "lifo"
         do
           pmod_name="pmod_${cs}_${d}_${ct}"
           indexer="ParameterizedUpdateRequestIndexer<UpdateRequest, $d>"
@@ -79,7 +79,7 @@ generate_pmods () {
 run_wls_default () {
   for cs in "${CHUNK_SIZE[@]}"; do
     for d in "${$1[@]}"; do
-      for ct in "fifo" "lifo"; do
+      for ct in "fifo"; do # "lifo"; do
         for wl in "obim" "pmod"; do
            name="${wl}_${cs}_${d}_${ct}"
            for runs in $(seq 1 $runs); do
@@ -147,9 +147,9 @@ elif [ $action == "run" ]; then
       for d in "${DELTAS[@]}"; do
         if [ $d -ge $min_d ] && [ $d -le $max_d ]; then
           run_wl_n_times "obim_${cs}_${d}_fifo" $runs "${algo}_${graph}_obim_$threads"
-          run_wl_n_times "obim_${cs}_${d}_lifo" $runs "${algo}_${graph}_obim_$threads"
+#          run_wl_n_times "obim_${cs}_${d}_lifo" $runs "${algo}_${graph}_obim_$threads"
           run_wl_n_times "pmod_${cs}_${d}_fifo" $runs "${algo}_${graph}_pmod_$threads"
-          run_wl_n_times "pmod_${cs}_${d}_lifo" $runs "${algo}_${graph}_pmod_$threads"
+#          run_wl_n_times "pmod_${cs}_${d}_lifo" $runs "${algo}_${graph}_pmod_$threads"
         fi
       done
     fi

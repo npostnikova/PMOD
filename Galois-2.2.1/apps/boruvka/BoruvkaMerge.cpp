@@ -349,6 +349,7 @@ struct seq_gt: public std::binary_function<const WorkItem&, const WorkItem&, boo
 long long runBodyParallel() {
    using namespace Galois::WorkList;
    typedef WorkItem UpdateRequest;
+   typedef seq_gt Comparer;
 
    typedef dChunkedFIFO<CHUNK_SIZE> Chunk;
    typedef dVisChunkedFIFO<64> visChunk;
@@ -498,9 +499,14 @@ long long runBodyParallel() {
      Galois::for_each_local(initial, process(), Galois::wl<HSWARMPQ>());
 //   else
 //     std::cerr << "No work list!" << "\n";
-    typedef MyHMQ<WorkItem, seq_gt, 2, true> USUAL_HMQ2_TRY1;
-    if (worklistname == "hmq2_try1")
-      Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_TRY1>());
+    typedef MyHMQ<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_TRY1;
+    if (wl == "hmq2_try1") RUN_WL(USUAL_HMQ2_TRY1);
+    typedef MyHMQ<UpdateRequest, Comparer, 3, true> USUAL_HMQ3_TRY1;
+    if (wl == "hmq3_try1") RUN_WL(USUAL_HMQ3_TRY1);
+    typedef MyHMQ<UpdateRequest, Comparer, 4, true> USUAL_HMQ4_TRY1;
+    if (wl == "hmq4_try1") RUN_WL(USUAL_HMQ4_TRY1);
+    typedef MyHMQ<UpdateRequest, Comparer, 5, true> USUAL_HMQ5_TRY1;
+    if (wl == "hmq5_try1") RUN_WL(USUAL_HMQ5_TRY1);
     typedef MyHMQBlocking<WorkItem, seq_gt, 2, true> USUAL_HMQ2_BLOCKING1;
     if (worklistname == "hmq2_blocking1")
       Galois::for_each_local(initial, process(), Galois::wl<USUAL_HMQ2_BLOCKING1>());

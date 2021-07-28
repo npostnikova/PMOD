@@ -420,11 +420,11 @@ long long runBodyParallel() {
    Galois::do_all(graph.begin(), graph.end(), InitialProcess(graph, initial));
    std::cout<<"Done initialization"<<std::endl;
 
-#define RUN_WL(WL) Galois::for_each_local(initial, process(), Galois::wl<WL>())
-#include "Experiments.h"
-
    Galois::StatTimer T;
    T.start();
+
+#define RUN_WL(WL) Galois::for_each_local(initial, process(), Galois::wl<WL>())
+#include "Experiments.h"
 #ifdef GALOIS_USE_EXP
    Exp::PriAuto<64, Indexer, OBIM, seq_less, seq_gt>::for_each_local(graph.begin(), graph.end(), process());
 #else

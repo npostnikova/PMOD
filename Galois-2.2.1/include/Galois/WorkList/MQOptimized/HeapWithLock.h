@@ -1,8 +1,9 @@
 #ifndef GALOIS_HEAPWITHLOCK_H
 #define GALOIS_HEAPWITHLOCK_H
 
-#include "../Heap.h"
 #include "../WorkListHelpers.h"
+
+#include <boost/heap/d_ary_heap.hpp>
 
 
 namespace Galois {
@@ -22,7 +23,9 @@ template <typename T,
           typename Prior = unsigned long,
           size_t D = 4>
 struct HeapWithLock {
-  DAryHeap<T, Comparer, 4> heap;
+  typedef boost::heap::d_ary_heap<T, boost::heap::arity<D>,
+          boost::heap::compare<Comparer>> DAryHeap;
+  DAryHeap heap;
   // Dummy element for setting min when the heap is empty
   static Prior dummy;
 
@@ -53,13 +56,27 @@ struct HeapWithLock {
 
   void updateMin() {
     return min.store(
-    heap.size() > 0 ? heap.min().prior() : dummy,
+    heap.size() > 0 ? heap.top().prior() : dummy,
     std::memory_order_release
     );
   }
 
+  T extractMin() {
+    T result = heap.top();
+    heap.pop();
+    return result;
+  }
+
+  void push(const T& task) {
+    heap.push(task);
+  }
+
+  bool empty() const {
+    return heap.empty();
+  }
+
 private:
-  Runtime::LL::PaddedLock<true> _lock;
+  Runtime::LL::SimpleLock<true> _lock;
   std::atomic<Prior> min;
 };
 

@@ -494,6 +494,9 @@ struct AsyncAlgo {
 	  typedef MyHMQ<UpdateRequest, Comparer, 3, true> HMQ3;
     typedef MyHMQ<UpdateRequest, Comparer, 4, true> HMQ4;
     typedef MyHMQ<UpdateRequest, Comparer, 5, true> HMQ5;
+    typedef MyHMQ<UpdateRequest, Comparer, 6, true> HMQ6;
+    typedef MyHMQ<UpdateRequest, Comparer, 7, true> HMQ7;
+    typedef MyHMQ<UpdateRequest, Comparer, 8, true> HMQ8;
 //    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, false>> PTSL;
 //    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, true>> PPSL;
 //    typedef GlobPQ<WorkItem, LocalPQ<Comparer, WorkItem>> LPQ;

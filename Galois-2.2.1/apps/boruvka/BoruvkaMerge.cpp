@@ -343,6 +343,14 @@ struct seq_gt: public std::binary_function<const WorkItem&, const WorkItem&, boo
       return lhs.first > rhs.first;
    }
 };
+
+template<typename UpdateRequest>
+struct UpdateRequestComparer: public std::binary_function<const UpdateRequest&, const UpdateRequest&, unsigned> {
+  unsigned operator()(const UpdateRequest& x, const UpdateRequest& y) const {
+    return x.second > y.second;
+  }
+};
+
 //End body of for-each.
 ///////////////////////////////////////////////////////////////////////////////////////
 ///////////////////////////////////////////////////////////////////////////////////////

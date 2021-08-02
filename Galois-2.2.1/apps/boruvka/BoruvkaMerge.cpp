@@ -349,7 +349,7 @@ struct seq_gt: public std::binary_function<const WorkItem&, const WorkItem&, boo
 long long runBodyParallel() {
    using namespace Galois::WorkList;
    typedef WorkItem UpdateRequest;
-   typedef seq_gt Comparer;
+   typedef UpdateRequestComparer<UpdateRequest> Comparer;
 
    typedef dChunkedFIFO<CHUNK_SIZE> Chunk;
    typedef dVisChunkedFIFO<64> visChunk;
@@ -370,16 +370,16 @@ long long runBodyParallel() {
    //typedef WorkItem WorkItem;
    typedef GlobPQ<WorkItem, LockFreeSkipList<seq_gt, WorkItem>> GPQ;
    typedef GlobPQ<WorkItem, SprayList<seq_gt, WorkItem>> SL;
-   typedef GlobPQ<WorkItem, MultiQueue<seq_gt, WorkItem, 1>> MQ1;
-   typedef GlobPQ<WorkItem, MultiQueue<seq_gt, WorkItem, 2>> MQ2;
-   typedef GlobPQ<WorkItem, MultiQueue<seq_gt, WorkItem, 3>> MQ3;
-   typedef GlobPQ<WorkItem, MultiQueue<seq_gt, WorkItem, 4>> MQ4;
-   typedef GlobPQ<WorkItem, MultiQueue<seq_gt, WorkItem, 5>> MQ5;
-   typedef GlobPQ<WorkItem, HeapMultiQueue<seq_gt, WorkItem, 1>> HMQ1;
-   typedef GlobPQ<WorkItem, HeapMultiQueue<seq_gt, WorkItem, 2>> HMQ2;
-   typedef GlobPQ<WorkItem, HeapMultiQueue<seq_gt, WorkItem, 3>> HMQ3;
-   typedef GlobPQ<WorkItem, HeapMultiQueue<seq_gt, WorkItem, 4>> HMQ4;
-   typedef GlobPQ<WorkItem, HeapMultiQueue<seq_gt, WorkItem, 5>> HMQ5;
+   typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 1>> MQ1;
+   typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 2>> MQ2;
+   typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 3>> MQ3;
+   typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 4>> MQ4;
+   typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 5>> MQ5;
+   typedef MyHMQ<UpdateRequest, Comparer, 1, true> HMQ1;
+   typedef MyHMQ<UpdateRequest, Comparer, 2, true> HMQ2;
+   typedef MyHMQ<UpdateRequest, Comparer, 3, true> HMQ3;
+   typedef MyHMQ<UpdateRequest, Comparer, 4, true> HMQ4;
+   typedef MyHMQ<UpdateRequest, Comparer, 5, true> HMQ5;
    typedef GlobPQ<WorkItem, DistQueue<seq_gt, WorkItem, false>> PTSL;
    typedef GlobPQ<WorkItem, DistQueue<seq_gt, WorkItem, true>> PPSL;
    typedef GlobPQ<WorkItem, LocalPQ<seq_gt, WorkItem>> LPQ;

@@ -400,20 +400,28 @@ struct AsyncAlgo {
     Coord x, y;
     unsigned int id;
     char k;
+    std::string ignore;
     if (myfile.is_open())
     {
-      while ( myfile>>k >> id>> x>> y)
-      {
-        //x : latitude
-        //y : longitude
-        //std::cout << id<< " "<<x<<" "<<y << "\n";
-        typename Graph::iterator it = graph.begin();
-        std::advance(it, id);
-        GNode nn = *it;
-        graph.getData(nn, Galois::MethodFlag::NONE).x = x;
-        graph.getData(nn, Galois::MethodFlag::NONE).y = y;
+
+      while (!myfile.eof()) {
+        if (myfile.peek() != 'v') {
+          std::getline(myfile, ignore);
+        } else {
+          myfile >> k >> id >> x >> y;
+          //x : latitude
+          //y : longitude
+          //std::cout << id<< " "<<x<<" "<<y << "\n";
+          typename Graph::iterator it = graph.begin();
+          std::advance(it, id);
+          GNode nn = *it;
+          graph.getData(nn, Galois::MethodFlag::NONE).x = x;
+          graph.getData(nn, Galois::MethodFlag::NONE).y = y;
+        }
       }
       myfile.close();
+    } else {
+      std::cerr << "Coord file could not be opened" << std::endl;
     }
 
     typename Graph::iterator it = graph.begin();

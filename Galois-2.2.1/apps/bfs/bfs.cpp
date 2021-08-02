@@ -489,11 +489,11 @@ struct AsyncAlgo {
     typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 3>> MQ3;
     typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 4>> MQ4;
     typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 5>> MQ5;
-    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 1>> HMQ1;
-	  typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 2>> HMQ2;
-	  typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 3>> HMQ3;
-    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 4>> HMQ4;
-    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 5>> HMQ5;
+    typedef MyHMQ<UpdateRequest, Comparer, 1, true> HMQ1;
+	  typedef MyHMQ<UpdateRequest, Comparer, 2, true> HMQ2;
+	  typedef MyHMQ<UpdateRequest, Comparer, 3, true> HMQ3;
+    typedef MyHMQ<UpdateRequest, Comparer, 4, true> HMQ4;
+    typedef MyHMQ<UpdateRequest, Comparer, 5, true> HMQ5;
 //    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, false>> PTSL;
 //    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, true>> PPSL;
 //    typedef GlobPQ<WorkItem, LocalPQ<Comparer, WorkItem>> LPQ;

@@ -908,7 +908,7 @@ public:
 
       if (i == j) continue;
 
-      if (compare(hi->min, hj->min))
+      if (hi->min.prior() > hj->min.prior())
         hi = hj;
     } while (!hi->lock.try_lock());
 
@@ -916,7 +916,7 @@ public:
       hi->lock.unlock();
       for (j = 1; j < nQ; j++) {
         hi = &Q[(i + j) % nQ].data;
-        if (hi->min == emptyK) continue;
+        if (hi->min.prior() == emptyK.prior()) continue;
         hi->lock.lock();
         if (hi->heap.size() > 1)
           goto deq;
@@ -979,9 +979,64 @@ struct LockableHeap2 {
   }
 
 private:
-  Runtime::LL::PaddedLock<true> _lock;
+  Runtime::LL::SimpleLock<true> _lock;
 };
 
+
+template <typename  T, typename Comparer, size_t D = 4,
+typename Prior = unsigned long>
+struct LockableHeap3 {
+//  DAryHeap<T, Comparer, 4> heap;
+  boost::heap::d_ary_heap<T, boost::heap::arity<8>, boost::heap::compare<Comparer>> heap;
+
+  // todo: use atomic
+  std::atomic<Prior> min;
+  static T usedT;
+
+  LockableHeap3() : min(usedT.prior()) {}
+
+  //! Non-blocking lock.
+  inline bool try_lock() {
+    return _lock.try_lock();
+  }
+
+  //! Blocking lock.
+  inline void lock() {
+    _lock.lock();
+  }
+
+  //! Unlocks the queue.
+  inline void unlock() {
+    _lock.unlock();
+  }
+
+  inline bool is_locked() {
+    _lock.is_locked();
+  }
+
+  Prior getMin() {
+    return min.load(std::memory_order_acquire);
+  }
+
+  static bool isUsed(T const& value) {
+    return value == usedT;
+  }
+
+  static bool isUsedMin(Prior const& value) {
+    return value == usedT.prior();
+  }
+
+private:
+  Runtime::LL::SimpleLock<true> _lock;
+};
+
+
+
+template<typename T,
+typename Compare,
+size_t D,
+typename Prior>
+T LockableHeap3<T, Compare, D, Prior>::usedT;
 
 
 template<typename T,
@@ -998,7 +1053,7 @@ typename Prior = unsigned long>
 class MyHMQ {
 private:
   typedef T value_t;
-  typedef LockableHeap2<T, Comparer, 4, Prior> Heap;
+  typedef LockableHeap3<T, Comparer, 8, Prior> Heap;
   ::std::unique_ptr<Runtime::LL::CacheLineStorage<Heap>[]> heaps;
   Comparer compare;
   //! Total number of threads.
@@ -1033,14 +1088,16 @@ private:
   Galois::optional<value_t> extract_min(Heap *heap) {
     auto result = getMin(heap);
 
-    heap->min.store(!heap->heap.empty() ? heap->heap.min().prior() : heap->usedT.prior(), ::std::memory_order_release);
+    heap->min.store(!heap->heap.empty() ? heap->heap.top().prior() : heap->usedT.prior(), ::std::memory_order_release);
     heap->unlock();
     return result;
   }
 
   //! Gets minimum from locked heap which depends on AMQ flags.
   value_t getMin(Heap *heap) {
-    return heap->heap.extractMin();
+    auto res =heap->heap.top();
+    heap->heap.pop();
+    return res;
   }
 
 
@@ -1051,12 +1108,6 @@ public:
     memset(reinterpret_cast<void *>(&Heap::usedT), 0xff, sizeof(Heap::usedT));
 
     heaps = ::std::make_unique<Runtime::LL::CacheLineStorage<Heap>[]>(nQ);
-//    ::std::cout << "Queues: " << nQ << ::std::endl;
-
-    for (size_t i = 0; i < nQ; i++) {
-      heaps[i].data.heap.set_index(i);
-    }
-
   }
 
 
@@ -1085,8 +1136,8 @@ public:
       heap = &heaps[q_ind].data;
     } while (!heap->try_lock());
 
-    heap->heap.push(val);
-    heap->min.store(heap->heap.min().prior(), ::std::memory_order_release);
+    heap->heap.emplace(val);
+    heap->min.store(heap->heap.top().prior(), ::std::memory_order_release);
     heap->unlock();
   }
 
@@ -1126,7 +1177,7 @@ public:
 
   //! Pop a value from the queue.
   Galois::optional<value_type> pop() {
-    const size_t ATTEMPTS = 8; // nT < 4 ? 1 : 4;
+    const size_t ATTEMPTS = 1;
 
 
     Galois::optional<value_type> result;
@@ -1172,19 +1223,6 @@ public:
       }
     }
     return result;
-
-//    for (size_t i = 0; i < nQ; i++) {
-//      heap_i = &heaps[i].data;
-//      if (Heap::isUsedMin(heap_i->getMin())) continue;
-//      if (heap_i->try_lock()) {
-//        if (!heap_i->heap.empty()) {
-//          return extract_min(heap_i);
-//        }
-//        heap_i->unlock();
-//      }
-//    }
-//
-//    return result;
   }
 };
 

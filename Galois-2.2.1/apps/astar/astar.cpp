@@ -650,6 +650,9 @@ struct AsyncAlgo {
     typedef MyHMQ<UpdateRequest, Comparer, 3, true> HMQ3;
     typedef MyHMQ<UpdateRequest, Comparer, 4, true> HMQ4;
     typedef MyHMQ<UpdateRequest, Comparer, 5, true> HMQ5;
+    typedef MyHMQ<UpdateRequest, Comparer, 6, true> HMQ6;
+    typedef MyHMQ<UpdateRequest, Comparer, 7, true> HMQ7;
+    typedef MyHMQ<UpdateRequest, Comparer, 8, true> HMQ8;
     typedef GlobPQ<UpdateRequest, DistQueue<Comparer, UpdateRequest, false>> PTSL;
     typedef GlobPQ<UpdateRequest, DistQueue<Comparer, UpdateRequest, true>> PPSL;
     typedef GlobPQ<UpdateRequest, LocalPQ<Comparer, UpdateRequest>> LPQ;
@@ -739,6 +742,12 @@ struct AsyncAlgo {
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ1>());
     else if (wl == "hmq4")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ4>());
+     else if (wl == "hmq6")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ6>());
+     else if (wl == "hmq7")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ7>());
+     else if (wl == "hmq8")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ8>());
     else if (wl == "thrskiplist")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<PTSL>());
     else if (wl == "pkgskiplist")

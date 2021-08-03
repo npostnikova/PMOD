@@ -601,8 +601,14 @@ struct AsyncAlgo {
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ1>());
     else if (wl == "hmq4")
 	    Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ4>());
-     if (wl == "hmq5")
+    else if (wl == "hmq5")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ5>());
+    else if (wl == "hmq6")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ6>());
+    else if (wl == "hmq7")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ7>());
+    else if (wl == "hmq8")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ8>());
 //    else if (wl == "thrskiplist")
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<PTSL>());
 //    else if (wl == "pkgskiplist")

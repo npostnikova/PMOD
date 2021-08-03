@@ -40,7 +40,7 @@ template<typename T,
 class MultiQueueLocalProb {
 private:
   typedef T value_t;
-  typedef HeapWithLock<T, Comparer, Prior, 4> Heap;
+  typedef HeapWithLock<T, Comparer, Prior, 8> Heap;
   std::unique_ptr<Runtime::LL::CacheLineStorage<Heap>[]> heaps;
   Comparer compare;
   //! Total number of threads.
@@ -72,9 +72,9 @@ private:
     return random() % nQ;
   }
 
-  //! Extracts minimum from the locked heap.
+  //! Extracts minimum from the locked
   Galois::optional<value_t> extract_min(Heap* heap) {
-    auto result = heap->heap.extractMin();
+    auto result = heap->extractMin();
     heap->updateMin();
     heap->unlock();
     return result;
@@ -101,7 +101,7 @@ private:
       auto id = lockRandomQ();
       auto heap = &heaps[id].data;
       while (!buffer.empty()) {
-        heap->heap.push(buffer.back());
+        heap->push(buffer.back());
         buffer.pop_back();
       }
       heap->updateMin();
@@ -179,7 +179,7 @@ public:
     if (change > 0) {
       heap_i = &heaps[local_q].data;
       if (heap_i->try_lock()) {
-        if (!heap_i->heap.empty())
+        if (!heap_i->empty())
           return extract_min(heap_i);
         heap_i->unlock();
       }
@@ -201,7 +201,7 @@ public:
         if (heap_i->try_lock())
           break;
       }
-      if (!heap_i->heap.empty()) {
+      if (!heap_i->empty()) {
         return extract_min(heap_i);
       }
       heap_i->unlock();

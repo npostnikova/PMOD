@@ -41,7 +41,7 @@ template<typename T,
 class MultiQueueProbLocalNuma {
 private:
   typedef T value_t;
-  typedef HeapWithLock<T, Comparer, Prior, 4> Heap;
+  typedef HeapWithLock<T, Comparer, Prior, 8> Heap;
   std::unique_ptr<Runtime::LL::CacheLineStorage<Heap>[]> heaps;
   Comparer compare;
   //! Total number of threads.
@@ -135,11 +135,11 @@ private:
   Galois::optional<value_t> extract_min(Heap* heap) {
     static thread_local size_t tId = Galois::Runtime::LL::getTID();
 
-    auto result = heap->heap.extractMin();
+    auto result = heap->extractMin();
     auto& buffer = popBuffer[tId].data;
 
-    for (size_t i = 0; i < PopSize - 1 && !heap->heap.empty(); i++) {
-       buffer.push_back(heap->heap.extractMin());
+    for (size_t i = 0; i < PopSize - 1 && !heap->empty(); i++) {
+       buffer.push_back(heap->extractMin());
     }
     std::reverse(buffer.begin(), buffer.end());
     heap->updateMin();
@@ -215,7 +215,7 @@ public:
       }
 
       for (size_t i = 0; i < batchSize; i++) {
-        heap->heap.push(*b++);
+        heap->push(*b++);
         pushNumber++;
         elementsLeft--;
       }
@@ -273,7 +273,7 @@ public:
         if (heap_i->try_lock())
           break;
       }
-      if (!heap_i->heap.empty()) {
+      if (!heap_i->empty()) {
         return extract_min(heap_i);
       }
       heap_i->unlock();

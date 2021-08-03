@@ -4,7 +4,7 @@
 #include <atomic>
 #include <cstdlib>
 #include <vector>
-#include <filesystem>
+//#include <filesystem>
 
 #include "StealingQueue.h"
 #include "Heap.h"
@@ -400,7 +400,7 @@ public:
   }
 
   ~AdaptiveStealingMultiQueue() {
-    auto exists = std::filesystem::exists("asmq_stats.csv");
+    auto exists = true; // std::filesystem::exists("asmq_stats.csv");
     std::ofstream out("asmq_stats.csv", std::ios::app);
     if (!exists) {
       out << "threads,s1,s2,s8,s16,p2,p4,p8,p16,p32" << std::endl;

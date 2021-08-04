@@ -70,7 +70,7 @@ elif [ $action == "run" ]; then
   for p in "${PROBS[@]}"; do
     for ss in "${STEAL_SIZES[@]}"; do
         name="${mq_c}_${p}_${ss}"
-        run_wl_n_times "${name}_${p}_${ss}" $runs "${algo}_${graph}_${mq}_$threads"
+        run_wl_n_times $name $runs "${algo}_${graph}_${mq}_$threads"
     done
   done
 fi

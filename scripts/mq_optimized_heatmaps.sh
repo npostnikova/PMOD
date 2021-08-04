@@ -11,7 +11,7 @@ clear_file () {
 
 
 mq=$1
-C=7
+C=4
 mq_c="${mq}_$C"
 
 mq_name="Killme"

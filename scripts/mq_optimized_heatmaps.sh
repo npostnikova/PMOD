@@ -19,7 +19,7 @@ if [ $mq == "mqpp" ]; then
     mq_name="ProbProb"
   elif [ $mq == "mqpl" ]; then
     mq_name="ProbLocal"
-  elif [ $mq == "mqpl" ]; then
+  elif [ $mq == "mqlp" ]; then
     mq_name="LocalProb"
   elif [ $mq == "mqll" ]; then
     mq_name="LocalLocal"

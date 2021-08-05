@@ -16,7 +16,7 @@ $MQ_ROOT/scripts/mq_optimized_heatmaps.sh $mq sssp run web $threads
 $MQ_ROOT/scripts/mq_optimized_heatmaps.sh $mq boruvka build
 $MQ_ROOT/scripts/mq_optimized_heatmaps.sh $mq boruvka run usa $threads
 $MQ_ROOT/scripts/mq_optimized_heatmaps.sh $mq boruvka run west $threads
-$MQ_ROOT/scripts/mq_optimized_heatmaps.sh $mq astar build
-$MQ_ROOT/scripts/mq_optimized_heatmaps.sh $mq astar run west $threads
+#$MQ_ROOT/scripts/mq_optimized_heatmaps.sh $mq astar build
+#$MQ_ROOT/scripts/mq_optimized_heatmaps.sh $mq astar run west $threads
 #$MQ_ROOT/scripts/mq_optimized_heatmaps.sh $mq astar run usa $threads
 #$MQ_ROOT/scripts/mq_optimized_heatmaps.sh $mq astar run ctr $threads

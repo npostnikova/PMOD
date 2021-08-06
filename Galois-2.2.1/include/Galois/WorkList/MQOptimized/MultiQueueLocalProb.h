@@ -47,8 +47,8 @@ private:
   const size_t nT;
   //! Number of queues.
   const size_t nQ;
-  //! Local buffers for push
-  std::unique_ptr<Runtime::LL::CacheLineStorage<std::vector<value_t>>[]> pushBuffer;
+
+  std::unique_ptr<Runtime::LL::CacheLineStorage<Heap>[]> pushLocal;
 
   //! Thread local random.
   uint32_t random() {
@@ -72,57 +72,50 @@ private:
     return random() % nQ;
   }
 
-  //! Extracts minimum from the locked
-  Galois::optional<value_t> extract_min(Heap* heap) {
+  inline size_t rand_heap_with_local() {
+    return random() % (nQ + 1);
+  }
+
+  Heap* get_heap_ptr(size_t id) {
+    static thread_local size_t tId = Galois::Runtime::LL::getTID();
+    if (id == nQ) {
+      return &pushLocal[tId].data;
+    }
+    return &heaps[id].data;
+  }
+
+  bool try_lock_heap(size_t id) {
+    if (id == nQ) {
+      return true;
+    }
+    return heaps[id].data.try_lock();
+  }
+
+
+  void unlock_heap(size_t id) {
+    if (id == nQ) {
+      return;
+    }
+    heaps[id].data.unlock();
+  }
+
+  //! Extracts minimum from the locked heap.
+  Galois::optional<value_t> extract_min(Heap* heap, size_t heapId) {
     auto result = heap->extractMin();
     heap->updateMin();
-    heap->unlock();
+    if (heapId < nQ) {
+      heap->unlock();
+    }
     return result;
   }
 
-  //! Checks whether the first priority value is less.
-  bool isFirstLess(Prior const& v1, Prior const& v2) {
-    if (Heap::isMinDummy(v1)) {
-      return false;
-    }
-    if (Heap::isMinDummy(v2)) {
-      return true;
-    }
-    return v1 < v2;
-  }
 
-  //! Push an element onto the local buffer, flushing
-  //! the buffer when the capacity is exceeded.
-  void pushLocally(T val) {
-    static thread_local size_t tId = Galois::Runtime::LL::getTID();
-    auto& buffer = pushBuffer[tId].data;
-    buffer.push_back(val);
-    if (buffer.size() >= PushSize) {
-      auto id = lockRandomQ();
-      auto heap = &heaps[id].data;
-      while (!buffer.empty()) {
-        heap->push(buffer.back());
-        buffer.pop_back();
-      }
-      heap->updateMin();
-      heap->unlock();
-    }
-  }
-
-  //! Locks a random queue and returns its id.
-  size_t lockRandomQ() {
-    auto r = rand_heap();
-    while (!heaps[r].data.try_lock()) {
-      r = rand_heap();
-    }
-    return r;
-  }
 public:
   MultiQueueLocalProb() : nT(Galois::getActiveThreads()), nQ(C * nT) {
     // Setting dummy element of the heap
     memset(reinterpret_cast<void*>(&Heap::dummy), 0xff, sizeof(Prior));
     heaps = std::make_unique<Runtime::LL::CacheLineStorage<Heap>[]>(nQ);
-    pushBuffer = std::make_unique<Runtime::LL::CacheLineStorage<std::vector<value_t >>[]>(nT);
+    pushLocal = std::make_unique<Runtime::LL::CacheLineStorage<Heap>[]>(nT);
   }
 
   //! T is the value type of the WL.
@@ -139,6 +132,45 @@ public:
   struct retype {
     typedef MultiQueueLocalProb<_T, Comparer, PushSize, ChangeQPop, C, Prior, Concurrent> type;
   };
+
+  //! Push a value onto the queue.
+  void push(const value_type &val) {
+    Heap* heap;
+    int q_ind;
+
+    do {
+      q_ind = rand_heap();
+      heap = &heaps[q_ind].data;
+    } while (!heap->try_lock());
+
+    heap->heap.push(val);
+    heap->min.store(heap->heap.min().prior(), std::memory_order_release);
+    heap->unlock();
+  }
+
+  size_t lockRandomQ() {
+    auto r = rand_heap();
+    while (!heaps[r].data.try_lock()) {
+      r = rand_heap();
+    }
+    return r;
+  }
+
+  void pushLocally(T val) {
+    static thread_local size_t tId = Galois::Runtime::LL::getTID();
+    auto local = &pushLocal[tId].data;
+    local->heap.push(val);
+    if (local->heap.size() >= PushSize) {
+      auto id = lockRandomQ();
+      auto heap = &heaps[id].data;
+      while (!local->heap.empty()) {
+        heap->push(local->extractMin());
+      }
+      heap->updateMin();
+      heap->unlock();
+    }
+    local->updateMin();
+  }
 
   //! Push a range onto the queue.
   template<typename Iter>
@@ -160,12 +192,22 @@ public:
     return push(rp.first, rp.second);
   }
 
+  bool isFirstLess(Prior const& v1, Prior const& v2) {
+    if (Heap::isMinDummy(v1)) {
+      return false;
+    }
+    if (Heap::isMinDummy(v2)) {
+      return true;
+    }
+    return v1 < v2;
+  }
+
+
+
   //! Pop a value from the queue.
   Galois::optional<value_type> pop() {
     static const size_t ATTEMPTS = 4;
-    static thread_local size_t tId = Galois::Runtime::LL::getTID();
     static thread_local size_t local_q = rand_heap();
-
     Galois::optional<value_type> result;
     Heap* heap_i = nullptr;
     Heap* heap_j = nullptr;
@@ -177,42 +219,55 @@ public:
     size_t change = random() % ChangeQPop;
 
     if (change > 0) {
-      heap_i = &heaps[local_q].data;
-      if (heap_i->try_lock()) {
-        if (!heap_i->empty())
-          return extract_min(heap_i);
-        heap_i->unlock();
+      heap_i = get_heap_ptr(local_q);
+      if (try_lock_heap(local_q)) {
+        if (!heap_i->heap.empty()) {
+          return extract_min(heap_i, local_q);
+        }
+        unlock_heap(local_q);
       }
     }
 
+
     for (size_t i = 0; i < ATTEMPTS; i++) {
       while (true) {
-        i_ind = rand_heap();
-        heap_i = &heaps[i_ind].data;
+        i_ind = rand_heap_with_local();
+        heap_i = get_heap_ptr(i_ind);
 
-        j_ind = rand_heap();
-        heap_j = &heaps[j_ind].data;
+        j_ind = rand_heap_with_local();
+        heap_j = get_heap_ptr(j_ind);
 
         if (i_ind == j_ind && nQ > 1)
           continue;
         if (isFirstLess(heap_j->getMin(), heap_i->getMin())) {
+          i_ind = j_ind;
           heap_i = heap_j;
         }
-        if (heap_i->try_lock())
+        if (try_lock_heap(i_ind))
           break;
       }
-      if (!heap_i->empty()) {
-        return extract_min(heap_i);
+      if (!heap_i->heap.empty()) {
+        local_q = i_ind;
+        return extract_min(heap_i, local_q);
       }
-      heap_i->unlock();
+      unlock_heap(i_ind);
     }
-    // Retrieving an element from the push buffer
-    auto& pushB = pushBuffer[tId].data;
-    if (pushB.empty()) return result;
-    std::sort(pushB.begin(), pushB.end(), [](const T& e1, const T& e2) { return e1.prior() > e2.prior(); });
-    auto resultValue = pushB.back();
-    pushB.pop_back();
-    return resultValue;
+    auto local = get_heap_ptr(nQ);
+    if (!local->empty()) {
+      auto minVal = local->extractMin();
+      if (!local->heap.empty()) {
+        auto rQ = lockRandomQ();
+        auto heap = get_heap_ptr(rQ);
+        for (size_t i = 0; i < 4 && !local->empty(); i++) {
+          heap->push(local->extractMin());
+        }
+        heap->updateMin();
+        heap->unlock();
+      }
+      local->updateMin();
+      return minVal;
+    }
+    return result;
   }
 };
 

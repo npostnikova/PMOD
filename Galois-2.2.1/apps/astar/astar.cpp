@@ -200,7 +200,7 @@ struct UpdateRequestNodeComparer: public std::binary_function<const UpdateReques
 
 
 template<typename Graph>
-bool verify(Graph& graph, typename Graph::GraphNode source) {
+bool verify(Graph& graph, typename Graph::GraphNode source, typename Graph::GraphNode report) {
   if (graph.getData(source).dist != 0) {
     std::cerr << "source has non-zero dist value\n";
     return false;
@@ -214,9 +214,8 @@ bool verify(Graph& graph, typename Graph::GraphNode source) {
 
 
   // For USA graph. We suppose that not all nodes are required to have optimal distance.
-  auto it = graph.begin();
-  std::advance(it, destNode);
-  if (startNode == 1 && destNode == 22629042 && graph.getData(*it).dist == 42715444) {
+  std::cout << startNode << " " << destNode << " " << (unsigned int)graph.getData(report).dist << std::endl;
+  if (startNode == 1 && destNode == 22629042 && (unsigned int)graph.getData(report).dist == 42715444) {
     return true;
   }
 
@@ -373,7 +372,7 @@ struct SerialAlgo {
           Dist newDist = req.w + d;
           if (newDist < graph.getData(dst, Galois::MethodFlag::NONE).dist) {
             initial.insert(UpdateRequest(dst, newDist));
-	  }
+	        }
         }
       }
     }
@@ -997,7 +996,7 @@ void run(bool prealloc = true) {
   std::cout << "Node " << reportNode << " has distance " << (unsigned int)graph.getData(report).dist << "\n";
 
   if (!skipVerify) {
-    if (verify(graph, source)) {
+    if (verify(graph, source, report)) {
       std::cout << "Verification successful.\n";
     } else {
       std::cerr << "Verification failed.\n";

@@ -225,18 +225,6 @@ bool verify(Graph& graph, typename Graph::GraphNode source, typename Graph::Grap
     return false;
   }
 
-  Galois::GReduceMax<Dist> m;
-  Galois::do_all(graph.begin(), graph.end(), max_dist<Graph>(graph, m));
-  std::cout << "max dist: " << m.reduce() << "\n";
-
-  for (unsigned int i=0;i<graph.size();i++){
-    typename Graph::iterator it = graph.begin();
-    std::advance(it, i);
-    typename Graph::GraphNode nn = *it;
-    if(m.reduce() == (graph.getData(nn).dist)){
-      std::cout<<"Max node id: "<<i<<std::endl;
-    }
-  }
   return true;
 }
 
@@ -588,6 +576,17 @@ struct AsyncAlgo {
     AsyncAlgo* self;
     Graph& graph;
     Process(AsyncAlgo* s, Graph& g): self(s), graph(g) { }
+    void operator()(UpdateRequest& req, Galois::UserContext<UpdateRequest>& ctx) {
+      self->relaxNode(graph, req, ctx);
+    }
+  };
+
+  struct ReadCoordsProcess {
+    AsyncAlgo* self;
+    Graph& graph;
+    ReadCoordsProcess(AsyncAlgo* s, Graph& g): self(s), graph(g) {
+      std::cout << "Active threads in ReadGraphProcess " << Galois::Runtime::activeThreads
+    }
     void operator()(UpdateRequest& req, Galois::UserContext<UpdateRequest>& ctx) {
       self->relaxNode(graph, req, ctx);
     }

@@ -35,7 +35,8 @@ template<typename T,
          typename Comparer,
          size_t ChangeQPush,
          size_t ChangeQPop,
-         size_t C = 2,
+         size_t C,
+         size_t LOCAL_NUMA_W,
          typename Prior = unsigned long,
          bool Concurrent = true>
 class MultiQueueProbProbNuma {
@@ -113,13 +114,13 @@ public:
   //! Change the concurrency flag.
   template<bool _concurrent>
   struct rethread {
-    typedef MultiQueueProbProbNuma<T, Comparer, ChangeQPush, ChangeQPop, C, Prior, _concurrent> type;
+    typedef MultiQueueProbProbNuma<T, Comparer, ChangeQPush, ChangeQPop, C, LOCAL_NUMA_W, Prior, _concurrent> type;
   };
 
   //! Change the type the worklist holds.
   template<typename _T>
   struct retype {
-    typedef MultiQueueProbProbNuma<_T, Comparer, ChangeQPush, ChangeQPop, C, Prior, Concurrent> type;
+    typedef MultiQueueProbProbNuma<_T, Comparer, ChangeQPush, ChangeQPop, C, LOCAL_NUMA_W, Prior, Concurrent> type;
   };
 
   //! Push a range onto the queue.

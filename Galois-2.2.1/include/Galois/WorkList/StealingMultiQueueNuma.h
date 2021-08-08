@@ -15,8 +15,8 @@ namespace WorkList {
 
 template<typename T,
 typename Comparer,
-size_t StealProb = 8,
-size_t StealBatchSize = 8,
+size_t StealProb,
+size_t StealBatchSize,
 size_t LOCAL_NUMA_W,
 bool Concurrent = true,
 typename Container = StealDAryHeapHaate<T, Comparer, 4, StealBatchSize>

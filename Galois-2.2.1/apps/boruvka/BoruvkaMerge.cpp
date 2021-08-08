@@ -558,9 +558,9 @@ long long runBodyParallel() {
   typedef MultiQueueProbLocal<WorkItem, seq_gt, 1024, 256, 2, unsigned> MQ2_PL_1024_256;
   if (worklistname == "mq2_pl_1024_256" or worklistname == "mq2_pl_west")
     Galois::for_each_local(initial, process(), Galois::wl<MQ2_PL_1024_256>());
-  typedef MultiQueueProbLocalNuma<WorkItem, seq_gt, 1024, 256, 2, unsigned> MQ2_PL_1024_256_NUMA;
-  if (worklistname == "mq2_pl_1024_256_numa" or worklistname == "mq2_pl_numa_west")
-    Galois::for_each_local(initial, process(), Galois::wl<MQ2_PL_1024_256_NUMA>());
+//  typedef MultiQueueProbLocalNuma<WorkItem, seq_gt, 1024, 256, 2, unsigned> MQ2_PL_1024_256_NUMA;
+//  if (worklistname == "mq2_pl_1024_256_numa" or worklistname == "mq2_pl_numa_west")
+//    Galois::for_each_local(initial, process(), Galois::wl<MQ2_PL_1024_256_NUMA>());
 
 
   typedef MultiQueueProbLocal<WorkItem, seq_gt, 1024, 1024, 2, unsigned> MQ2_PL_1024_1024;

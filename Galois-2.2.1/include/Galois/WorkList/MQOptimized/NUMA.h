@@ -83,10 +83,10 @@ inline size_t rand_heap() {
 
 #endif
 #if SOCKETS_NUM==4
-static const size_t NEIGH_WEIGHT = 2;
-static const size_t DIAG_WEIGHT = 1;
-static const size_t LOCAL_WEIGHT = LOCAL_NUMA_W * 2;
-static const size_t socketSize = SOCKET_SIZE;
+const size_t NEIGH_WEIGHT = 2;
+const size_t DIAG_WEIGHT = 1;
+const size_t LOCAL_WEIGHT = LOCAL_NUMA_W * 2;
+const size_t socketSize = SOCKET_SIZE;
 const std::vector<size_t> nodesCnt = cntSockets();
 
 std::vector<size_t> cntSockets() {

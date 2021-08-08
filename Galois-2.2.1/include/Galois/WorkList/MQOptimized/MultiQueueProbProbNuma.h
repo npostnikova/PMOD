@@ -171,6 +171,7 @@ public:
 
   //! Pop a value from the queue.
   Galois::optional<value_type> pop() {
+    static thread_local size_t tId = Galois::Runtime::LL::getTID();
     static const size_t ATTEMPTS = 4;
 
     static thread_local size_t local_q = rand_heap();

@@ -727,10 +727,10 @@ struct AsyncAlgo {
 //    if (worklistname == "mq2_pl_4096_4096_numa")
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_4096_4096_NUMA>());
 //
-//
-//    typedef AdaptiveStealingMultiQueue<element_t, Comparer> ASMQ;
-//    if (worklistname == "adap-smq")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<ASMQ>());
+
+    typedef AdaptiveStealingMultiQueue<element_t, Comparer> ASMQ;
+    if (worklistname == "adap-smq")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<ASMQ>());
 
   }
 };

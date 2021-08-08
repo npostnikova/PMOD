@@ -1,5 +1,5 @@
-#ifndef MQ_PROB_LOCAL_NUMA
-#define MQ_PROB_LOCAL_NUMA
+#ifndef MQ_PROB_PROB_NUMA
+#define MQ_PROB_PROB_NUMA
 
 #include <atomic>
 #include <memory>
@@ -8,7 +8,6 @@
 #include <condition_variable>
 #include <ctime>
 #include <fstream>
-#include <numa.h>
 #include <thread>
 #include <random>
 #include <iostream>
@@ -19,14 +18,15 @@ namespace WorkList {
 
 /**
  * MultiQueue optimized variant. Uses temporal locality idea for
- * `push` and task batching for `pop`.
- *
+ * `push` and `pop`, which performs a sequence of operations on 
+ * one queue, changing it with some probability.
+ * 
  * Provides efficient pushing of range of elements only.
  *
  * @tparam T type of elements
  * @tparam Comparer comparator for elements of type `T`
  * @tparam ChangeQPush Changes the queue for push with 1 / ChangeQPush probability
- * @tparam PopSize Number of elements popped from one queue.
+ * @tparam ChangeQPop Changes the queue for pop with 1 / ChangeQPop probability
  * @tparam C parameter for queues number
  * @tparam Prior Type of T's priority. Need to support < operator.
  * @tparam Concurrent if the implementation should be concurrent
@@ -34,12 +34,11 @@ namespace WorkList {
 template<typename T,
          typename Comparer,
          size_t ChangeQPush,
-         size_t PopSize,
-         size_t C,
-         size_t LOCAL_NUMA_W,
+         size_t ChangeQPop,
+         size_t C = 2,
          typename Prior = unsigned long,
          bool Concurrent = true>
-class MultiQueueProbLocalNuma {
+class MultiQueueProbProbNuma {
 private:
   typedef T value_t;
   typedef HeapWithLock<T, Comparer, Prior, 8> Heap;
@@ -49,8 +48,6 @@ private:
   const size_t nT;
   //! Number of queues.
   const size_t nQ;
-  //! Local buffers for pop.
-  std::unique_ptr<Runtime::LL::CacheLineStorage<std::vector<value_t>>[]> popBuffer;
 
   //! Thread local random.
   uint32_t random() {
@@ -70,21 +67,11 @@ private:
     return distribution(generator);
   }
 
-
 #include "NUMA.h"
-
 
   //! Extracts minimum from the locked heap.
   Galois::optional<value_t> extract_min(Heap* heap) {
-    static thread_local size_t tId = Galois::Runtime::LL::getTID();
-
     auto result = heap->extractMin();
-    auto& buffer = popBuffer[tId].data;
-
-    for (size_t i = 0; i < PopSize - 1 && !heap->empty(); i++) {
-       buffer.push_back(heap->extractMin());
-    }
-    std::reverse(buffer.begin(), buffer.end());
     heap->updateMin();
     heap->unlock();
     return result;
@@ -114,11 +101,10 @@ private:
   }
 
 public:
-  MultiQueueProbLocalNuma() : nT(Galois::getActiveThreads()), nQ(C * nT) {
+  MultiQueueProbProbNuma() : nT(Galois::getActiveThreads()), nQ(C * nT) {
     // Setting dummy element of the heap
     memset(reinterpret_cast<void*>(&Heap::dummy), 0xff, sizeof(Prior));
     heaps = std::make_unique<Runtime::LL::CacheLineStorage<Heap>[]>(nQ);
-    popBuffer = std::make_unique<Runtime::LL::CacheLineStorage<std::vector<value_t >>[]>(nT);
   }
 
   //! T is the value type of the WL.
@@ -127,13 +113,13 @@ public:
   //! Change the concurrency flag.
   template<bool _concurrent>
   struct rethread {
-    typedef MultiQueueProbLocalNuma<T, Comparer, ChangeQPush, PopSize, C, LOCAL_NUMA_W, Prior, _concurrent> type;
+    typedef MultiQueueProbProbNuma<T, Comparer, ChangeQPush, ChangeQPop, C, Prior, _concurrent> type;
   };
 
   //! Change the type the worklist holds.
   template<typename _T>
   struct retype {
-    typedef MultiQueueProbLocalNuma<_T, Comparer, ChangeQPush, PopSize, C, LOCAL_NUMA_W, Prior, Concurrent> type;
+    typedef MultiQueueProbProbNuma<_T, Comparer, ChangeQPush, ChangeQPop, C, Prior, Concurrent> type;
   };
 
   //! Push a range onto the queue.
@@ -184,23 +170,28 @@ public:
 
   //! Pop a value from the queue.
   Galois::optional<value_type> pop() {
-    static thread_local size_t tId = Galois::Runtime::LL::getTID();
-
-    // Retrieve an element from the buffer
-    std::vector<value_type>& buffer = popBuffer[tId].data;
-    if (!buffer.empty()) {
-      auto ret = buffer.back();
-      buffer.pop_back();
-      return ret;
-    }
-
     static const size_t ATTEMPTS = 4;
 
+    static thread_local size_t local_q = rand_heap();
     Galois::optional<value_type> result;
     Heap* heap_i = nullptr;
     Heap* heap_j = nullptr;
     size_t i_ind = 0;
     size_t j_ind = 0;
+
+    // change == 0 -- the local queue should be changed
+    // otherwise, we try to pop from the local queue
+    size_t change = random() % ChangeQPop;
+
+    if (change > 0) {
+      heap_i = &heaps[local_q].data;
+      if (heap_i->try_lock()) {
+        if (!heap_i->empty()) {
+          return extract_min(heap_i);
+        }
+        heap_i->unlock();
+      }
+    }
 
     for (size_t i = 0; i < ATTEMPTS; i++) {
       while (true) {
@@ -220,17 +211,22 @@ public:
           break;
       }
       if (!heap_i->empty()) {
+        local_q = i_ind;
+        if (socketIdByQID(local_q) != socketIdByTID(tId))
+          local_q = rand_heap();
         return extract_min(heap_i);
       }
       heap_i->unlock();
     }
+    if (socketIdByQID(local_q) != socketIdByTID(tId))
+      local_q = rand_heap();
     return result;
   }
 };
 
-GALOIS_WLCOMPILECHECK(MultiQueueProbLocalNuma)
+GALOIS_WLCOMPILECHECK(MultiQueueProbProbNuma)
 
 } // namespace WorkList
 } // namespace Galois
 
-#endif // MQ_PROB_LOCAL_NUMA
+#endif // MQ_PROB_PROB_NUMA

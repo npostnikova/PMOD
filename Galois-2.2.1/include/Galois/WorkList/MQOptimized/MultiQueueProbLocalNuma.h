@@ -72,15 +72,16 @@ private:
   }
 
   static const size_t OTHER_W = 1;
+  static const size_t socketSize = SOCKET_SIZE;
   const size_t node1CntVal = node1Cnt();
   const size_t node2CntVal = node2Cnt();
 
   size_t node1Cnt() {
     size_t res = 0;
-    if (nT > SOCKET_SIZE) {
-      res += SOCKET_SIZE;
-      if (SOCKET_SIZE * 2 < nT) {
-        res += std::min(nT, SOCKET_SIZE * 3) - SOCKET_SIZE * 2;
+    if (nT > socketSize) {
+      res += socketSize;
+      if (socketSize * 2 < nT) {
+        res += std::min(nT, socketSize * 3) - socketSize * 2;
       }
       return res;
     } else {
@@ -93,7 +94,7 @@ private:
   }
 
   bool is1Node(size_t tId) {
-    return tId < SOCKET_SIZE || (tId >= SOCKET_SIZE * 2 && tId < SOCKET_SIZE * 3);
+    return tId < socketSize || (tId >= socketSize * 2 && tId < socketSize * 3);
   }
 
   bool is2Node(size_t tId) {
@@ -105,28 +106,28 @@ private:
   }
 
   size_t socketIdByQID(size_t qId) {
-    if (qId < SOCKET_SIZE * C)
+    if (qId < socketSize * C)
       return 1;
-    if (qId < 2 * SOCKET_SIZE * C)
+    if (qId < 2 * socketSize * C)
       return 2;
-    if (qId < 3 * SOCKET_SIZE * C)
+    if (qId < 3 * socketSize * C)
       return 1;
     return 2;
   }
 
 
   size_t map1Node(size_t qId) {
-    if (qId < SOCKET_SIZE * C) {
+    if (qId < socketSize * C) {
       return qId;
     }
-    return qId + SOCKET_SIZE * C;
+    return qId + socketSize * C;
   }
 
   size_t map2Node(size_t qId) {
-    if (qId < SOCKET_SIZE * C) {
-      return qId + SOCKET_SIZE * C;
+    if (qId < socketSize * C) {
+      return qId + socketSize * C;
     }
-    return qId + SOCKET_SIZE * 2 * C;
+    return qId + socketSize * 2 * C;
   }
 
   inline size_t rand_heap() {

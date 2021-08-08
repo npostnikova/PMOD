@@ -94,8 +94,8 @@ std::vector<size_t> cntSockets() {
   size_t nTCnt = nT;
   for (size_t j = 0; j < 2; j++) {
     for (size_t i = 0; i < SOCKETS_NUM && nTCnt > 0; i++) {
-      result[i] += std::min(nTCnt, SOCKET_SIZE);
-      nTCnt -= std::min(nTCnt, SOCKET_SIZE);
+      result[i] += std::min(nTCnt, socketSize);
+      nTCnt -= std::min(nTCnt, socketSize);
     }
   }
   return result;
@@ -105,10 +105,10 @@ std::vector<size_t> cntSockets() {
 size_t socketIdByTID(size_t tId) {
   for (size_t j = 0; j < 2; j++) {
     for (size_t i = 0; i < SOCKETS_NUM; i++) {
-      if (tId < SOCKET_SIZE) {
+      if (tId < socketSize) {
         return i;
       }
-      tId -= SOCKET_SIZE;
+      tId -= socketSize;
     }
   }
   return -1;
@@ -117,10 +117,10 @@ size_t socketIdByTID(size_t tId) {
 size_t socketIdByQID(size_t qId) {
   for (size_t j = 0; j < 2; j++) {
     for (size_t i = 0; i < SOCKETS_NUM; i++) {
-      if (qId < SOCKET_SIZE * C) {
+      if (qId < socketSize * C) {
         return i;
       }
-      qId -= SOCKET_SIZE * C;
+      qId -= socketSize * C;
     }
   }
   return -1;
@@ -128,10 +128,10 @@ size_t socketIdByQID(size_t qId) {
 
 
 size_t mapQID(size_t socketId, size_t qId) {
-  if (qId < SOCKET_SIZE * C) {
-    return socketId * SOCKET_SIZE * C + qId;
+  if (qId < socketSize * C) {
+    return socketId * socketSize * C + qId;
   }
-  return socketId * SOCKET_SIZE * C + qId + (SOCKETS_NUM - 1) * SOCKET_SIZE * C;
+  return socketId * socketSize * C + qId + (SOCKETS_NUM - 1) * socketSize * C;
 }
 
 inline size_t rand_heap() {

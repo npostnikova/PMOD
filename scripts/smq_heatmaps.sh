@@ -22,7 +22,7 @@ generate_heatmaps () {
 }
 
 run_wl_n_times() {
-  for run in $(seq 0 $2); do
+  for run in $(seq 1 $2); do
     $MQ_ROOT/scripts/single_run/run_${algo}_${graph}.sh $1 $threads $3
   done
 }

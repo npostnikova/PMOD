@@ -1,5 +1,5 @@
 // #define MQ_NUMA
-#define SOCKET_SIZE 64
+#define SOCKET_SIZE 64u
 #define SOCKETS_NUM 2
 
 #ifndef GALOIS_MQ_NUMA_H

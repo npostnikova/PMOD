@@ -15,7 +15,7 @@ generate_heatmaps () {
     for ss in "${STEAL_SIZES[@]}"
       do
         name="slsmqhm_${p}_${ss}"
-        echo "typedef SkipListslsmq<UpdateRequest, Comparer, $p, $ss> $name;" >> $1
+        echo "typedef SkipListSMQ<UpdateRequest, Comparer, $p, $ss> $name;" >> $1
         echo "if (wl == \"$name\") RUN_WL($name);" >> $1
       done
   done

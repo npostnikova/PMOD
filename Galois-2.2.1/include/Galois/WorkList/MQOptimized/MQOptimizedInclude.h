@@ -5,6 +5,7 @@
 #include "MultiQueueProbLocal.h"
 #include "MultiQueueLocalProb.h"
 #include "MultiQueueLocalLocal.h"
+#include "MultiQueueProbProbNuma.h"
 #include "MultiQueueProbLocalNuma.h"
 
 #endif //GALOIS_MQOPTIMIZEDINCLUDE_H

@@ -581,17 +581,6 @@ struct AsyncAlgo {
     }
   };
 
-  struct ReadCoordsProcess {
-    AsyncAlgo* self;
-    Graph& graph;
-    ReadCoordsProcess(AsyncAlgo* s, Graph& g): self(s), graph(g) {
-      std::cout << "Active threads in ReadGraphProcess " << Galois::Runtime::activeThreads
-    }
-    void operator()(UpdateRequest& req, Galois::UserContext<UpdateRequest>& ctx) {
-      self->relaxNode(graph, req, ctx);
-    }
-  };
-
   struct ProcessWithBreaks {
     typedef int tt_needs_parallel_break;
 

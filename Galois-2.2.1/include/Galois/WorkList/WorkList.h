@@ -45,6 +45,7 @@
 #include "MQOptimized/MQOptimizedInclude.h"
 #include "AMQ_WP.h"
 #include "StealingMultiQueue.h"
+#include "StealingMultiQueueNuma.h"
 #include "AdaptiveStealingMultiQueue.h"
 
 namespace Galois {

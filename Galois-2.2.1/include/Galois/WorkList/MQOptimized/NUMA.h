@@ -83,5 +83,88 @@ inline size_t rand_heap() {
 
 #endif
 #if SOCKETS_NUM==4
+static const size_t NEIGH_WEIGHT = 2;
+static const size_t DIAG_WEIGHT = 1;
+static const size_t LOCAL_WEIGHT = LOCAL_NUMA_W * 2;
+static const size_t socketSize = SOCKET_SIZE;
+const size_t nodesCnt[SOCKETS_NUM] = cntSockets();
+
+size_t* cntSockets() {
+  static size_t result[SOCKETS_NUM] = { 0, 0, 0, 0 };
+  size_t nTCnt = nT;
+  for (size_t j = 0; j < 2; j++) {
+    for (size_t i = 0; i < SOCKETS_NUM && nTCnt > 0; i++) {
+      result[i] += std::min(nTCnt, SOCKET_SIZE);
+      nTCnt -= std::min(nTCnt, SOCKET_SIZE);
+    }
+  }
+  return result;
+}
+
+
+size_t socketIdByTID(size_t tId) {
+  for (size_t j = 0; j < 2; j++) {
+    for (size_t i = 0; i < SOCKETS_NUM; i++) {
+      if (tId < SOCKET_SIZE) {
+        return i;
+      }
+      tId -= SOCKET_SIZE;
+    }
+  }
+  return -1;
+}
+
+size_t socketIdByQID(size_t qId) {
+  for (size_t j = 0; j < 2; j++) {
+    for (size_t i = 0; i < SOCKETS_NUM; i++) {
+      if (qId < SOCKET_SIZE * C) {
+        return i;
+      }
+      qId -= SOCKET_SIZE * C;
+    }
+  }
+  return -1;
+}
+
+
+size_t mapQID(size_t socketId, size_t qId) {
+  if (qId < SOCKET_SIZE * C) {
+    return socketId * SOCKET_SIZE * C + qId;
+  }
+  return socketId * SOCKET_SIZE * C + qId + (SOCKETS_NUM - 1) * SOCKET_SIZE * C;
+}
+
+inline size_t rand_heap() {
+  static thread_local size_t tId = Galois::Runtime::LL::getTID();
+
+  size_t socketId = socketIdByTID(tId);
+  size_t localCnt = nodesCnt[socketId];
+  size_t neighId1 = (socketId + 1) % SOCKETS_NUM;
+  size_t neighId2 = (socketId + SOCKETS_NUM - 1) % SOCKETS_NUM;
+  size_t diagId = (socketId + 2) % SOCKETS_NUM;
+  size_t neighCnt = nodesCnt[neighId1]
+                  + nodesCnt[neighId2];
+  size_t diagCnt = nT - localCnt - neighCnt;
+  const size_t Q = localCnt * C * LOCAL_WEIGHT + neighCnt * C * NEIGH_WEIGHT + DIAG_WEIGHT * C * diagCnt;
+  size_t r = random() % Q;
+  if (r < localCnt * LOCAL_WEIGHT * C) {
+    // we are stealing from our node
+    auto qId = r / LOCAL_WEIGHT;
+    return mapQID(socketId, qId);
+  }
+  r -= localCnt * LOCAL_WEIGHT * C;
+  if (r < nodesCnt[neighId1] * NEIGH_WEIGHT * C) {
+    auto qId = r / NEIGH_WEIGHT;
+    return mapQID(neighId1, qId);
+  }
+  r -= nodesCnt[neighId1] * NEIGH_WEIGHT * C;
+  if (r < nodesCnt[neighId2] * NEIGH_WEIGHT * C) {
+    auto qId = r / NEIGH_WEIGHT;
+    return mapQID(neighId2, qId);
+  }
+  r -= nodesCnt[neighId2] * NEIGH_WEIGHT * C;
+  auto qId = r / DIAG_WEIGHT;
+  return mapQID(diagId, qId);
+}
 
 #endif

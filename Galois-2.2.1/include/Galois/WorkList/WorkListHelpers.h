@@ -2006,8 +2006,8 @@ public:
   }
 };
 
-template<typename T, class Comparer, typename StealProb, bool Concurrent = true,
-size_t StealBatchSize = 8>
+template<typename T, class Comparer, size_t StealProb,
+size_t StealBatchSize = 8, bool Concurrent = true>
 class SkipListSMQ {
   Comparer compare;
 
@@ -2030,18 +2030,18 @@ public:
 
   template<bool _concurrent>
   struct rethread {
-    typedef SkipListSMQ<T, Comparer, StealProb, _concurrent, StealBatchSize> type;
+    typedef SkipListSMQ<T, Comparer, StealProb, StealBatchSize, _concurrent> type;
   };
 
 
   bool push(const T& key) {
-    unsigned tid = Galois::Runtime::LL::getTID();
+    static thread_local unsigned tid = Galois::Runtime::LL::getTID();
     return heaps[tid].data.push(key);
   }
 
   template<typename _T>
   struct retype {
-    typedef SkipListSMQ<_T, Comparer, StealProb, Concurrent, StealBatchSize> type;
+    typedef SkipListSMQ<_T, Comparer, StealProb, StealBatchSize, Concurrent> type;
   };
 
   template<typename RangeTy>
@@ -2054,7 +2054,7 @@ public:
   int push(Iter b, Iter e) {
     int npush = 0;
     while (b != e) {
-      push(*b++);
+      if (push(*b++))
       npush++;
     }
     return npush;
@@ -2164,12 +2164,18 @@ public:
     }
 
     if (nQ > 1) {
-      size_t stealR = random() % StealProb::Q;
-      if (stealR < StealProb::P) {
+      size_t stealR = random() % StealProb;
+      if (stealR == 0) {
         auto randId = (tId + 1 + (random() % (nQ - 1))) % nQ;
+
+        SkipListNode<T> *localMin = heaps[tId].data.peek_pop();
+        SkipListNode<T> *randMin = heaps[randId].data.peek_pop();
         T res;
-        if (steal(val, randId)) {
-          return val;
+        if (randMin && (!localMin || (localMin
+        && localMin->key.prior() > randMin->key.prior()))) {
+          if (steal(val, randId)) {
+            return val;
+          }
         }
       }
     }

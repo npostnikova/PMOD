@@ -46,7 +46,7 @@ private:
   }
 
   const size_t C = 1;
-
+  const size_t nT = nQ;
 #include "MQOptimized/NUMA.h"
 
   //! Tries to steal from a random queue.

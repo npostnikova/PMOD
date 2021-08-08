@@ -89,7 +89,7 @@ static const size_t LOCAL_WEIGHT = LOCAL_NUMA_W * 2;
 static const size_t socketSize = SOCKET_SIZE;
 const std::vector<size_t> nodesCnt = cntSockets();
 
-size_t* cntSockets() {
+std::vector<size> cntSockets() {
   std::vector<size_t> result = { 0, 0, 0, 0 };
   size_t nTCnt = nT;
   for (size_t j = 0; j < 2; j++) {

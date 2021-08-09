@@ -50,10 +50,6 @@ size_t socketIdByQID(size_t qId) {
 
 
 size_t map1Node(size_t qId) {
-  if (qId == node1CntVal) {
-    // Out of bounds to get pushBuffer instead of a heap
-    return nQ;
-  }
   if (qId < socketSize * C) {
     return qId;
   }
@@ -61,10 +57,6 @@ size_t map1Node(size_t qId) {
 }
 
 size_t map2Node(size_t qId) {
-  if (qId == node2CntVal) {
-    // Out of bounds to get pushBuffer instead of a heap
-    return nQ;
-  }
   if (qId < socketSize * C) {
     return qId + socketSize * C;
   }
@@ -96,9 +88,9 @@ inline size_t rand_heap_with_local() {
   size_t isFirst = is1Node(tId);
   size_t localCnt = isFirst ? node1CntVal : node2CntVal;
   size_t otherCnt = nT - localCnt;
-  localCnt++; // Count push buffer as well.
-  const size_t Q = localCnt * LOCAL_NUMA_W * C + otherCnt * OTHER_W * C;
+  const size_t Q = localCnt * LOCAL_NUMA_W * C + otherCnt * OTHER_W * C + 1;
   const size_t r = random() % Q;
+  if (r + 1 == Q) return nQ; // push buffer
   if (r < localCnt * LOCAL_NUMA_W * C) {
     // we are stealing from our node
     auto qId = r / LOCAL_NUMA_W;

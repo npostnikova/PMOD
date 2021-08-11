@@ -187,4 +187,41 @@ inline size_t rand_heap() {
   return mapQID(diagId, qId);
 }
 
+inline size_t rand_heap_with_local() {
+  static thread_local size_t tId = Galois::Runtime::LL::getTID();
+
+  size_t socketId = socketIdByTID(tId);
+  size_t localCnt = nodesCnt[socketId];
+  size_t neighId1 = (socketId + 1) % SOCKETS_NUM;
+  size_t neighId2 = (socketId + SOCKETS_NUM - 1) % SOCKETS_NUM;
+  size_t diagId = (socketId + 2) % SOCKETS_NUM;
+  size_t neighCnt = nodesCnt[neighId1]
+                  + nodesCnt[neighId2];
+  size_t diagCnt = nT - localCnt - neighCnt;
+  const size_t Q = localCnt * C * LOCAL_WEIGHT + neighCnt * C * NEIGH_WEIGHT + DIAG_WEIGHT * C * diagCnt + 1;
+  size_t r = random() % Q;
+  if (r + 1 == Q) {
+    return nQ;
+  }
+  if (r < localCnt * LOCAL_WEIGHT * C) {
+    // we are stealing from our node
+    auto qId = r / LOCAL_WEIGHT;
+    return mapQID(socketId, qId);
+  }
+  r -= localCnt * LOCAL_WEIGHT * C;
+  if (r < nodesCnt[neighId1] * NEIGH_WEIGHT * C) {
+    auto qId = r / NEIGH_WEIGHT;
+    return mapQID(neighId1, qId);
+  }
+  r -= nodesCnt[neighId1] * NEIGH_WEIGHT * C;
+  if (r < nodesCnt[neighId2] * NEIGH_WEIGHT * C) {
+    auto qId = r / NEIGH_WEIGHT;
+    return mapQID(neighId2, qId);
+  }
+  r -= nodesCnt[neighId2] * NEIGH_WEIGHT * C;
+  auto qId = r / DIAG_WEIGHT;
+  return mapQID(diagId, qId);
+}
+
+
 #endif

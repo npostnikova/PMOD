@@ -1,6 +1,10 @@
 set -e
 
-t=256
+if [[ -z $1 ]]; then
+  echo "Provide number of threads"
+  exit 1
+fi
+t=$1
 pyscript=$MQ_ROOT/scripts/find_best_wl.py
 
 cd $MQ_ROOT/experiments/smq_heatmaps
@@ -15,7 +19,7 @@ for algo in bfs sssp; do
       echo ">>>>"
       echo "$algo $graph"
       wl_name=$( python3.7 $pyscript "../${algo}_${graph}_smq_$t" )
-      $MQ_ROOT/scripts/run_wl_n_times_all_threads.sh $algo $graph $wl_name 5 $mq
+      $MQ_ROOT/scripts/run_wl_n_times_all_threads.sh $algo $graph $wl_name 5 smq
   done
 done
 for algo in boruvka astar; do
@@ -24,7 +28,7 @@ for algo in boruvka astar; do
         echo ">>>>"
         echo "$algo $graph"
         wl_name=$( python3.7 $pyscript "../${algo}_${graph}_smq_$t" )
-        $MQ_ROOT/scripts/run_wl_n_times_all_threads.sh $algo $graph $wl_name 5 $mq
+        $MQ_ROOT/scripts/run_wl_n_times_all_threads.sh $algo $graph $wl_name 5 smq
     done
   done
 done

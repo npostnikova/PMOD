@@ -19,4 +19,4 @@ pagerank=$GALOIS_HOME/build/apps/pagerank/pagerank
 algo=astar
 graph=west
 eval coord=\$$"${graph}_coord"
-${!algo} ${!graph} -wl $1 -t $2 -resultFile $3 -coordFilename $coord -startNode 1 -destNode 5639706 -reportNode 5639706
+${!algo} ${!graph} -wl $1 -t $2 -delta 14 -resultFile $3 -coordFilename $coord -startNode 1 -destNode 5639706 -reportNode 5639706

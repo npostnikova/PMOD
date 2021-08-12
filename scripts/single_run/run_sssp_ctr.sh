@@ -18,4 +18,4 @@ pagerank=$GALOIS_HOME/build/apps/pagerank/pagerank
  
 algo=sssp
 graph=ctr
-${!algo} ${!graph} -wl $1 -t $2 -resultFile $3
+${!algo} ${!graph} -wl $1 -t $2 -resultFile $3 -delta 14

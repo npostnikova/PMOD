@@ -2259,7 +2259,7 @@ public:
     x ^= x << 5;
     return x;
   }
-
+  const size_t nT = nQ;
 #include "MQOptimized/NUMA.h"
 
   size_t generate_random() {

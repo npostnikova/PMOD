@@ -2199,6 +2199,136 @@ public:
 };
 
 
+template<typename T, class Comparer, size_t StealProb,
+size_t StealBatchSize = 8, bool Concurrent = true>
+class SkipListSMQNuma {
+  Comparer compare;
+
+private:
+  typedef LockFreeSkipList<Comparer, T> Heap;
+  std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<Heap>[]> heaps;
+  std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]> popBuffers;
+
+  const size_t nQ;
+
+
+public:
+
+  SkipListSMQNuma() : nQ(Galois::getActiveThreads()) {
+    heaps = std::make_unique<Galois::Runtime::LL::CacheLineStorage<Heap>[]>(nQ);
+    popBuffers = std::make_unique<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]>(nQ);
+
+  }
+  typedef T value_type;
+
+  template<bool _concurrent>
+  struct rethread {
+    typedef SkipListSMQNuma<T, Comparer, StealProb, StealBatchSize, _concurrent> type;
+  };
+
+
+  bool push(const T& key) {
+    static thread_local unsigned tid = Galois::Runtime::LL::getTID();
+    return heaps[tid].data.push(key);
+  }
+
+  template<typename _T>
+  struct retype {
+    typedef SkipListSMQNuma<_T, Comparer, StealProb, StealBatchSize, Concurrent> type;
+  };
+
+  template<typename RangeTy>
+  unsigned int push_initial(const RangeTy &range) {
+    auto rp = range.local_pair();
+    return push(rp.first, rp.second);
+  }
+
+  template<typename Iter>
+  int push(Iter b, Iter e) {
+    int npush = 0;
+    while (b != e) {
+      if (push(*b++))
+        npush++;
+    }
+    return npush;
+  }
+  uint32_t random() {
+    static thread_local uint32_t x = generate_random() + 1;
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    return x;
+  }
+
+#include "MQOptimized/NUMA.h"
+
+  size_t generate_random() {
+    const auto seed = std::chrono::system_clock::now().time_since_epoch().count();
+    static std::mt19937 generator(seed);
+    static thread_local std::uniform_int_distribution<size_t> distribution(0, 1024);
+    return distribution(generator);
+  }
+
+
+  bool steal(T& val, size_t randId) {
+    unsigned tId = Galois::Runtime::LL::getTID();
+    if (heaps[randId].data.try_pop(val)) {
+      T val2;
+      for (size_t i = 0; i < StealBatchSize - 1; i++) {
+        if (heaps[randId].data.try_pop(val2)) {
+          popBuffers[tId].data.push_back(val2);
+        } else {
+          break;
+        }
+      }
+      std::reverse(popBuffers[tId].data.begin(), popBuffers[tId].data.end());
+      return true;
+    }
+    return false;
+  }
+
+  Galois::optional<T> pop() {
+    Galois::optional<T> result;
+    T val;
+    unsigned tId = Galois::Runtime::LL::getTID();
+    if (!popBuffers[tId].data.empty()) {
+      auto res = popBuffers[tId].data.back();
+      popBuffers[tId].data.pop_back();
+      return res;
+    }
+
+    if (nQ > 1) {
+      size_t stealR = random() % StealProb;
+      if (stealR == 0) {
+        auto randId = (tId + 1 + (random() % (nQ - 1))) % nQ;
+
+        SkipListNode<T> *localMin = heaps[tId].data.peek_pop();
+        SkipListNode<T> *randMin = heaps[randId].data.peek_pop();
+        T res;
+        if (randMin && (!localMin || (localMin
+                                      && localMin->key.prior() > randMin->key.prior()))) {
+          if (steal(val, randId)) {
+            return val;
+          }
+        }
+      }
+    }
+    if (heaps[tId].data.try_pop(val))
+      return val;
+    if (nQ == 1) return result;
+    for (size_t i = 0; i < 4; i++) {
+      auto randId = rand_heap();
+      if (randId == tId) continue;
+      if (steal(val, randId)) {
+        return val;
+      }
+    }
+    return result;
+  }
+};
+
+
+
 template<typename T, class Comparer, size_t C, typename PushChange, bool Concurrent = true,
 size_t StealBatchSize = 8>
 class SkipListAMQ {

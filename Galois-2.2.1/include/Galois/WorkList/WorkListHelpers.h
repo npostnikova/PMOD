@@ -2259,6 +2259,7 @@ public:
     x ^= x << 5;
     return x;
   }
+  static const size_t C = 1;
   const size_t nT = nQ;
 #include "MQOptimized/NUMA.h"
 

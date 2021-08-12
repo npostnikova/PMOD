@@ -12,10 +12,10 @@ west_coord=$MQ_ROOT/datasets/USA-road-d.W.co
 
 bfs=$GALOIS_HOME/build/apps/bfs/bfs
 sssp=$GALOIS_HOME/build/apps/sssp/sssp
-boruvka=$GALOIS_HOME/build/apps/boruvka/boruvka-merge
+boruvka=$GALOIS_HOME/build/apps/boruvka/boruvka-mergeq
 astar=$GALOIS_HOME/build/apps/astar/astar
 pagerank=$GALOIS_HOME/build/apps/pagerank/pagerank
  
 algo=bfs
 graph=web
-${!algo} ${!graph} -wl $1 -t $2 -resultFile $3 -startNode 100 -reportNode 120
+${!algo} ${!graph} -wl $1 -t $2 -resultFile $3 -startNode 100 -reportNode 120 -delta 0

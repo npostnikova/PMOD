@@ -18,4 +18,4 @@ pagerank=$GALOIS_HOME/build/apps/pagerank/pagerank
  
 algo=bfs
 graph=twi
-${!algo} ${!graph} -wl $1 -t $2 -resultFile $3 -startNode 14 -reportNode 15
+${!algo} ${!graph} -wl $1 -t $2 -resultFile $3 -startNode 14 -reportNode 15 -delta 0

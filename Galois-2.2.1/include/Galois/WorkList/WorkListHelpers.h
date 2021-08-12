@@ -2200,7 +2200,7 @@ public:
 
 
 template<typename T, class Comparer, size_t StealProb,
-size_t StealBatchSize = 8, bool Concurrent = true>
+size_t StealBatchSize, size_t LOCAL_NUMA_W, bool Concurrent = true>
 class SkipListSMQNuma {
   Comparer compare;
 
@@ -2223,7 +2223,7 @@ public:
 
   template<bool _concurrent>
   struct rethread {
-    typedef SkipListSMQNuma<T, Comparer, StealProb, StealBatchSize, _concurrent> type;
+    typedef SkipListSMQNuma<T, Comparer, StealProb, StealBatchSize, LOCAL_NUMA_W, _concurrent> type;
   };
 
 
@@ -2234,7 +2234,7 @@ public:
 
   template<typename _T>
   struct retype {
-    typedef SkipListSMQNuma<_T, Comparer, StealProb, StealBatchSize, Concurrent> type;
+    typedef SkipListSMQNuma<_T, Comparer, StealProb, StealBatchSize, LOCAL_NUMA_W, Concurrent> type;
   };
 
   template<typename RangeTy>

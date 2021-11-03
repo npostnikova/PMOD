@@ -815,7 +815,7 @@ struct AsyncAlgo {
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<MQ2_PL_64_4>());
 
     typedef UpdateRequestIndexer<UpdateRequest> Indexer;
-#include "Galois/WorkList/kLSM_declarations.h"
+#include "Galois/WorkList/experiment_declarations.h"
 
   }
 };

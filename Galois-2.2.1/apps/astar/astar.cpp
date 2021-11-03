@@ -814,6 +814,9 @@ struct AsyncAlgo {
     if (worklistname == "mq2_pl_64_4" or worklistname == "mq2_pl_west_amd")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<MQ2_PL_64_4>());
 
+    typedef UpdateRequestIndexer<UpdateRequest> Indexer;
+#include "Galois/WorkList/kLSM_declarations.h"
+
   }
 };
 

@@ -732,6 +732,8 @@ struct AsyncAlgo {
     if (worklistname == "adap-smq")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<ASMQ>());
 
+    typedef UpdateRequestIndexer<UpdateRequest> Indexer;
+#include "Galois/WorkList/experiment_declarations.h"
   }
 };
 

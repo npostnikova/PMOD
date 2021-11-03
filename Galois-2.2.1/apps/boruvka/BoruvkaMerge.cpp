@@ -435,6 +435,7 @@ long long runBodyParallel() {
    Galois::StatTimer T;
    T.start();
 
+#define element_t UpdateRequest
 #define RUN_WL(WL) Galois::for_each_local(initial, process(), Galois::wl<WL>())
 #include "Experiments.h"
 #ifdef GALOIS_USE_EXP
@@ -572,6 +573,8 @@ long long runBodyParallel() {
   if (wl == "adap-smq")
     Galois::for_each_local(initial, process(), Galois::wl<ASMQ>());
 
+
+#include "Galois/WorkList/experiment_declarations.h"
 
 #endif
    T.stop();

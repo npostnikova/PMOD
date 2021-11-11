@@ -17,7 +17,6 @@ typename Compare = std::greater<int>,
 size_t D = 4,
 size_t STEAL_NUM = 8>
 struct StealDAryHeapHaate {
-
   typedef size_t index_t;
 
   std::vector<T> heap;
@@ -28,14 +27,7 @@ struct StealDAryHeapHaate {
   std::atomic<size_t> version;
 
   static T usedT;
-  size_t minsBegin = 0;
   Compare cmp;
-
-  size_t qInd;
-
-  void set_id(size_t id) {
-    qInd = id;
-  }
 
   StealDAryHeapHaate(): version(0) {
     for (size_t i = 0; i < STEAL_NUM; i++) {
@@ -114,18 +106,6 @@ struct StealDAryHeapHaate {
     return res;
   }
 
-  template <typename Indexer>
-  T extractMinLocally(Indexer const& indexer) {
-    auto minVal = heap[0];
-    remove_info(indexer, 0);
-    heap[0] = heap.back();
-    heap.pop_back();
-    if (heap.size() > 0) {
-      sift_down(indexer, 0);
-    }
-    return minVal;
-  }
-
   // When current min is stolen
   T updateMin() {
     if (heap.empty()) return usedT;
@@ -192,18 +172,6 @@ struct StealDAryHeapHaate {
     sift_up(index);
   }
 
-  template <typename Indexer>
-  void pushHelper(Indexer const& indexer, T const& val) {
-    index_t index = heap.size();
-    heap.push_back({val});
-    sift_up(indexer, index);
-  }
-
-  //! Push the element.
-  void push(T const& val) {
-    throw "aaa why is it called";
-  }
-
   template <typename Iter>
   int pushRange(Iter b, Iter e) {
     if (b == e)
@@ -223,83 +191,6 @@ struct StealDAryHeapHaate {
       writeMin(extractMinLocally());
     }
     return npush;
-  }
-
-  size_t inOurQueue = 0;
-  size_t inAnotherQueue = 0;
-  size_t notInQeues = 0;
-
-  template <typename Indexer, typename Iter>
-  int pushRange(Indexer const& indexer, Iter b, Iter e) {
-    if (b == e) return 0;
-
-    int npush = 0;
-
-    while (b != e) {
-      npush++;
-      auto position = indexer.get_pair(*b);
-      auto queue = position.first;
-      auto index = position.second;
-
-      if (queue != qInd) {
-        if (queue == -1) {
-          notInQeues++;
-        } else {
-          inAnotherQueue++;
-        }
-        pushHelper(indexer, *b++);
-      } else {
-        inOurQueue++;
-        if (cmp(heap[index], *b)) {
-          heap[index] = *b++;
-          sift_up(indexer, index);
-        }
-      }
-    }
-    return npush;
-  }
-
-
-  template <typename Indexer>
-  void push(Indexer const& indexer, T const& val) {
-    bool useless;
-    auto curMin = getMin(useless);
-
-    auto position = indexer.get_pair(val);
-    auto queue = position.first;
-    auto index = position.second;
-
-    if (queue != qInd) {
-      if (queue == -1) {
-        notInQeues++;
-      } else {
-        inAnotherQueue++;
-      }
-      if (!isUsed(curMin) && cmp(curMin, val)) {
-        auto exchanged = getMin(useless);// todo заглушка min.exchange(val, std::memory_order_acq_rel);
-        if (isUsed(exchanged)) return;
-        else pushHelper(indexer, exchanged);
-      } else {
-        pushHelper(indexer, val);
-        if (isUsed(curMin)) {
-          auto minFromHeap = extractMinLocally(indexer);
-          writeMin(minFromHeap);
-//          min.store(minFromHeap, std::memory_order_release);
-        }
-      }
-    } else {
-      inOurQueue++;
-      if (cmp(heap[index], val)) {
-        heap[index] = val;
-        sift_up(indexer, index);
-      }
-    }
-  }
-
-  //! Set that the element is not in the heap anymore.
-  template <typename Indexer>
-  void remove_info(Indexer const& indexer, index_t index) {
-    indexer.set_pair(heap[index], -1, 0);
   }
 
 
@@ -362,18 +253,6 @@ private:
     }
   }
 
-  template <typename Indexer>
-  void sift_down(Indexer const& indexer, index_t index) {
-    auto smallest_child = get_smallest_child(index);
-    while (smallest_child && cmp(heap[index], heap[smallest_child.get()])) {
-      swap(index, smallest_child.get());
-      set_position(indexer, index);
-      index = smallest_child.get();
-      smallest_child = get_smallest_child(index);
-    }
-    set_position(indexer, index);
-  }
-
   //! Sift up the element with provided index.
   index_t sift_up(index_t index) {
     Galois::optional<index_t> parent = get_parent(index);
@@ -385,27 +264,6 @@ private:
     }
     return index;
   }
-
-  template <typename Indexer>
-  index_t sift_up(Indexer const& indexer, index_t index) {
-    Galois::optional<index_t> parent = get_parent(index);
-
-    while (parent && cmp(heap[parent.get()], heap[index])) {
-      swap(index, parent.get());
-      set_position(indexer, index);
-      index = parent.get();
-      parent = get_parent(index);
-    }
-    set_position(indexer, index);
-    return index;
-  }
-
-  template <typename Indexer>
-  void set_position(Indexer const& indexer, index_t new_pos) {
-    indexer.set_pair(heap[new_pos], qInd, new_pos);
-  }
-
-
 
   void push_back(T const& val) {
     heap.push_back(val);
@@ -445,66 +303,8 @@ private:
     return distribution(generator);
   }
 
-  const size_t socketSize = 24;
-  size_t node1Cnt() {
-    size_t res = 0;
-    if (nQ > socketSize) {
-      res += socketSize;
-      if (socketSize * 2 < nQ) {
-        res += nQ - socketSize * 2;
-      }
-      return res;
-    } else {
-      return nQ;
-    }
-  }
-
-  size_t node2Cnt() {
-    return nQ - node1Cnt();
-  }
-
-  size_t is1Node(size_t tId) {
-    return tId < socketSize || (tId >= socketSize * 2 && tId < socketSize * 3);
-  }
-
-  size_t is2Node(size_t tId) {
-    return !is1Node(tId);
-  }
-
-
-  size_t map1Node(size_t qId) {
-    if (qId < socketSize) {
-      return qId;
-    }
-    return qId + socketSize;
-  }
-
-  size_t map2Node(size_t qId) {
-    if (qId < socketSize) {
-      return qId + socketSize;
-    }
-    return qId + socketSize * 2;
-  }
-
   inline size_t rand_heap() {
     return random() % nQ;
-//    static thread_local size_t tId = Galois::Runtime::LL::getTID();
-//    const size_t LOCAL_W = 2;
-//    const size_t OTHER_W = 1;
-//
-//    size_t isFirst = is1Node(tId);
-//    size_t localCnt = isFirst ? node1Cnt() : node2Cnt();
-//    size_t otherCnt = nQ - localCnt;
-//    const size_t Q = localCnt * LOCAL_W + otherCnt * OTHER_W;
-//    const size_t r = random() % Q;
-//    if (r < localCnt * LOCAL_W) {
-//      // we are stealing from our node
-//      auto qId = r / LOCAL_W;
-//      return isFirst ? map1Node(qId) : map2Node(qId);
-//    } else {
-//      auto qId = (r - localCnt * LOCAL_W) / OTHER_W;
-//      return isFirst ? map2Node(qId) : map1Node(qId);
-//    }
   }
 
   //! Tries to steal from a random queue.
@@ -557,9 +357,6 @@ public:
   StealingMultiQueue() : nQ(Galois::getActiveThreads()) {
     memset(reinterpret_cast<void*>(&Heap::usedT), 0xff, sizeof(Heap::usedT));
     heaps = std::make_unique<Galois::Runtime::LL::CacheLineStorage<Heap>[]>(nQ);
-    for (size_t i = 0; i < nQ; i++) {
-      heaps[i].data.set_id(i);
-    }
     stealBuffers = std::make_unique<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]>(nQ);
     std::cout << "Queues: " << nQ << std::endl;
   }

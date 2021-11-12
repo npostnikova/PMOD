@@ -61,22 +61,22 @@ private:
       auto randId = (tId + 1 + (random() % (nQ - 1))) % nQ;
       Heap *randH = &heaps[randId].data;
       auto randMin = randH->getMin(again);
-      if (randH->isUsed(randMin)) {
+      if (randH->isDummy(randMin)) {
         // steal is not successfull
       } else {
         bool useless = false;
         auto localMin = localH->getMin(useless);
-        if (localH->isUsed(localMin)) {
+        if (localH->isDummy(localMin)) {
           localMin = localH->updateMin();
         }
-        if (randH->isUsed(localMin) || compare(localMin, randMin)) {
+        if (randH->isDummy(localMin) || compare(localMin, randMin)) {
           auto stolen = randH->steal(again);
           if (stolen.is_initialized()) {
             auto &buffer = stealBuffers[tId].data;
             typename Heap::stealing_array_t vals = stolen.get();
             auto minId = localH->getMinId(vals);
             for (size_t i = 0; i < vals.size(); i++) {
-              if (i == minId || localH->isUsed(vals[i])) continue;
+              if (i == minId || localH->isDummy(vals[i])) continue;
               buffer.push_back(vals[i]);
             }
             std::sort(buffer.begin(), buffer.end(), [](T const &e1, T const &e2) { return e1.prior() > e2.prior(); });
@@ -88,7 +88,6 @@ private:
       return Galois::optional<T>();
   }
 
-
   void initStatistic(Galois::Statistic*& st, std::string const& name) {
     if (st == nullptr)
       st = new Galois::Statistic(name);
@@ -96,7 +95,7 @@ private:
 
 public:
   StealingMultiQueueNuma() : nQ(Galois::getActiveThreads()) {
-    memset(reinterpret_cast<void*>(&Heap::usedT), 0xff, sizeof(Heap::usedT));
+    memset(reinterpret_cast<void*>(&Heap::dummy), 0xff, sizeof(Heap::dummy));
     heaps = std::make_unique<Galois::Runtime::LL::CacheLineStorage<Heap>[]>(nQ);
     for (size_t i = 0; i < nQ; i++) {
       heaps[i].data.set_id(i);
@@ -111,7 +110,6 @@ public:
       st = nullptr;
     }
   }
-
 
   uint64_t getStatVal(Galois::Statistic* value) {
     uint64_t stat = 0;
@@ -162,7 +160,7 @@ public:
       Heap& local = heaps[tId].data;
       bool useless = false;
       auto curMin = local.getMin(useless);
-      if (Heap::isUsed(curMin) /**&& cmp(curMin, heap[0])*/ && !local.heap.empty()) { 
+      if (Heap::isDummy(curMin) /**&& cmp(curMin, heap[0])*/ && !local.heap.empty()) { 
         local.writeMin(local.extractMinLocally());
       }
       return val;
@@ -178,7 +176,7 @@ public:
       }
     }
     auto minVal = heaps[tId].data.extractMin();
-    if (!heaps[tId].data.isUsed(minVal)) {
+    if (!heaps[tId].data.isDummy(minVal)) {
       return minVal;
     }
     // our heap is empty

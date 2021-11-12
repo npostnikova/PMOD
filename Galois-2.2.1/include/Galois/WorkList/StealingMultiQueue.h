@@ -8,70 +8,84 @@
 namespace Galois {
 namespace WorkList {
 
-template<typename T = int,
-         typename Compare = std::greater<int>,
-         size_t D = 4,
-         size_t STEAL_NUM = 8>
-struct StealDAryHeapHaate {
-  typedef size_t index_t;
+/**
+ * Class-helper, consists of a sequential heap and
+ * a stealing buffer.
+ *
+ * @tparam T Type of the elements.
+ * @tparam Compare Elements comparator.
+ * @tparam STEAL_NUM Number of elements to steal at once.
+ * @tparam D Arity of the heap.
+ */
+template<typename T,
+         typename Compare,
+         size_t STEAL_NUM,
+         size_t D = 4>
+struct HeapWithStealBuffer {
   typedef boost::heap::d_ary_heap<T, boost::heap::arity<D>,
-  boost::heap::compare<Compare>> DAryHeap;
-
+          boost::heap::compare<Compare>> DAryHeap;
+  Compare compare;
+  // Represents a flag for empty cells.
+  static T dummy;
   DAryHeap heap;
-  std::array<T, STEAL_NUM> mins;
-  // version mod 2 = 0  -- element is stolen
-  // version mod 2 = 1  -- can steal
-  std::atomic<size_t> version;
 
-  static T usedT;
-  Compare cmp;
-
-  StealDAryHeapHaate(): version(0) {
-    for (size_t i = 0; i < STEAL_NUM; i++) {
-      mins[i] = usedT;
-    }
+  HeapWithStealBuffer(): version(0) {
+    stealBuffer.fill(dummy);
   }
 
-  static bool isUsed(T const& element) {
-    return element == usedT;
+  //! Checks whether the element is "null".
+  static bool isDummy(T const& element) {
+    return element == dummy;
   }
 
+  //! Gets current version of the stealing buffer.
   size_t getVersion() {
     return version.load(std::memory_order_acquire);
   }
 
-  T getMin(bool& failedBecauseOthers) {
+  //! Checks whether elements in the buffer are stolen.
+  size_t isBufferStolen() {
+    return getVersion() % 2 == 0;
+  }
+
+  //! Get min among elements that can be stolen.
+  //! Sets a flag to true, if operation failed because of a race.
+  T getBufferMin(bool& raceHappened) {
     auto v1 = getVersion();
     if (v1 % 2 == 0) {
-      return usedT;
+      return dummy;
     }
-    std::array<T, STEAL_NUM> vals = mins;
+    std::array<T, STEAL_NUM> vals = stealBuffer;
     auto v2 = getVersion();
     if (v1 == v2) {
       return vals[getMinId(vals)];
     }
-    failedBecauseOthers = true;
-    return usedT; // is the version was changed, somebody stole the element
+    // Somebody has stolen the elements.
+    raceHappened = true;
+    return dummy;
   }
 
-  Galois::optional<std::array<T, STEAL_NUM>> steal(bool& failedBecauseOthers) {
-    auto res = Galois::optional<std::array<T, STEAL_NUM>>();
+  //! Tries to steal the elements from the stealing buffer.
+  Galois::optional<std::array<T, STEAL_NUM>> trySteal(bool& raceHappened) {
+    auto emptyRes = Galois::optional<std::array<T, STEAL_NUM>>();
     auto v1 = getVersion();
     if (v1 % 2 == 0) {
-      return res;
+      // Already stolen.
+      return emptyRes;
     }
-    std::array<T, STEAL_NUM> val = mins;
+    std::array<T, STEAL_NUM> buffer = stealBuffer;
     if (version.compare_exchange_weak(v1, v1 + 1, std::memory_order_acq_rel)) {
-      return val;
+      return buffer;
     }
-    failedBecauseOthers = true;
-    return res;
+    // Another thread got ahead.
+    raceHappened = true;
+    return emptyRes;
   }
 
   using stealing_array_t = std::array<T, STEAL_NUM>;
 
   void writeMin(std::array<T, STEAL_NUM> const& val) {
-    mins = val;
+    stealBuffer = val;
     version.fetch_add(1, std::memory_order_acq_rel);
   }
 
@@ -85,7 +99,7 @@ struct StealDAryHeapHaate {
     std::array<T, STEAL_NUM> res;
     for (size_t i = 0; i < STEAL_NUM; i++) {
       if (heap.empty()) {
-        res[i] = usedT;
+        res[i] = dummy;
         continue;
       }
       res[i] = extractOneMinLocally();
@@ -95,7 +109,7 @@ struct StealDAryHeapHaate {
 
   // When current min is stolen
   T updateMin() {
-    if (heap.empty()) return usedT;
+    if (heap.empty()) return dummy;
     auto val = extractMinLocally();
     writeMin(val);
     return val[getMinId(val)];
@@ -104,7 +118,7 @@ struct StealDAryHeapHaate {
   size_t getMinId(stealing_array_t const& val) {
     size_t id = 0;
     for (size_t i = 1; i < STEAL_NUM; i++) {
-      if ((cmp(val[id], val[i]) && !isUsed(val[i]))|| isUsed(val[id]))
+      if ((compare(val[id], val[i]) && !isDummy(val[i]))|| isDummy(val[id]))
         id = i;
     }
     return id;
@@ -114,7 +128,7 @@ struct StealDAryHeapHaate {
   T extractMin() {
     bool useless = false;
     if (heap.size() > 0) {
-      auto stolen = steal(useless);
+      auto stolen = trySteal(useless);
       if (!stolen.is_initialized()) {
         auto res = extractOneMinLocally();
         if (heap.size() > 0) {
@@ -125,7 +139,7 @@ struct StealDAryHeapHaate {
         auto stolenVal = stolen.get();
         auto firstMinId = getMinId(stolenVal);
         auto extracted = extractOneMinLocally();
-        if (cmp(extracted, stolenVal[firstMinId])) {
+        if (compare(extracted, stolenVal[firstMinId])) {
           auto res = stolenVal[firstMinId];
           stolenVal[firstMinId] = extracted;
           writeMin(stolenVal);
@@ -136,24 +150,20 @@ struct StealDAryHeapHaate {
       }
     } else {
       // No elements in the heap, just take min if we can
-      auto stolen = steal(useless);
+      auto stolen = trySteal(useless);
       if (!stolen.is_initialized()) {
-        return usedT;
+        return dummy;
       }
       // todo it's not cool
       auto id = getMinId(stolen.get());
       for (size_t i = 0; i < STEAL_NUM; i++) {
         if (id == i) continue;
-        if (!isUsed(stolen.get()[i])) {
-          pushHelper(stolen.get()[i]);
+        if (!isDummy(stolen.get()[i])) {
+          heap.push(stolen.get()[i]);
         }
       }
       return stolen.get()[id];
     }
-  }
-
-  void pushHelper(T const& val) {
-    heap.push(val);
   }
 
   template <typename Iter>
@@ -164,29 +174,40 @@ struct StealDAryHeapHaate {
 
     while (b != e) {
       npush++;
-      pushHelper(*b++);
+      heap.push(*b++);
     }
     bool bl;
-    auto curMin = getMin(bl);
-    if (isUsed(curMin) /**&& cmp(curMin, heap[0])*/ && !heap.empty()) { // todo i don't want to do it now
+    auto curMin = getBufferMin(bl);
+    if (isDummy(curMin) /**&& compare(curMin, heap[0])*/ && !heap.empty()) { // todo i don't want to do it now
       assert(getVersion() % 2 == 0); // should be stolen
       writeMin(extractMinLocally());
     }
     return npush;
   }
+
+private:
+  std::array<T, STEAL_NUM> stealBuffer;
+  // Represents epoch & stolen flag
+  // version mod 2 = 0  -- element is stolen
+  // version mod 2 = 1  -- can steal
+  std::atomic<size_t> version;
 };
 
+template<typename T,
+         typename Compare,
+         size_t STEAL_NUM,
+         size_t D>
+T HeapWithStealBuffer<T, Compare, STEAL_NUM, D>::dummy;
 
 template<typename T,
          typename Comparer,
          size_t StealProb = 8,
          size_t StealBatchSize = 8,
-         bool Concurrent = true,
-         typename Container = StealDAryHeapHaate<T, Comparer, 4, StealBatchSize>
+         bool Concurrent = true
 >
 class StealingMultiQueue {
 private:
-  typedef Container Heap;
+  typedef HeapWithStealBuffer<T, Comparer, StealBatchSize, 4> Heap;
   std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<Heap>[]> heaps;
   std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]> stealBuffers;
   Comparer compare;
@@ -208,7 +229,7 @@ private:
     return distribution(generator);
   }
 
-  inline size_t rand_heap() {
+  size_t rand_heap() {
     return random() % nQ;
   }
 
@@ -224,23 +245,23 @@ private:
       // we try to steal
       auto randId = (tId + 1 + (random() % (nQ - 1))) % nQ;
       Heap *randH = &heaps[randId].data;
-      auto randMin = randH->getMin(again);
-      if (randH->isUsed(randMin)) {
-        // steal is not successfull
+      auto randMin = randH->getBufferMin(again);
+      if (randH->isDummy(randMin)) {
+        // steal is not successful
       } else {
         bool useless = false;
-        auto localMin = localH->getMin(useless);
-        if (localH->isUsed(localMin)) {
+        auto localMin = localH->getBufferMin(useless);
+        if (localH->isDummy(localMin)) {
           localMin = localH->updateMin();
         }
-        if (randH->isUsed(localMin) || compare(localMin, randMin)) {
-          auto stolen = randH->steal(again);
+        if (randH->isDummy(localMin) || compare(localMin, randMin)) {
+          auto stolen = randH->trySteal(again);
           if (stolen.is_initialized()) {
             auto &buffer = stealBuffers[tId].data;
             typename Heap::stealing_array_t vals = stolen.get();
             auto minId = localH->getMinId(vals);
             for (size_t i = 0; i < vals.size(); i++) {
-              if (i == minId || localH->isUsed(vals[i])) continue;
+              if (i == minId || localH->isDummy(vals[i])) continue;
               buffer.push_back(vals[i]);
             }
             std::sort(buffer.begin(), buffer.end(), [](T const &e1, T const &e2) { return e1.prior() > e2.prior(); });
@@ -249,35 +270,14 @@ private:
         }
       }
     }
-      return Galois::optional<T>();
-  }
-
-
-  void initStatistic(Galois::Statistic*& st, std::string const& name) {
-    if (st == nullptr)
-      st = new Galois::Statistic(name);
+    return Galois::optional<T>();
   }
 
 public:
   StealingMultiQueue() : nQ(Galois::getActiveThreads()) {
-    memset(reinterpret_cast<void*>(&Heap::usedT), 0xff, sizeof(Heap::usedT));
+    memset(reinterpret_cast<void*>(&Heap::dummy), 0xff, sizeof(Heap::dummy));
     heaps = std::make_unique<Galois::Runtime::LL::CacheLineStorage<Heap>[]>(nQ);
     stealBuffers = std::make_unique<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]>(nQ);
-    std::cout << "Queues: " << nQ << std::endl;
-  }
-
-  void deleteStatistic(Galois::Statistic*& st) {
-    if (st != nullptr) {
-      delete st;
-      st = nullptr;
-    }
-  }
-
-  uint64_t getStatVal(Galois::Statistic* value) {
-    uint64_t stat = 0;
-    for (unsigned x = 0; x < Galois::Runtime::activeThreads; ++x)
-      stat += value->getValue(x);
-    return stat;
   }
 
   typedef T value_type;
@@ -285,13 +285,13 @@ public:
   //! Change the concurrency flag.
   template<bool _concurrent>
   struct rethread {
-    typedef StealingMultiQueue<T, Comparer, StealProb, StealBatchSize, _concurrent, Container> type;
+    typedef StealingMultiQueue<T, Comparer, StealProb, StealBatchSize, _concurrent> type;
   };
 
   //! Change the type the worklist holds.
   template<typename _T>
   struct retype {
-    typedef StealingMultiQueue<_T, Comparer, StealProb, StealBatchSize, Concurrent, Container> type;
+    typedef StealingMultiQueue<_T, Comparer, StealProb, StealBatchSize, Concurrent> type;
   };
 
   template<typename RangeTy>
@@ -300,14 +300,9 @@ public:
     return push(rp.first, rp.second);
   }
 
-  bool push(const T& key) {
-    std::cerr << "Shouldn't be called" << std::endl;
-    return false;
-  }
-
   template<typename Iter>
   int push(Iter b, Iter e) {
-    static thread_local size_t tId = Galois::Runtime::LL::getTID(); // todo bounds? can be changed?
+    static thread_local size_t tId = Galois::Runtime::LL::getTID();
     Heap* heap = &heaps[tId].data;
     return heap->pushRange(b, e);
   }
@@ -321,13 +316,13 @@ public:
       buffer.pop_back();
       Heap& local = heaps[tId].data;
       bool useless = false;
-      auto curMin = local.getMin(useless);
-      if (Heap::isUsed(curMin) /**&& cmp(curMin, heap[0])*/ && !local.heap.empty()) { // todo i don't want to do it now
+      auto curMin = local.getBufferMin(useless);
+      if (Heap::isDummy(curMin) /**&& compare(curMin, heap[0])*/ && !local.heap.empty()) { // todo i don't want to do it now
         local.writeMin(local.extractMinLocally());
       }
       return val;
     }
-    Galois::optional<T> result;
+    Galois::optional<T> emptyResult;
 
     if (nQ > 1) {
       size_t change = random() % StealProb;
@@ -338,28 +333,17 @@ public:
       }
     }
     auto minVal = heaps[tId].data.extractMin();
-    if (!heaps[tId].data.isUsed(minVal)) {
+    if (!heaps[tId].data.isDummy(minVal)) {
       return minVal;
     }
-    // our heap is empty
-    if (nQ == 1)  { // nobody to steal from
-      return result;
-    }
-
-    auto el = trySteal();
-    if (el.is_initialized()) return el;
-    return result;
+    // Our heap is empty
+    return nQ == 1 ? emptyResult : trySteal();
   }
 };
 
+GALOIS_WLCOMPILECHECK(StealingMultiQueue)
 
-template<typename T,
-typename Compare,
-size_t D,
-size_t STEAL_NUM>
-T StealDAryHeapHaate<T, Compare, D, STEAL_NUM>::usedT;
-
-}
-}
+}  // namespace WorkList
+}  // namespace Galois
 
 #endif //GALOIS_STEALINGMULTIQUEUE_H

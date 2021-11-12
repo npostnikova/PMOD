@@ -18,12 +18,11 @@ typename Comparer,
 size_t StealProb,
 size_t StealBatchSize,
 size_t LOCAL_NUMA_W,
-bool Concurrent = true,
-typename Container = StealDAryHeapHaate<T, Comparer, 4, StealBatchSize>
+bool Concurrent = true
 >
 class StealingMultiQueueNuma {
 private:
-  typedef Container Heap;
+  typedef HeapWithStealBuffer<T, Comparer, StealBatchSize, 4> Heap;
   std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<Heap>[]> heaps;
   std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]> stealBuffers;
   Comparer compare;
@@ -126,13 +125,13 @@ public:
   //! Change the concurrency flag.
   template<bool _concurrent>
   struct rethread {
-    typedef StealingMultiQueueNuma<T, Comparer, StealProb, StealBatchSize, LOCAL_NUMA_W, _concurrent, Container> type;
+    typedef StealingMultiQueueNuma<T, Comparer, StealProb, StealBatchSize, LOCAL_NUMA_W, _concurrent> type;
   };
 
   //! Change the type the worklist holds.
   template<typename _T>
   struct retype {
-    typedef StealingMultiQueueNuma<_T, Comparer, StealProb, StealBatchSize, LOCAL_NUMA_W, Concurrent, Container> type;
+    typedef StealingMultiQueueNuma<_T, Comparer, StealProb, StealBatchSize, LOCAL_NUMA_W, Concurrent> type;
   };
 
   template<typename RangeTy>

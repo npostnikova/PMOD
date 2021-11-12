@@ -5,22 +5,19 @@
 #include <cstdlib>
 #include <vector>
 
-#include "StealingQueue.h"
-
-
 namespace Galois {
 namespace WorkList {
 
-
 template<typename T = int,
-typename Compare = std::greater<int>,
-size_t D = 4,
-size_t STEAL_NUM = 8>
+         typename Compare = std::greater<int>,
+         size_t D = 4,
+         size_t STEAL_NUM = 8>
 struct StealDAryHeapHaate {
   typedef size_t index_t;
+  typedef boost::heap::d_ary_heap<T, boost::heap::arity<D>,
+  boost::heap::compare<Compare>> DAryHeap;
 
-  std::vector<T> heap;
-
+  DAryHeap heap;
   std::array<T, STEAL_NUM> mins;
   // version mod 2 = 0  -- element is stolen
   // version mod 2 = 1  -- can steal
@@ -78,15 +75,10 @@ struct StealDAryHeapHaate {
     version.fetch_add(1, std::memory_order_acq_rel);
   }
 
-
   T extractOneMinLocally() {
-    auto res = heap[0];
-    heap[0] = heap.back();
-    heap.pop_back();
-    if (heap.size() > 0) {
-      sift_down(0);
-    }
-    return res;
+    T result = heap.top();
+    heap.pop();
+    return result;
   }
 
   std::array<T, STEAL_NUM> extractMinLocally() {
@@ -96,12 +88,7 @@ struct StealDAryHeapHaate {
         res[i] = usedT;
         continue;
       }
-      res[i] = heap[0];
-      heap[0] = heap.back();
-      heap.pop_back();
-      if (heap.size() > 0) {
-        sift_down(0);
-      }
+      res[i] = extractOneMinLocally();
     }
     return res;
   }
@@ -122,7 +109,6 @@ struct StealDAryHeapHaate {
     }
     return id;
   }
-
 
 
   T extractMin() {
@@ -167,23 +153,19 @@ struct StealDAryHeapHaate {
   }
 
   void pushHelper(T const& val) {
-    index_t index = heap.size();
-    heap.push_back({val});
-    sift_up(index);
+    heap.push(val);
   }
 
   template <typename Iter>
   int pushRange(Iter b, Iter e) {
     if (b == e)
       return 0;
-
     int npush = 0;
 
     while (b != e) {
       npush++;
       pushHelper(*b++);
     }
-
     bool bl;
     auto curMin = getMin(bl);
     if (isUsed(curMin) /**&& cmp(curMin, heap[0])*/ && !heap.empty()) { // todo i don't want to do it now
@@ -192,92 +174,15 @@ struct StealDAryHeapHaate {
     }
     return npush;
   }
-
-
-  void build() {
-    // D * index + 1 is the first child
-    for (size_t i = 0; is_valid_index(D * i + 1); i++) {
-      sift_down(i);
-    }
-  }
-
-private:
-
-  void swap(index_t  i, index_t j) {
-    T t = heap[i];
-    heap[i] = heap[j];
-    heap[j] = t;
-  }
-
-  //! Check whether the index of the root passed.
-  bool is_root(index_t index) {
-    return index == 0;
-  }
-
-  //! Check whether the index is not out of bounds.
-  bool is_valid_index(index_t index) {
-    return index >= 0 && index < heap.size();
-  }
-
-  //! Get index of the parent.
-  Galois::optional<index_t> get_parent(index_t index) {
-    if (!is_root(index) && is_valid_index(index)) {
-      return (index - 1) / D;
-    }
-    return Galois::optional<index_t>();
-  }
-
-  //! Get index of the smallest (due `Comparator`) child.
-  Galois::optional<index_t> get_smallest_child(index_t index) {
-    if (!is_valid_index(D * index + 1)) {
-      return Galois::optional<index_t>();
-    }
-    index_t smallest = D * index + 1;
-    for (size_t k = 2; k <= D; k++) {
-      index_t k_child = D * index + k;
-      if (!is_valid_index(k_child))
-        break;
-      if (cmp(heap[smallest], heap[k_child]))
-        smallest = k_child;
-    }
-    return smallest;
-  }
-
-  //! Sift down without decrease key info update.
-  void sift_down(index_t index) {
-    auto smallest_child = get_smallest_child(index);
-    while (smallest_child && cmp(heap[index], heap[smallest_child.get()])) {
-      swap(index, smallest_child.get());
-      index = smallest_child.get();
-      smallest_child = get_smallest_child(index);
-    }
-  }
-
-  //! Sift up the element with provided index.
-  index_t sift_up(index_t index) {
-    Galois::optional<index_t> parent = get_parent(index);
-
-    while (parent && cmp(heap[parent.get()], heap[index])) {
-      swap(index, parent.get());
-      index = parent.get();
-      parent = get_parent(index);
-    }
-    return index;
-  }
-
-  void push_back(T const& val) {
-    heap.push_back(val);
-  }
 };
 
 
-
 template<typename T,
-typename Comparer,
-size_t StealProb = 8,
-size_t StealBatchSize = 8,
-bool Concurrent = true,
-typename Container = StealDAryHeapHaate<T, Comparer, 4, StealBatchSize>
+         typename Comparer,
+         size_t StealProb = 8,
+         size_t StealBatchSize = 8,
+         bool Concurrent = true,
+         typename Container = StealDAryHeapHaate<T, Comparer, 4, StealBatchSize>
 >
 class StealingMultiQueue {
 private:
@@ -367,7 +272,6 @@ public:
       st = nullptr;
     }
   }
-
 
   uint64_t getStatVal(Galois::Statistic* value) {
     uint64_t stat = 0;

@@ -149,43 +149,25 @@ public:
     return val[getMinId(val)];
   }
 
-  T extractMin() {
-    bool useless = false;
-    if (heap.size() > 0) {
-      auto stolen = trySteal(useless);
-      if (!stolen.is_initialized()) {
-        auto res = extractOneMinLocally();
-        fillBuffer();
-        return res;
-      } else {
-        auto stolenVal = stolen.get();
-        auto firstMinId = getMinId(stolenVal);
-        auto extracted = extractOneMinLocally();
-        if (compare(extracted, stolenVal[firstMinId])) {
-          auto res = stolenVal[firstMinId];
-          stolenVal[firstMinId] = extracted;
-          writeMin(stolenVal);
-          return res;
-        }
-        writeMin(stolenVal);
-        return extracted;
-      }
-    } else {
-      // No elements in the heap, just take min if we can
-      auto stolen = trySteal(useless);
-      if (!stolen.is_initialized()) {
-        return dummy;
-      }
-      // todo it's not cool
-      auto id = getMinId(stolen.get());
-      for (size_t i = 0; i < STEAL_NUM; i++) {
-        if (id == i) continue;
-        if (!isDummy(stolen.get()[i])) {
-          push(stolen.get()[i]);
-        }
-      }
-      return stolen.get()[id];
+  //! Extract min from the structure: both the buffer and the heap
+  //! are considered. Called from the owner-thread.
+  Galois::optional<T> extractMin() {
+    if (heap.empty()) {
+      // Only check the steal buffer
+      return tryStealLocally();
     }
+    bool raceFlag = false; // useless now
+    auto bufferMin = getBufferMin(raceFlag);
+    if (!isDummy(bufferMin) && compare(heap[0], bufferMin)) {
+      auto stolen = tryStealLocally();
+      if (stolen.is_initialized()) {
+        fillBuffer();
+        return stolen;
+      }
+    }
+    auto localMin = extractOneMinLocally();
+    if (isDummy(bufferMin)) fillBuffer();
+    return localMin;
   }
 
   template <typename Iter>
@@ -212,6 +194,21 @@ public:
   }
 
 private:
+  //! Tries to steal elements from local buffer.
+  //! Return minimum among stolen elements.
+  Galois::optional<T> tryStealLocally() {
+    bool raceFlag = false; // useless now
+    auto stolen = trySteal(raceFlag);
+    if (stolen.is_initialized()) {
+      auto elements = stolen.get();
+      size_t id = getMinId(elements);
+      for (size_t i = 1; i < STEAL_NUM; i++) {
+        if (id != i && !isDummy(elements[i])) push(elements[i]);
+      }
+      return elements[id];
+    }
+    return Galois::optional<T>();
+  }
 
   ///////////////////////// HEAP /////////////////////////
   void swap(index_t  i, index_t j) {
@@ -419,9 +416,8 @@ public:
       }
     }
     auto minVal = heaps[tId].data.extractMin();
-    if (!heaps[tId].data.isDummy(minVal)) {
-      return minVal;
-    }
+    if (minVal.is_initialized()) return minVal;
+
     // Our heap is empty
     return nQ == 1 ? emptyResult : trySteal();
   }

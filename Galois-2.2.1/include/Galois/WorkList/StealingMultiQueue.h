@@ -22,15 +22,25 @@ template<typename T,
          size_t STEAL_NUM,
          size_t D = 4>
 struct HeapWithStealBuffer {
-  typedef boost::heap::d_ary_heap<T, boost::heap::arity<D>,
-          boost::heap::compare<Compare>> DAryHeap;
-  Compare compare;
+  typedef size_t index_t;
+  // TODO: make private
+  // Local heap.
+  std::vector<T> heap;
+  // The whole buffer is stolen at once.
+  std::array<T, STEAL_NUM> stealBuffer;
+  // Represents epoch & stolen flag
+  // version mod 2 = 0  -- element is stolen
+  // version mod 2 = 1  -- can steal
+  std::atomic<size_t> version;
+public:
   // Represents a flag for empty cells.
   static T dummy;
-  DAryHeap heap;
+  Compare compare;
 
   HeapWithStealBuffer(): version(0) {
-    stealBuffer.fill(dummy);
+    for (size_t i = 0; i < STEAL_NUM; i++) {
+      stealBuffer[i] = dummy;
+    }
   }
 
   //! Checks whether the element is "null".
@@ -65,6 +75,20 @@ struct HeapWithStealBuffer {
     return dummy;
   }
 
+  //! Fills the steal buffer.
+  //! Called when the elements from the previous epoch are empty.
+  T fillBuffer() {
+    if (heap.empty()) return dummy;
+    std::array<T, STEAL_NUM> elements;
+    elements.fill(dummy);
+    for (size_t i = 0; i < STEAL_NUM && !heap.empty(); i++) {
+      elements[i] = extractOneMinLocally();
+    }
+    stealBuffer = elements;
+    version.fetch_add(1, std::memory_order_acq_rel);
+    return elements[0];
+  }
+
   //! Tries to steal the elements from the stealing buffer.
   Galois::optional<std::array<T, STEAL_NUM>> trySteal(bool& raceHappened) {
     auto emptyRes = Galois::optional<std::array<T, STEAL_NUM>>();
@@ -90,9 +114,13 @@ struct HeapWithStealBuffer {
   }
 
   T extractOneMinLocally() {
-    T result = heap.top();
-    heap.pop();
-    return result;
+    auto res = heap[0];
+    heap[0] = heap.back();
+    heap.pop_back();
+    if (heap.size() > 0) {
+      sift_down(0);
+    }
+    return res;
   }
 
   std::array<T, STEAL_NUM> extractMinLocally() {
@@ -114,16 +142,6 @@ struct HeapWithStealBuffer {
     writeMin(val);
     return val[getMinId(val)];
   }
-
-  size_t getMinId(stealing_array_t const& val) {
-    size_t id = 0;
-    for (size_t i = 1; i < STEAL_NUM; i++) {
-      if ((compare(val[id], val[i]) && !isDummy(val[i]))|| isDummy(val[id]))
-        id = i;
-    }
-    return id;
-  }
-
 
   T extractMin() {
     bool useless = false;
@@ -159,7 +177,7 @@ struct HeapWithStealBuffer {
       for (size_t i = 0; i < STEAL_NUM; i++) {
         if (id == i) continue;
         if (!isDummy(stolen.get()[i])) {
-          heap.push(stolen.get()[i]);
+          push(stolen.get()[i]);
         }
       }
       return stolen.get()[id];
@@ -170,11 +188,12 @@ struct HeapWithStealBuffer {
   int pushRange(Iter b, Iter e) {
     if (b == e)
       return 0;
+
     int npush = 0;
 
     while (b != e) {
       npush++;
-      heap.push(*b++);
+      push(*b++);
     }
     bool bl;
     auto curMin = getBufferMin(bl);
@@ -185,12 +204,85 @@ struct HeapWithStealBuffer {
     return npush;
   }
 
+  size_t getMinId(stealing_array_t const& val) {
+    size_t id = 0;
+    for (size_t i = 1; i < STEAL_NUM; i++) {
+      if ((compare(val[id], val[i]) && !isDummy(val[i])) || isDummy(val[id]))
+        id = i;
+    }
+    return id;
+  }
+
 private:
-  std::array<T, STEAL_NUM> stealBuffer;
-  // Represents epoch & stolen flag
-  // version mod 2 = 0  -- element is stolen
-  // version mod 2 = 1  -- can steal
-  std::atomic<size_t> version;
+
+  ///////////////////////// HEAP /////////////////////////
+  void swap(index_t  i, index_t j) {
+    T t = heap[i];
+    heap[i] = heap[j];
+    heap[j] = t;
+  }
+
+  //! Check whether the index of the root passed.
+  bool is_root(index_t index) {
+    return index == 0;
+  }
+
+  //! Check whether the index is not out of bounds.
+  bool is_valid_index(index_t index) {
+    return index >= 0 && index < heap.size();
+  }
+
+  //! Get index of the parent.
+  Galois::optional<index_t> get_parent(index_t index) {
+    if (!is_root(index) && is_valid_index(index)) {
+      return (index - 1) / D;
+    }
+    return Galois::optional<index_t>();
+  }
+
+  //! Get index of the smallest (due `Comparator`) child.
+  Galois::optional<index_t> get_smallest_child(index_t index) {
+    if (!is_valid_index(D * index + 1)) {
+      return Galois::optional<index_t>();
+    }
+    index_t smallest = D * index + 1;
+    for (size_t k = 2; k <= D; k++) {
+      index_t k_child = D * index + k;
+      if (!is_valid_index(k_child))
+        break;
+      if (compare(heap[smallest], heap[k_child]))
+        smallest = k_child;
+    }
+    return smallest;
+  }
+
+  //! Sift down without decrease key info update.
+  void sift_down(index_t index) {
+    auto smallest_child = get_smallest_child(index);
+    while (smallest_child && compare(heap[index], heap[smallest_child.get()])) {
+      swap(index, smallest_child.get());
+      index = smallest_child.get();
+      smallest_child = get_smallest_child(index);
+    }
+  }
+
+  //! Sift up the element with provided index.
+  index_t sift_up(index_t index) {
+    Galois::optional<index_t> parent = get_parent(index);
+
+    while (parent && compare(heap[parent.get()], heap[index])) {
+      swap(index, parent.get());
+      index = parent.get();
+      parent = get_parent(index);
+    }
+    return index;
+  }
+
+  void push(T const& val) {
+    index_t index = heap.size();
+    heap.push_back({val});
+    sift_up(index);
+  }
 };
 
 template<typename T,
@@ -308,7 +400,7 @@ public:
   }
 
   Galois::optional<T> pop() {
-    static thread_local size_t tId = Galois::Runtime::LL::getTID(); // todo bounds? can be changed?
+    static thread_local size_t tId = Galois::Runtime::LL::getTID();
 
     auto& buffer = stealBuffers[tId].data;
     if (!buffer.empty()) {

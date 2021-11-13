@@ -11,6 +11,7 @@ sudo apt install cmake -y
 sudo apt install libnuma-dev -y
 sudo apt install libpthread-stubs0-dev -y
 sudo apt install libboost-all-dev -y
+sudo apt install python3.8 -y
 sudo apt update
 
 

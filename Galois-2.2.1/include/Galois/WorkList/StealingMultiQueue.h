@@ -57,6 +57,12 @@ public:
   size_t isBufferStolen() {
     return getVersion() % 2 == 0;
   }
+  
+  void fillBufferIfStolen() {
+    if (isBufferStolen()) {
+      fillBuffer();
+    }
+  }
 
   //! Get min among elements that can be stolen.
   //! Sets a flag to true, if operation failed because of a race.
@@ -149,9 +155,7 @@ public:
       auto stolen = trySteal(useless);
       if (!stolen.is_initialized()) {
         auto res = extractOneMinLocally();
-        if (heap.size() > 0) {
-          writeMin(extractMinLocally());
-        }
+        fillBuffer();
         return res;
       } else {
         auto stolenVal = stolen.get();
@@ -188,19 +192,13 @@ public:
   int pushRange(Iter b, Iter e) {
     if (b == e)
       return 0;
-
     int npush = 0;
 
     while (b != e) {
       npush++;
       push(*b++);
     }
-    bool bl;
-    auto curMin = getBufferMin(bl);
-    if (isDummy(curMin) /**&& compare(curMin, heap[0])*/ && !heap.empty()) { // todo i don't want to do it now
-      assert(getVersion() % 2 == 0); // should be stolen
-      writeMin(extractMinLocally());
-    }
+    fillBufferIfStolen();
     return npush;
   }
 
@@ -407,11 +405,7 @@ public:
       auto val = buffer.back();
       buffer.pop_back();
       Heap& local = heaps[tId].data;
-      bool useless = false;
-      auto curMin = local.getBufferMin(useless);
-      if (Heap::isDummy(curMin) /**&& compare(curMin, heap[0])*/ && !local.heap.empty()) { // todo i don't want to do it now
-        local.writeMin(local.extractMinLocally());
-      }
+      local.fillBufferIfStolen();
       return val;
     }
     Galois::optional<T> emptyResult;

@@ -1064,20 +1064,14 @@ private:
 
   //! Thread local random.
   uint32_t random() {
-    static thread_local uint32_t x = generate_random() + 1;
+    static thread_local uint32_t x =
+        std::chrono::system_clock::now().time_since_epoch().count() % 16386 + 1;
     uint32_t local_x = x;
     local_x ^= local_x << 13;
     local_x ^= local_x >> 17;
     local_x ^= local_x << 5;
     x = local_x;
     return local_x;
-  }
-
-  size_t generate_random() {
-    const auto seed = ::std::chrono::system_clock::now().time_since_epoch().count();
-    static std::mt19937 generator(seed);
-    static thread_local ::std::uniform_int_distribution<size_t> distribution(0, 1024);
-    return distribution(generator);
   }
 
   inline size_t rand_heap() {
@@ -2060,19 +2054,14 @@ public:
     return npush;
   }
   uint32_t random() {
-    static thread_local uint32_t x = generate_random() + 1; // todo
+    static thread_local uint32_t x =
+        std::chrono::system_clock::now().time_since_epoch().count() % 16386 + 1;
     x ^= x << 13;
     x ^= x >> 17;
     x ^= x << 5;
     return x;
   }
 
-  size_t generate_random() {
-    const auto seed = std::chrono::system_clock::now().time_since_epoch().count();
-    static std::mt19937 generator(seed);
-    static thread_local std::uniform_int_distribution<size_t> distribution(0, 1024);
-    return distribution(generator);
-  }
   const size_t socketSize = 24;
   size_t node1Cnt() {
     size_t res = 0;
@@ -2253,7 +2242,8 @@ public:
     return npush;
   }
   uint32_t random() {
-    static thread_local uint32_t x = generate_random() + 1;
+    static thread_local uint32_t x =
+        std::chrono::system_clock::now().time_since_epoch().count() % 16386 + 1;
     x ^= x << 13;
     x ^= x >> 17;
     x ^= x << 5;
@@ -2262,14 +2252,6 @@ public:
   static const size_t C = 1;
   const size_t nT = nQ;
 #include "MQOptimized/NUMA.h"
-
-  size_t generate_random() {
-    const auto seed = std::chrono::system_clock::now().time_since_epoch().count();
-    static std::mt19937 generator(seed);
-    static thread_local std::uniform_int_distribution<size_t> distribution(0, 1024);
-    return distribution(generator);
-  }
-
 
   bool steal(T& val, size_t randId) {
     unsigned tId = Galois::Runtime::LL::getTID();
@@ -2410,18 +2392,12 @@ public:
   }
 
   uint32_t random() {
-    static thread_local uint32_t x = generate_random() + 1; // todo
+    static thread_local uint32_t x =
+        std::chrono::system_clock::now().time_since_epoch().count() % 16386 + 1;
     x ^= x << 13;
     x ^= x >> 17;
     x ^= x << 5;
     return x;
-  }
-
-  size_t generate_random() {
-    const auto seed = std::chrono::system_clock::now().time_since_epoch().count();
-    static std::mt19937 generator(seed);
-    static thread_local std::uniform_int_distribution<size_t> distribution(0, 1024);
-    return distribution(generator);
   }
 
   inline size_t rand_heap() {

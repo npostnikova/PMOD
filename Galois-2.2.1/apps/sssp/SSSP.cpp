@@ -523,16 +523,6 @@ struct AsyncAlgo {
 #define RUN_WL(WL) Galois::for_each_local(initial, Process(this, graph), Galois::wl<WL>())
 #include "Experiments.h"
 
-//    else if (wl == "adap-mq2")
-//	    Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2>());
-//    else if (wl == "adap-mq4")
-//	    Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ4>());
-//    else if (wl == "adap-mq8")
-//	    Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ8>());
-//    else if (wl == "adap-mq2-dk")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2DecreaseKey>());
-//    else if (wl == "adap-mq2-blocking")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2Blocking>());
 //    else if (wl == "slobim")
 //      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SLOBIM>());
 //    else if (wl == "slobim-nochunk")

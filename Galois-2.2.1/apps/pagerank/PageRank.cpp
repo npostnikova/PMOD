@@ -673,8 +673,6 @@ struct AsyncPri{
 //    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 4>> HMQ4;
 //#define UpdateRequest WorkItem
 
-//#include "Galois/WorkList/AMQ2.h"
-
 
     PRPri pri(graph, tolerance);
     fpPRPri fppri(graph, tolerance);
@@ -859,11 +857,6 @@ struct AsyncPri{
       Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
                      boost::make_transform_iterator(graph.end(), std::ref(fn)),
                      Process(graph, tolerance, amp), Galois::wl<ASMQ>());
-    typedef AdaptiveStealingMultiQueue<WorkItem, Comparer> SMQ_512_1;
-    if (wl == "smq_512_1" or wl == "smq_lj")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<SMQ_512_1>());
 
   }
 

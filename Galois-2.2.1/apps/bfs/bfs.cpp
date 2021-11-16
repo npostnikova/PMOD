@@ -466,13 +466,6 @@ struct AsyncAlgo {
     typedef AdaptiveOrderedByIntegerMetric<Indexer, dChunk, 0, true, false, CHUNK_SIZE> ADAPOBIM;
 
 
-//    typedef StealingMultiQueue<WorkItem, ComparerFIFO, Prob<1, 4>, true, false, void, smq::StealingQueue<WorkItem, ComparerFIFO>> SMQ_1_4_qfifo;
-//    typedef StealingMultiQueue<WorkItem, ComparerFIFO, Prob<1, 8>, true, false, void, smq::StealingQueue<WorkItem, ComparerFIFO>> SMQ_1_8_qfifo;
-//    typedef StealingMultiQueue<WorkItem, ComparerFIFO, Prob<1, 16>, true, false, void, smq::StealingQueue<WorkItem, ComparerFIFO>> SMQ_1_16_qfifo;
-//    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 4>, true, false, void, smq::StealingQueue<WorkItem, Comparer>> SMQ_1_4_q;
-//    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 8>, true, false, void, smq::StealingQueue<WorkItem, Comparer>> SMQ_1_8_q;
-//    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 16>, true, false, void, smq::StealingQueue<WorkItem, Comparer>> SMQ_1_16_q;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2> AMQ2;
 //    typedef OrderedByIntegerMetric<Indexer,dChunkedLIFO<64>> OBIM_LIFO;
 //    typedef OrderedByIntegerMetric<Indexer,dChunk, 4> OBIM_BLK4;
 //    typedef OrderedByIntegerMetric<Indexer,dChunk, 0, false> OBIM_NOBSP;

@@ -11,8 +11,8 @@
 #include <thread>
 #include <random>
 #include <iostream>
-#include "Heap.h"
-#include "WorkListHelpers.h"
+#include "../Heap.h"
+#include "../WorkListHelpers.h"
 #include "AdaptiveMultiQueue.h"
 
 /**

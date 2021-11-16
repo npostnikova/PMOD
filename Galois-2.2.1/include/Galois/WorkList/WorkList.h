@@ -41,12 +41,10 @@
 #include "OrderedList.h"
 #include "OwnerComputes.h"
 #include "StableIterator.h"
-#include "AdaptiveMultiQueue.h"
 #include "MQOptimized/MQOptimizedInclude.h"
-#include "AMQ_WP.h"
 #include "StealingMultiQueue.h"
 #include "StealingMultiQueueNuma.h"
-#include "AdaptiveStealingMultiQueue.h"
+#include "experimental_adaptive_mqs/AdaptiveStealingMultiQueue.h"
 
 namespace Galois {
 /**

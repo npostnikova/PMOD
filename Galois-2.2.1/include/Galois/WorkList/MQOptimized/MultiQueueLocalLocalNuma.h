@@ -55,20 +55,14 @@ private:
 
   //! Thread local random.
   uint32_t random() {
-    static thread_local uint32_t x = generate_random() + 1;
+    static thread_local uint32_t x =
+        std::chrono::system_clock::now().time_since_epoch().count() % 16386 + 1;
     uint32_t local_x = x;
     local_x ^= local_x << 13;
     local_x ^= local_x >> 17;
     local_x ^= local_x << 5;
     x = local_x;
     return local_x;
-  }
-
-  size_t generate_random() {
-    const auto seed = std::chrono::system_clock::now().time_since_epoch().count();
-    static std::mt19937 generator(seed);
-    static thread_local std::uniform_int_distribution<size_t> distribution(0, 1024);
-    return distribution(generator);
   }
 
 #include "NUMA.h"

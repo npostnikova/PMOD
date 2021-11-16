@@ -30,20 +30,14 @@ private:
 
   //! Thread local random.
   uint32_t random() {
-    static thread_local uint32_t x = generate_random() + 1;
+    static thread_local uint32_t x =
+        std::chrono::system_clock::now().time_since_epoch().count() % 16386 + 1;
     x ^= x << 13;
     x ^= x >> 17;
     x ^= x << 5;
     return x;
   }
-
-  size_t generate_random() {
-    const auto seed = std::chrono::system_clock::now().time_since_epoch().count();
-    static std::mt19937 generator(seed);
-    static thread_local std::uniform_int_distribution<size_t> distribution(0, 1024);
-    return distribution(generator);
-  }
-
+  
   const size_t C = 1;
   const size_t nT = nQ;
 #include "MQOptimized/NUMA.h"

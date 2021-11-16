@@ -31,6 +31,7 @@
 #include <fstream>
 #include <vector>
 #include <set>
+#include <type_traits>
 #include <stdint.h>
 #include GALOIS_CXX11_STD_HEADER(random)
 
@@ -42,6 +43,7 @@ namespace cll = llvm::cl;
 enum ConvertMode {
   dimacs2gr,
   edgelist2vgr,
+  edgelist2randgr,
   floatedgelist2gr,
   doubleedgelist2gr,
   gr2bsml,
@@ -67,6 +69,7 @@ enum ConvertMode {
   intedgelist2gr,
   mtx2doublegr,
   mtx2floatgr,
+  mtx2intgr,
   mtx2vgr,
   nodelist2vgr,
   pbbs2vgr,
@@ -91,6 +94,7 @@ static cll::opt<ConvertMode> convertMode(cll::desc("Choose a conversion mode:"),
     cll::values(
       clEnumVal(dimacs2gr, "Convert dimacs to binary gr"),
       clEnumVal(edgelist2vgr, "Convert edge list to binary void gr"),
+      clEnumVal(edgelist2randgr, "Convert edge list to random binary gr"),
       clEnumVal(floatedgelist2gr, "Convert weighted (float) edge list to binary gr"),
       clEnumVal(doubleedgelist2gr, "Convert weighted (double) edge list to binary gr"),
       clEnumVal(gr2bsml, "Convert binary gr to binary sparse MATLAB matrix"),
@@ -116,6 +120,7 @@ static cll::opt<ConvertMode> convertMode(cll::desc("Choose a conversion mode:"),
       clEnumVal(intedgelist2gr, "Convert weighted (int) edge list to binary gr"),
       clEnumVal(mtx2doublegr, "Convert matrix market format to binary gr"),
       clEnumVal(mtx2floatgr, "Convert matrix market format to binary gr"),
+      clEnumVal(mtx2intgr, "Convert matrix market format to binary gr"),
       clEnumVal(mtx2vgr, "Convert unweighted matrix market format to binary gr"),
       clEnumVal(nodelist2vgr, "Convert node list to binary gr"),
       clEnumVal(pbbs2vgr, "Convert pbbs graph to binary void gr"),
@@ -153,7 +158,7 @@ static void printStatus(size_t in_nodes, size_t in_edges) {
  * Just a bunch of pairs or triples:
  * src dst weight?
  */
-template<typename EdgeTy>
+template<typename EdgeTy, bool RandomEdge = false>
 void convert_edgelist2gr(const std::string& infilename, const std::string& outfilename) {
   typedef Galois::Graph::FileGraphWriter Writer;
   typedef Galois::LargeArray<EdgeTy> EdgeData;
@@ -166,6 +171,10 @@ void convert_edgelist2gr(const std::string& infilename, const std::string& outfi
   size_t numNodes = 0;
   size_t numEdges = 0;
 
+  // Skip opening comments.
+  while (infile && infile.peek() == '#') {
+    infile.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+  }
   while (infile) {
     size_t src;
     size_t dst;
@@ -194,6 +203,10 @@ void convert_edgelist2gr(const std::string& infilename, const std::string& outfi
   infile.clear();
   infile.seekg(0, std::ios::beg);
   p.phase1();
+  // Skip opening comments.
+  while (infile && infile.peek() == '#') {
+    infile.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+  }
   while (infile) {
     size_t src;
     size_t dst;
@@ -212,18 +225,45 @@ void convert_edgelist2gr(const std::string& infilename, const std::string& outfi
   infile.clear();
   infile.seekg(0, std::ios::beg);
   p.phase2();
-  while (infile) {
-    size_t src;
-    size_t dst;
-    edge_value_type data = 0;
+  // Skip opening comments.
+  while (infile && infile.peek() == '#') {
+    infile.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+  }
+  if constexpr (RandomEdge) {
+    // Random weight will be generated each edges.
+    typedef int edge_value_type;
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> distrib(1, 255);
+    while (infile) {
+      size_t src;
+      size_t dst;
+      int data = 0;
 
-    infile >> src >> dst;
+      infile >> src >> dst;
 
-    if (EdgeData::has_value)
-      infile >> data;
-    
-    if (infile) {
-      edgeData.set(p.addNeighbor(src, dst), data);
+      if (EdgeData::has_value)
+        infile >> data;
+      data = distrib(gen);
+
+      if (infile) {
+        edgeData.set(p.addNeighbor(src, dst), data);
+      }
+    }
+  } else {
+    while (infile) {
+      size_t src;
+      size_t dst;
+      edge_value_type data = 0;
+
+      infile >> src >> dst;
+
+      if (EdgeData::has_value)
+        infile >> data;
+
+      if (infile) {
+        edgeData.set(p.addNeighbor(src, dst), data);
+      }
     }
   }
 
@@ -1745,6 +1785,7 @@ int main(int argc, char** argv) {
   switch (convertMode) {
     case dimacs2gr: convert_dimacs2gr(inputfilename, outputfilename); break;
     case edgelist2vgr: convert_edgelist2gr<void>(inputfilename, outputfilename); break;
+    case edgelist2randgr: convert_edgelist2gr<int, true>(inputfilename, outputfilename); break;
     case floatedgelist2gr: convert_edgelist2gr<float>(inputfilename, outputfilename); break;
     case doubleedgelist2gr: convert_edgelist2gr<double>(inputfilename, outputfilename); break;
     case gr2bsml: convert_gr2bsml<int32_t>(inputfilename, outputfilename); break;
@@ -1775,6 +1816,7 @@ int main(int argc, char** argv) {
     case intedgelist2gr: convert_edgelist2gr<int>(inputfilename, outputfilename); break;
     case mtx2doublegr: convert_mtx2gr<double>(inputfilename, outputfilename); break;
     case mtx2floatgr: convert_mtx2gr<float>(inputfilename, outputfilename); break;
+    case mtx2intgr: convert_mtx2gr<int32_t>(inputfilename, outputfilename); break;
     case mtx2vgr: convert_mtx2gr<void>(inputfilename, outputfilename); break;
     case nodelist2vgr: convert_nodelist2vgr(inputfilename, outputfilename); break;
     case pbbs2vgr: convert_pbbs2vgr(inputfilename, outputfilename); break;

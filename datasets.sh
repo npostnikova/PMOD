@@ -1,7 +1,7 @@
 mkdir datasets;
 cd datasets;
 # wget -c http://an.kaist.ac.kr/~haewoon/release/twitter_social_graph/twitter_rv.tar.gz
-# wget -c https://snap.stanford.edu/data/soc-LiveJournal1.txt.gz
+wget -c https://snap.stanford.edu/data/soc-LiveJournal1.txt.gz
 # wget -c https://snap.stanford.edu/data/web-Google.txt.gz
 # wget -c http://users.diag.uniroma1.it/challenge9/data/USA-road-d/USA-road-d.USA.gr.gz
 # wget -c http://users.diag.uniroma1.it/challenge9/data/USA-road-d/USA-road-d.USA.co.gz

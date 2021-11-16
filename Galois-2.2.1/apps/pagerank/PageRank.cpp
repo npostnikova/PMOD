@@ -78,6 +78,7 @@ static cll::opt<std::string> amqResultFile("resultFile", cll::desc("Result file 
 cll::opt<unsigned int> maxIterations("maxIterations", cll::desc("Maximum iterations"), cll::init(100));
 cll::opt<unsigned int> memoryLimit("memoryLimit",
     cll::desc("Memory limit for out-of-core algorithms (in MB)"), cll::init(~0U));
+static cll::opt<std::string> mqSuff("suff", cll::desc("Suffix for amq or smq"), cll::init(""));
 
 
 //  new options for asynchronous execution
@@ -131,7 +132,7 @@ struct SerialAlgo {
 
       for (auto ii = graph.begin(), ei = graph.end(); ii != ei; ++ii) {
         GNode src = *ii;
-        *nNodesProcessed += 1;
+        //        *nNodesProcessed += 1;
         PNode& sdata = graph.getData(src);
         int neighbors = std::distance(graph.edge_begin(src), graph.edge_end(src));
         for (auto jj = graph.edge_begin(src), ej = graph.edge_end(src); jj != ej; ++jj) {
@@ -427,6 +428,10 @@ struct AsyncPri{
     GNode first;
     int second;
 
+    int prior() const {
+      return second;
+    }
+
     WorkItem(const GNode& N, int W): first(N), second(W) {}
 
     WorkItem(): first(), second(0) {}
@@ -520,6 +525,8 @@ struct AsyncPri{
 
     void operator()(const WorkItem& srcn, Galois::UserContext<WorkItem>& ctx) const {
       //ctx.t.stopwatch();
+
+      *nNodesProcessed += 1;
       GNode src = srcn.first;
       LNode& sdata = graph.getData(src);
 
@@ -539,7 +546,6 @@ struct AsyncPri{
       int src_nout = nout(graph,src, lockflag);
       PRTy delta = diff*alpha2/src_nout;
 
-      *nNodesProcessed += 1;
       // for each out-going neighbors
       for (auto jj = graph.edge_begin(src, lockflag), ej = graph.edge_end(src, lockflag); jj != ej; ++jj) {
         GNode dst = graph.getEdgeDst(jj);
@@ -567,6 +573,7 @@ struct AsyncPri{
       GNode src = srcn.first;
       LNode& sdata = graph.getData(src);
 
+      *nNodesProcessed += 1;
       (*nOverall)+=1;
       if(sdata.residual < tolerance || pri(src) != srcn.second){
         *nEmpty += 1;
@@ -584,7 +591,6 @@ struct AsyncPri{
       PRTy delta = diff*alpha2/src_nout;
 
 
-      *nNodesProcessed += 1;
       // for each out-going neighbors
       for (auto jj = graph.edge_begin(src, lockflag), ej = graph.edge_end(src, lockflag); jj != ej; ++jj) {
         GNode dst = graph.getEdgeDst(jj);
@@ -632,22 +638,26 @@ struct AsyncPri{
 //    typedef OrderedByIntegerMetric<sndPri, Chunk, 10, true, true> OBIM_UBSP;
 //    typedef OrderedByIntegerMetric<sndPri, visChunk, 10, true, true> OBIM_VISCHUNK;
     typedef UpdateRequestComparer<WorkItem> Comparer;
-//    typedef UpdateRequestNodeComparer<WorkItem> NodeComparer;
+    typedef UpdateRequestNodeComparer<WorkItem> NodeComparer;
 //    typedef UpdateRequestHasher<WorkItem> Hasher;
 //    typedef GlobPQ<WorkItem, LockFreeSkipList<Comparer, WorkItem>> GPQ;
 //    typedef GlobPQ<WorkItem, LockFreeSkipList<NodeComparer, WorkItem>> GPQ_NC;
-//    typedef GlobPQ<WorkItem, SprayList<NodeComparer, WorkItem>> SL;
+    typedef GlobPQ<WorkItem, SprayList<NodeComparer, WorkItem>> SL;
 //    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 1>> MQ1;
+    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 2>> MQ2;
+    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 3>> MQ3;
 //    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 4>> MQ4;
 //    typedef GlobPQ<WorkItem, MultiQueue<NodeComparer, WorkItem, 4>> MQ4_NC;
 //    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 1>> HMQ1;
+    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 2>> HMQ2;
+    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 3>> HMQ3;
 //    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 4>> HMQ4;
 //    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, false>> PTSL;
 //    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, true>> PPSL;
 //    typedef GlobPQ<WorkItem, LocalPQ<Comparer, WorkItem>> LPQ;
-//    typedef GlobPQ<WorkItem, SwarmPQ<Comparer, WorkItem>> SWARMPQ;
+    typedef GlobPQ<WorkItem, SwarmPQ<Comparer, WorkItem>> SWARMPQ;
 //    typedef GlobPQ<WorkItem, SwarmPQ<NodeComparer, WorkItem>> SWARMPQ_NC;
-//    typedef GlobPQ<WorkItem, HeapSwarmPQ<Comparer, WorkItem>> HSWARMPQ;
+    typedef GlobPQ<WorkItem, HeapSwarmPQ<Comparer, WorkItem>> HSWARMPQ;
 //    typedef GlobPQ<WorkItem, PartitionPQ<Comparer, Hasher, WorkItem>> PPQ;
 //    typedef SkipListOrderedByIntegerMetric<sndPri, Chunk, 10> SLOBIM;
 //    typedef SkipListOrderedByIntegerMetric<sndPri, noChunk, 10> SLOBIM_NOCHUNK;
@@ -661,28 +671,7 @@ struct AsyncPri{
 //    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 2>> HMQ2;
 //    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 3>> HMQ3;
 //    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 4>> HMQ4;
-    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2> AMQ2;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 1000>> AMQ2_5_1000_1_1000;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>> AMQ2_1_1000_1_1000;
-    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <5, 1000>> AMQ2_5_1000_5_1000;
-    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 100>> AMQ2_5_1000_1_100;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 1000>, true> AMQ2CP_5_1000_1_1000;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>, true> AMQ2CP_1_1000_1_1000;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <5, 1000>, true> AMQ2CP_5_1000_5_1000;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2, false, void, true, false, Prob <5, 1000>, Prob <1, 100>, true> AMQ2CP_5_1000_1_100;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 3, false, void, true, false, Prob <5, 1000>, Prob <1, 1000>> AMQ3_5_1000_1_1000;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 3, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>> AMQ3_1_1000_1_1000;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 3, false, void, true, false, Prob <5, 1000>, Prob <5, 1000>> AMQ3_5_1000_5_1000;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 3, false, void, true, false, Prob <5, 1000>, Prob <1, 100>> AMQ3_5_1000_1_100;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 4, false, void, true, false, Prob <5, 1000>, Prob <1, 1000>> AMQ4_5_1000_1_1000;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 4, false, void, true, false, Prob <1, 1000>, Prob <1, 1000>> AMQ4_1_1000_1_1000;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 4, false, void, true, false, Prob <5, 1000>, Prob <5, 1000>> AMQ4_5_1000_5_1000;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 4, false, void, true, false, Prob <5, 1000>, Prob <1, 100>> AMQ4_5_1000_1_100;
-// 
-
 //#define UpdateRequest WorkItem
-
-//#include "Galois/WorkList/AMQ2.h"
 
 
     PRPri pri(graph, tolerance);
@@ -695,28 +684,10 @@ struct AsyncPri{
     auto fn = [&pri] (const GNode& node) { return WorkItem(node, pri(node)); };
     auto fn2 = [&fppri] (const GNode& node) { return WorkItem(node, fppri(node)); };
     std::string wl = worklistname_;
-//#include "AMQMatch2.h"
-//#include "AMQMatch3.h"
-//#include "AMQMatch4.h"
 
-//    if (wl == "amq2_1_1")
-//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-//                       boost::make_transform_iterator(graph.end(), std::ref(fn)),
-//                       Process(graph, tolerance, amp), Galois::wl<AMQ2_1_1_1_1>());
-
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 1, true, DecreaseKeyIndexer<WorkItem>, true, false, Prob <5, 1000>, Prob <1, 100>> AMQ2_5_1000_1_100;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 1, true, DecreaseKeyIndexer<WorkItem>, true, false, Prob <5, 1000>, Prob <5, 1000>> AMQ2_5_1000_5_1000;
-
-//    if (wl == "amq2_5_1000_1_100")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_5_1000_1_100>());
-//
-//    if (wl == "amq2_5_1000_5_1000")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<AMQ2_5_1000_5_1000>());
-
-
-#include "StealingIfs.h"
-#include "StealingTypedefs.h"
-
+    if (!mqSuff.empty()) {
+      mqSuff = "_" + mqSuff;
+    }
     if (wl == "obim") {
       Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
                      boost::make_transform_iterator(graph.end(), std::ref(fn)),
@@ -727,44 +698,26 @@ struct AsyncPri{
                      boost::make_transform_iterator(graph.end(), std::ref(fn)),
                      Process(graph, tolerance, amp), Galois::wl<ADAPOBIM>());
     }
-//    if (wl == "hmq2")
-//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-//                     Process(graph, tolerance, amp), Galois::wl<HMQ2>());
-//    else if (wl == "hmq3")
-//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-//                     Process(graph, tolerance, amp), Galois::wl<HMQ3>());
+    if (wl == "hmq2")
+      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     Process(graph, tolerance, amp), Galois::wl<HMQ2>());
+    else if (wl == "hmq3")
+      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     Process(graph, tolerance, amp), Galois::wl<HMQ3>());
+    if (wl == "mq2")
+      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     Process(graph, tolerance, amp), Galois::wl<MQ2>());
+    else if (wl == "mq3")
+      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     Process(graph, tolerance, amp), Galois::wl<MQ3>());
 //    else if (wl == "hmq4")
 //      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
 //                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
 //                     Process(graph, tolerance, amp), Galois::wl<HMQ4>());
-
-    else if (wl == "amq2")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<AMQ2>());
-//    else if (wl == "amq2_0.005_0.001")
-//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-//                     Process(graph, tolerance, amp), Galois::wl<AMQ2_5_1000_1_1000>());
-//    else if (wl == "amq2_0.001_0.001")
-//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-//                     Process(graph, tolerance, amp), Galois::wl<AMQ2_1_1000_1_1000>());
-//    else if (wl == "amq2_0.005_0.005")
-//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-//                     Process(graph, tolerance, amp), Galois::wl<AMQ2_5_1000_5_1000>());
-    else if (wl == "amq2_5_1000_1_100")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<AMQ2_5_1000_1_100>());
-    else if (wl == "amq2cp_5_1000_5_1000")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<AMQ2_5_1000_5_1000>());
-
 //    else if (wl == "slobim") {
 //      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
 //                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
@@ -834,10 +787,10 @@ struct AsyncPri{
 //      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
 //                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
 //                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<GPQ_NC>());
-//    else if (wl == "spraylist")
-//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<SL>());
+    else if (wl == "spraylist")
+      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<SL>());
 //    else if (wl == "multiqueue1")
 //      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
 //                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
@@ -870,18 +823,18 @@ struct AsyncPri{
 //      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
 //                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
 //                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<LPQ>());
-//    else if (wl == "swarm")
-//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<SWARMPQ>());
+    else if (wl == "swarm")
+      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<SWARMPQ>());
 //    else if (wl == "swarm-nc")
 //      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
 //                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
 //                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<SWARMPQ_NC>());
-//    else if (wl == "heapswarm")
-//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-//                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<HSWARMPQ>());
+    else if (wl == "heapswarm")
+      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     ProcessWithBreaks(graph, tolerance, amp), Galois::wl<HSWARMPQ>());
 //    else if (wl == "ppq")
 //      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
 //                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
@@ -904,6 +857,13 @@ struct AsyncPri{
 //                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
 //                     Process(graph, tolerance, amp), Galois::wl<SL>());*/
 //    std::cout<< "here2\n";
+
+
+    typedef AdaptiveStealingMultiQueue<WorkItem, Comparer> ASMQ;
+    if (wl == "adap-smq")
+      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     Process(graph, tolerance, amp), Galois::wl<ASMQ>());
 
   }
 
@@ -1024,8 +984,8 @@ void runAsync() {
   //omp_get_wtime();
   //std::cout<<"Time: "<<(double(end - start) / CLOCKS_PER_SEC)<<std::endl;
   T.stop();
-  std::ofstream out(amqResultFile, std::ios::app);
-  out << T.get() << " ";
+  std::ofstream out(amqResultFile + mqSuff, std::ios::app);
+  out << T.get() << ",";
   out.close();
   Galois::reportPageAlloc("MeminfoPost");
 
@@ -1112,8 +1072,10 @@ int main(int argc, char **argv) {
   T.stop();
 
   std::string wl = worklistname;
-  std::ofstream nodes(amqResultFile, std::ios::app);
-  nodes << wl << " " << getStatVal(nNodesProcessed) << std::endl;
+  if (wl.size() >= 3 && wl[1] == 'm' && wl[2] == 'q' && (wl[0] == 's' || wl[0] == 'a'))
+    wl = wl + mqSuff;
+  std::ofstream nodes(amqResultFile + mqSuff, std::ios::app);
+  nodes << wl << "," << getStatVal(nNodesProcessed) << "," << Galois::Runtime::activeThreads << std::endl;
   nodes.close();
 
   delete BadWork;

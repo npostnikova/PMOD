@@ -409,7 +409,7 @@ struct AsyncPri{
     void init() { value = 1.0 -alpha2 ; residual = 0.0; }
     PRTy getPageRank(int x = 0) { return value; }
     friend std::ostream& operator<<(std::ostream& os, const LNode& n) {
-      os << "{PR " << n.value << ", residual " << n.residual << "}";
+      // os << "{PR " << n.value << ", residual " << n.residual << "}";
       return os;
     }
   };

@@ -95,7 +95,7 @@ void verifyInOut(Graph& graph, PRTy tolerance) {
     auto& data = graph.getData(N);
     auto residual = std::fabs(data.getPageRank() - computePageRankInOut(graph, N, 1, Galois::MethodFlag::NONE));
     if (residual > tolerance) {
-      std::cout << N << " residual " << residual << " pr " << data.getPageRank() << " data " << data << "\n";
+      //std::cout << N << " residual " << residual << " pr " << data.getPageRank() << " data " << data << "\n";
     }
   }
 }
@@ -104,10 +104,7 @@ void verifyInOut(Graph& graph, PRTy tolerance) {
 template<typename UpdateRequest>
 struct UpdateRequestComparer: public std::binary_function<const UpdateRequest&, const UpdateRequest&, unsigned> {
   unsigned operator()(const UpdateRequest& x, const UpdateRequest& y) const {
-    // kostil'
-    if (y.first == 4294967295)
-      return false;
-    return x.second > y.second || x.first == 4294967295;
+    return x.second > y.second;
   }
 };
 

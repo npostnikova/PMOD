@@ -72,6 +72,7 @@ static cll::opt<std::string> filename(cll::Positional, cll::desc("<input graph>"
 static cll::opt<std::string> coordFilename("coordFilename", cll::desc("coordinate file name"));
 static cll::opt<unsigned int> xdim("xdim", cll::desc("xdim of the map"));
 static cll::opt<unsigned int> ydim("ydim", cll::desc("ydim of the map"));
+static cll::opt<std::string> mqSuff("suff", cll::desc("Suffix for amq or smq"), cll::init(""));
 
 static cll::opt<std::string> transposeGraphName("graphTranspose", cll::desc("Transpose of input graph"));
 static cll::opt<bool> symmetricGraph("symmetricGraph", cll::desc("Input graph is symmetric"));
@@ -168,6 +169,14 @@ struct UpdateRequestIndexer: public std::unary_function<UpdateRequest, unsigned 
   }
 };
 
+template<typename UpdateRequest, size_t N>
+struct ParameterizedUpdateRequestIndexer: public std::unary_function<UpdateRequest, unsigned int> {
+  unsigned int operator() (const UpdateRequest& val) const {
+    unsigned int t = val.w >> N;
+    return t;
+  }
+};
+
 template<typename UpdateRequest>
 struct UpdateRequestHasher: public std::unary_function<UpdateRequest, unsigned long> {
   unsigned long operator() (const UpdateRequest& val) const {
@@ -191,7 +200,7 @@ struct UpdateRequestNodeComparer: public std::binary_function<const UpdateReques
 
 
 template<typename Graph>
-bool verify(Graph& graph, typename Graph::GraphNode source) {
+bool verify(Graph& graph, typename Graph::GraphNode source, typename Graph::GraphNode report) {
   if (graph.getData(source).dist != 0) {
     std::cerr << "source has non-zero dist value\n";
     return false;
@@ -209,18 +218,6 @@ bool verify(Graph& graph, typename Graph::GraphNode source) {
     return false;
   }
 
-  Galois::GReduceMax<Dist> m;
-  Galois::do_all(graph.begin(), graph.end(), max_dist<Graph>(graph, m));
-  std::cout << "max dist: " << m.reduce() << "\n";
-
-  for (unsigned int i=0;i<graph.size();i++){
-    typename Graph::iterator it = graph.begin();
-    std::advance(it, i);
-    typename Graph::GraphNode nn = *it;
-    if(m.reduce() == (graph.getData(nn).dist)){
-      std::cout<<"Max node id: "<<i<<std::endl;
-    }
-  }
   return true;
 }
 
@@ -356,7 +353,7 @@ struct SerialAlgo {
           Dist newDist = req.w + d;
           if (newDist < graph.getData(dst, Galois::MethodFlag::NONE).dist) {
             initial.insert(UpdateRequest(dst, newDist));
-	  }
+	        }
         }
       }
     }
@@ -391,20 +388,28 @@ struct AsyncAlgo {
     Coord x, y;
     unsigned int id;
     char k;
+    std::string ignore;
     if (myfile.is_open())
     {
-      while ( myfile>>k >> id>> x>> y)
-      {
-        //x : latitude
-        //y : longitude
-        //std::cout << id<< " "<<x<<" "<<y << "\n";
-        typename Graph::iterator it = graph.begin();
-        std::advance(it, id);
-        GNode nn = *it;
-        graph.getData(nn, Galois::MethodFlag::NONE).x = x;
-        graph.getData(nn, Galois::MethodFlag::NONE).y = y;
+
+      while (!myfile.eof()) {
+        if (myfile.peek() != 'v') {
+          std::getline(myfile, ignore);
+        } else {
+          myfile >> k >> id >> x >> y;
+          //x : latitude
+          //y : longitude
+          //std::cout << id<< " "<<x<<" "<<y << "\n";
+          typename Graph::iterator it = graph.begin();
+          std::advance(it, id);
+          GNode nn = *it;
+          graph.getData(nn, Galois::MethodFlag::NONE).x = x;
+          graph.getData(nn, Galois::MethodFlag::NONE).y = y;
+        }
       }
       myfile.close();
+    } else {
+      std::cerr << "Coord file could not be opened" << std::endl;
     }
 
     typename Graph::iterator it = graph.begin();
@@ -487,7 +492,6 @@ struct AsyncAlgo {
         unsigned int heu_val = heuristic(ddata, graph);
 
         //push logic changed
-        assert(newDist<oldDist);
         if(newDist<=targetDist)
         {
           //std::cout<<"Pushing "<<dst<<" with dist "<<newDist<<" heu "<<heu_val<<" target dist "<<targetDist<<std::endl;
@@ -509,10 +513,11 @@ struct AsyncAlgo {
     std::advance(it, destNode);
     GNode report = *it;
 
-    // Dist reportDist = graph.getData(report, Galois::MethodFlag::NONE).dist;
+     Dist reportDist = graph.getData(report, Galois::MethodFlag::NONE).dist;
 
     unsigned int heu_val = heuristic(sdata, graph);
 
+    *nNodesProcessed += 1;
     if (req.w-heu_val != (unsigned int)*sdist) {
       if (trackWork) {
         *nEmpty += 1;
@@ -520,7 +525,6 @@ struct AsyncAlgo {
       }
       return;
     }
-    *nNodesProcessed += 1;
     //std::cout<<"Dist: "<<(unsigned int)*sdist<<" heuristic "<<heu_val<<" req.w: "<<req.w<<" \n";
     for (typename Graph::edge_iterator ii = graph.edge_begin(req.n, flag), ei = graph.edge_end(req.n, flag); ii != ei; ++ii) {
       if (req.w-heu_val != (unsigned int)(*sdist)) {
@@ -598,6 +602,7 @@ struct AsyncAlgo {
 
 
     using namespace Galois::WorkList;
+    typedef UpdateRequestIndexer<UpdateRequest> Indexer;
     typedef dChunkedFIFO<CHUNK_SIZE> Chunk;
     typedef dVisChunkedFIFO<64> visChunk;
     typedef dChunkedPTFIFO<1> noChunk;
@@ -623,9 +628,18 @@ struct AsyncAlgo {
     typedef GlobPQ<UpdateRequest, LockFreeSkipList<Comparer, UpdateRequest>> GPQ;
     typedef GlobPQ<UpdateRequest, SprayList<NodeComparer, UpdateRequest>> SL;
     typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 1>> MQ1;
+    typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 2>> MQ2;
+    typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 3>> MQ3;
     typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 4>> MQ4;
-    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 1>> HMQ1;
-    typedef GlobPQ<UpdateRequest, HeapMultiQueue<Comparer, UpdateRequest, 4>> HMQ4;
+    typedef GlobPQ<UpdateRequest, MultiQueue<Comparer, UpdateRequest, 5>> MQ5;
+    typedef MyHMQ<UpdateRequest, Comparer, 1, true> HMQ1;
+    typedef MyHMQ<UpdateRequest, Comparer, 2, true> HMQ2;
+    typedef MyHMQ<UpdateRequest, Comparer, 3, true> HMQ3;
+    typedef MyHMQ<UpdateRequest, Comparer, 4, true> HMQ4;
+    typedef MyHMQ<UpdateRequest, Comparer, 5, true> HMQ5;
+    typedef MyHMQ<UpdateRequest, Comparer, 6, true> HMQ6;
+    typedef MyHMQ<UpdateRequest, Comparer, 7, true> HMQ7;
+    typedef MyHMQ<UpdateRequest, Comparer, 8, true> HMQ8;
     typedef GlobPQ<UpdateRequest, DistQueue<Comparer, UpdateRequest, false>> PTSL;
     typedef GlobPQ<UpdateRequest, DistQueue<Comparer, UpdateRequest, true>> PPSL;
     typedef GlobPQ<UpdateRequest, LocalPQ<Comparer, UpdateRequest>> LPQ;
@@ -650,12 +664,12 @@ struct AsyncAlgo {
         graph.out_edges(source, Galois::MethodFlag::NONE).end(),
         InitialProcess(this, graph, initial, graph.getData(source)));
     std::string wl = worklistname;
+    if (!mqSuff.empty()) {
+      mqSuff = "_" + mqSuff;
+    }
 
-#include "StealingTypedefs.h"
-#include "StealingDKTypedefs.h"
-
-#include "StealingIfs.h"
-#include "StealingDKIfs.h"
+#define RUN_WL(WL) Galois::for_each_local(initial, Process(this, graph), Galois::wl<WL>())
+#include "Experiments.h"
 
     if (wl == "obim")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<OBIM>());
@@ -695,14 +709,32 @@ struct AsyncAlgo {
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<GPQ>());
     else if (wl == "spraylist")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<SL>());
-    else if (wl == "multiqueue1")
+    else if (wl == "mq2")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ2>());
+    else if (wl == "mq3")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ3>());
+    else if (wl == "mq1")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ1>());
-    else if (wl == "multiqueue4")
+    else if (wl == "mq4")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ4>());
-    else if (wl == "heapmultiqueue1")
+    else if (wl == "mq5")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<MQ5>());
+    else if (wl == "hmq2")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ2>());
+    else if (wl == "hmq5")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ5>());
+    else if (wl == "hmq3")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ3>());
+    else if (wl == "hmq1")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ1>());
-    else if (wl == "heapmultiqueue4")
+    else if (wl == "hmq4")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ4>());
+     else if (wl == "hmq6")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ6>());
+     else if (wl == "hmq7")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ7>());
+     else if (wl == "hmq8")
+      Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<HMQ8>());
     else if (wl == "thrskiplist")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<PTSL>());
     else if (wl == "pkgskiplist")
@@ -723,6 +755,42 @@ struct AsyncAlgo {
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<kLSM4m>());
 //    else
 //      std::cerr << "No work list!" << "\n";
+
+
+#define priority_t Dist
+#define element_t UpdateRequest
+
+    typedef StealingMultiQueue<element_t, Comparer, 4, 1, true> SMQ_4_1;
+    if (wl == "smq_4_1" or wl == "smq_west")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_4_1>());
+    typedef StealingMultiQueue<element_t, Comparer, 4, 1, true> SMQ_8_1;
+    if (wl == "smq_8_1" or wl == "smq_west_amd")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_8_1>());
+
+
+    typedef AdaptiveStealingMultiQueue<element_t, Comparer> ASMQ;
+    if (wl == "adap-smq")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<ASMQ>());
+    typedef MyPQ<UpdateRequest, Comparer, true> USUAL_PQ;
+    if (worklistname == "pq")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_PQ>());
+
+
+    typedef MultiQueueProbLocal<element_t, Comparer, 512, 4, 2, priority_t> MQ2_PL_512_4;
+    if (worklistname == "mq2_pl_512_4" or worklistname == "mq2_pl_west")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<MQ2_PL_512_4>());
+//   typedef MultiQueueProbLocalNuma<element_t, Comparer, 512, 4, 2, priority_t> MQ2_PL_512_4_NUMA;
+//    if (worklistname == "mq2_pl_512_4_numa" or worklistname == "mq2_pl_numa_west")
+//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<MQ2_PL_512_4_NUMA>());
+//
+
+    typedef MultiQueueProbLocal<element_t, Comparer, 64, 4, 2, priority_t> MQ2_PL_64_4;
+    if (worklistname == "mq2_pl_64_4" or worklistname == "mq2_pl_west_amd")
+      Galois::for_each_local(initial, Process(this, graph), Galois::wl<MQ2_PL_64_4>());
+
+    typedef UpdateRequestIndexer<UpdateRequest> Indexer;
+#include "Galois/WorkList/experiment_declarations.h"
+
   }
 };
 
@@ -880,6 +948,11 @@ void run(bool prealloc = true) {
 
   T.stop();
 
+
+  std::ofstream out(resultFileName + mqSuff, std::ios::app);
+  out << T.get() << ",";
+  out.close();
+
   Galois::reportPageAlloc("MeminfoPost");
 #ifndef GEM5
   Galois::Runtime::reportNumaAlloc("NumaPost");
@@ -888,7 +961,7 @@ void run(bool prealloc = true) {
   std::cout << "Node " << reportNode << " has distance " << (unsigned int)graph.getData(report).dist << "\n";
 
   if (!skipVerify) {
-    if (verify(graph, source)) {
+    if (verify(graph, source, report)) {
       std::cout << "Verification successful.\n";
     } else {
       std::cerr << "Verification failed.\n";
@@ -942,8 +1015,10 @@ int main(int argc, char **argv) {
 
   if (trackWork) {
     std::string wl = worklistname;
-    std::ofstream nodes(resultFileName, std::ios::app);
-    nodes << wl << " " << getStatVal(nNodesProcessed) << " " << Galois::Runtime::activeThreads << std::endl;
+    if (wl.size() >= 3 && wl[1] == 'm' && wl[2] == 'q' && (wl[0] == 's' || wl[0] == 'a'))
+      wl = wl + mqSuff;
+    std::ofstream nodes(resultFileName + mqSuff, std::ios::app);
+    nodes << wl << "," << getStatVal(nNodesProcessed) << "," << Galois::Runtime::activeThreads << std::endl;
     nodes.close();
 
     delete BadWork;

@@ -107,7 +107,8 @@ uint64_t rdtsc(){
 namespace cll = llvm::cl;
 static cll::opt<std::string> filename(cll::Positional, cll::desc("<input graph>"), cll::Required);
 static cll::opt<std::string> transposeGraphName("graphTranspose", cll::desc("Transpose of input graph"));
-static cll::opt<std::string> amqResultFile("resultFile", cll::desc("Result file name for amq experiment"), cll::init("result.txt"));
+static cll::opt<std::string> amqResultFile("resultFile", cll::desc("Result file name for amq experiment"), cll::init("result.csv"));
+static cll::opt<std::string> mqSuff("suff", cll::desc("Suffix for amq or smq"), cll::init(""));
 static cll::opt<bool> symmetricGraph("symmetricGraph", cll::desc("Input graph is symmetric"));
 static cll::opt<bool> useDetBase("detBase", cll::desc("Deterministic"));
 static cll::opt<bool> useDetDisjoint("detDisjoint", cll::desc("Deterministic with disjoint optimization"));
@@ -331,6 +332,10 @@ struct AsyncAlgo {
 
     WorkItem(): first(), second(0), time(0) {}
 
+    Dist prior() const {
+      return second;
+    }
+
     unsigned int operator() () const {
       return second;
     }
@@ -343,6 +348,14 @@ struct AsyncAlgo {
   struct Indexer: public std::unary_function<WorkItem,Dist> {
     Dist operator()(const WorkItem& val) const {
       Dist t = stepShift ? val.second >> stepShift : val.second;
+      return t;
+    }
+  };
+
+  template<typename UpdateRequest, size_t N>
+  struct ParameterizedUpdateRequestIndexer: public std::unary_function<UpdateRequest, Dist> {
+    Dist operator() (const UpdateRequest& val) const {
+      Dist t = N ? val.second >> N : val.second;
       return t;
     }
   };
@@ -387,6 +400,7 @@ struct AsyncAlgo {
       Dist nodeDist = sdata.dist;
 
       Dist newDist = item.second;
+      *nNodesProcessed += 1;
 
       if (newDist != (unsigned int) nodeDist+1) {
         if (trackWork) {
@@ -397,7 +411,6 @@ struct AsyncAlgo {
       }
 
       int nEdge = 0;
-      *nNodesProcessed += 1;
       for (Graph::edge_iterator ii = graph.edge_begin(n, Galois::MethodFlag::NONE),
             ei = graph.edge_end(n, Galois::MethodFlag::NONE); ii != ei; ++ii, nEdge++) {
         GNode dst = graph.getEdgeDst(ii);
@@ -409,7 +422,7 @@ struct AsyncAlgo {
           if ((unsigned int)oldDist <= newDist)
             break;
           if (__sync_bool_compare_and_swap(&ddata.dist, oldDist, newDist | (oldDist & 0xffffffff00000000ul))) {
-            ctx.push(WorkItem(dst, newDist + 1, rdtsc()));
+            ctx.push(WorkItem(dst, newDist + 1/*, rdtsc()*/));
             break;
           }
         }
@@ -442,6 +455,7 @@ struct AsyncAlgo {
 
   void operator()(Graph& graph, const GNode& source) const {
     using namespace Galois::WorkList;
+    typedef WorkItem UpdateRequest;
     typedef dChunkedFIFO<CHUNK_SIZE> dChunk;
     typedef dVisChunkedFIFO<64> visChunk;
     typedef dChunkedPTFIFO<1> noChunk;
@@ -449,16 +463,6 @@ struct AsyncAlgo {
     typedef ChunkedFIFO<1> globNoChunk;
     typedef OrderedByIntegerMetric<Indexer,dChunk> OBIM;
     typedef AdaptiveOrderedByIntegerMetric<Indexer, dChunk, 0, true, false, CHUNK_SIZE> ADAPOBIM;
-    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 4>, true> SMQ_1_4;
-    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 8>, true> SMQ_1_8;
-    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 16>, true> SMQ_1_16;
-    typedef StealingMultiQueue<WorkItem, ComparerFIFO, Prob<1, 4>, true, false, void, smq::StealingQueue<WorkItem, ComparerFIFO>> SMQ_1_4_qfifo;
-    typedef StealingMultiQueue<WorkItem, ComparerFIFO, Prob<1, 8>, true, false, void, smq::StealingQueue<WorkItem, ComparerFIFO>> SMQ_1_8_qfifo;
-    typedef StealingMultiQueue<WorkItem, ComparerFIFO, Prob<1, 16>, true, false, void, smq::StealingQueue<WorkItem, ComparerFIFO>> SMQ_1_16_qfifo;
-    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 4>, true, false, void, smq::StealingQueue<WorkItem, Comparer>> SMQ_1_4_q;
-    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 8>, true, false, void, smq::StealingQueue<WorkItem, Comparer>> SMQ_1_8_q;
-    typedef StealingMultiQueue<WorkItem, Comparer, Prob<1, 16>, true, false, void, smq::StealingQueue<WorkItem, Comparer>> SMQ_1_16_q;
-//    typedef AdaptiveMultiQueue<WorkItem, Comparer, 2> AMQ2;
 //    typedef OrderedByIntegerMetric<Indexer,dChunkedLIFO<64>> OBIM_LIFO;
 //    typedef OrderedByIntegerMetric<Indexer,dChunk, 4> OBIM_BLK4;
 //    typedef OrderedByIntegerMetric<Indexer,dChunk, 0, false> OBIM_NOBSP;
@@ -469,17 +473,25 @@ struct AsyncAlgo {
 //    typedef OrderedByIntegerMetric<Indexer,dChunk, 0,true, true> OBIM_UBSP;
 //    typedef OrderedByIntegerMetric<Indexer,visChunk, 0,true, true> OBIM_VISCHUNK;
 //    typedef GlobPQ<WorkItem, LockFreeSkipList<Comparer, WorkItem>> GPQ;
-//    typedef GlobPQ<WorkItem, SprayList<NodeComparer, WorkItem>> SL;
-//    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 1>> MQ1;
-//    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 4>> MQ4;
-//    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 1>> HMQ1;
-//	  typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 2>> HMQ2;
-//    typedef GlobPQ<WorkItem, HeapMultiQueue<Comparer, WorkItem, 4>> HMQ4;
+    typedef GlobPQ<WorkItem, SprayList<NodeComparer, WorkItem>> SL;
+    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 1>> MQ1;
+    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 2>> MQ2;
+    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 3>> MQ3;
+    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 4>> MQ4;
+    typedef GlobPQ<WorkItem, MultiQueue<Comparer, WorkItem, 5>> MQ5;
+    typedef MyHMQ<UpdateRequest, Comparer, 1, true> HMQ1;
+	  typedef MyHMQ<UpdateRequest, Comparer, 2, true> HMQ2;
+	  typedef MyHMQ<UpdateRequest, Comparer, 3, true> HMQ3;
+    typedef MyHMQ<UpdateRequest, Comparer, 4, true> HMQ4;
+    typedef MyHMQ<UpdateRequest, Comparer, 5, true> HMQ5;
+    typedef MyHMQ<UpdateRequest, Comparer, 6, true> HMQ6;
+    typedef MyHMQ<UpdateRequest, Comparer, 7, true> HMQ7;
+    typedef MyHMQ<UpdateRequest, Comparer, 8, true> HMQ8;
 //    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, false>> PTSL;
 //    typedef GlobPQ<WorkItem, DistQueue<Comparer, WorkItem, true>> PPSL;
 //    typedef GlobPQ<WorkItem, LocalPQ<Comparer, WorkItem>> LPQ;
-//    typedef GlobPQ<WorkItem, SwarmPQ<Comparer, WorkItem>> SWARMPQ;
-//    typedef GlobPQ<WorkItem, HeapSwarmPQ<Comparer, WorkItem>> HSWARMPQ;
+    typedef GlobPQ<WorkItem, SwarmPQ<Comparer, WorkItem>> SWARMPQ;
+    typedef GlobPQ<WorkItem, HeapSwarmPQ<Comparer, WorkItem>> HSWARMPQ;
 //    typedef GlobPQ<WorkItem, PartitionPQ<Comparer, Hasher, WorkItem>> PPQ;
 //    typedef SkipListOrderedByIntegerMetric<Indexer, dChunk> SLOBIM;
 //    typedef SkipListOrderedByIntegerMetric<Indexer, noChunk> SLOBIM_NOCHUNK;
@@ -492,8 +504,13 @@ struct AsyncAlgo {
 //    typedef GlobPQ<WorkItem, kLSMQ<WorkItem, Indexer, 4194304>> kLSM4m;
 
     graph.getData(source).dist = 0;
-
     std::string wl = worklistname;
+
+#define RUN_WL(WL) Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<WL>())
+#include "Experiments.h"
+    if (!mqSuff.empty()) {
+      mqSuff = "_" + mqSuff;
+    }
     if (wl.find("obim") == std::string::npos)
       stepShift = 0;
     std::cout << "INFO: Using delta-step of " << (1 << stepShift) << "\n";
@@ -501,26 +518,10 @@ struct AsyncAlgo {
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM>());
     else if (wl == "adap-obim")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<ADAPOBIM>());
-    else if (wl == "smq_1_4")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_1_4>());
-    else if (wl == "smq_1_8")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_1_8>());
-    else if (wl == "smq_1_16")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_1_16>());
-    else if (wl == "smq_1_4_q")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_1_4_q>());
-    else if (wl == "smq_1_8_q")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_1_8_q>());
-    else if (wl == "smq_1_16_q")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_1_16_q>());
-    else if (wl == "smq_1_4_qfifo")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_1_4_qfifo>());
-    else if (wl == "smq_1_8_qfifo")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_1_8_qfifo>());
-    else if (wl == "smq_1_16_qfifo")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_1_16_qfifo>());
-    //    else if (wl == "adap-mq2")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<AMQ2>());
+    typedef MyPQ<WorkItem, Comparer, true> USUAL_PQ;
+    if (worklistname == "pq")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<USUAL_PQ>());
+
 //    else if (wl == "slobim")
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SLOBIM>());
 //    else if (wl == "slobim-nochunk")
@@ -553,28 +554,44 @@ struct AsyncAlgo {
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM_GLOB_NOCHUNK>());
 //    else if (wl == "skiplist")
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<GPQ>());
-//    else if (wl == "spraylist")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SL>());
-//    else if (wl == "multiqueue1")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ1>());
-//    else if (wl == "multiqueue4")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ4>());
-//    else if (wl == "heapmultiqueue1")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ1>());
-//    else if (wl == "heapmultiqueue2")
-//	    Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ2>());
-//     if (wl == "heapmultiqueue4")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ1>());
+    else if (wl == "spraylist")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SL>());
+    else if (wl == "mq2")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2>());
+    else if (wl == "mq3")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ3>());
+    else if (wl == "mq1")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ1>());
+    else if (wl == "mq4")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ4>());
+    else if (wl == "mq5")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ5>());
+    else if (wl == "hmq2")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ2>());
+    else if (wl == "hmq3")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ3>());
+    else if (wl == "hmq1")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ1>());
+    else if (wl == "hmq4")
+	    Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ4>());
+    else if (wl == "hmq5")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ5>());
+    else if (wl == "hmq6")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ6>());
+    else if (wl == "hmq7")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ7>());
+    else if (wl == "hmq8")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HMQ8>());
 //    else if (wl == "thrskiplist")
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<PTSL>());
 //    else if (wl == "pkgskiplist")
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<PPSL>());
 //    else if (wl == "lpq")
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<LPQ>());
-//    else if (wl == "swarm")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SWARMPQ>());
-//    else if (wl == "heapswarm")
-//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HSWARMPQ>());
+    else if (wl == "swarm")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SWARMPQ>());
+    else if (wl == "heapswarm")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<HSWARMPQ>());
 //    else if (wl == "ppq")
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<PPQ>());
 //    else if (wl == "klsm256")
@@ -585,12 +602,111 @@ struct AsyncAlgo {
 //      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<kLSM4m>());
 //    else
 //      std::cerr << "No work list!" << "\n";
-#define UpdateRequest WorkItem
-#include "Galois/WorkList/AMQ2.h"
 
-#include "AMQMatch2.h"
-#include "AMQMatch3.h"
-#include "AMQMatch4.h"
+#define priority_t Dist
+#define element_t WorkItem
+
+    ///////// CTR
+    typedef MultiQueueProbProb<element_t, Comparer, 1024, 512, 2, priority_t> MQ2_PP_1024_512;
+    if (worklistname == "mq2_pp_1024_512")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PP_1024_512>());
+    typedef MultiQueueProbLocal<element_t, Comparer, 1024, 512, 2, priority_t> MQ2_PL_1024_512;
+    if (worklistname == "mq2_pl_1024_512" or worklistname == "mq2_pl_ctr")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_1024_512>());
+//    typedef MultiQueueProbLocalNuma<element_t, Comparer, 1024, 512, 2, priority_t> MQ2_PL_1024_512_NUMA;
+//    if (worklistname == "mq2_pl_1024_512_numa" or worklistname == "mq2_pl_numa_ctr")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_1024_512_NUMA>());
+    typedef MultiQueueLocalProb<element_t, Comparer, 256, 512, 2, priority_t> MQ2_LP_256_512;
+    if (worklistname == "mq2_lp_256_512")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_LP_256_512>());
+    typedef MultiQueueLocalLocal<element_t, Comparer, 32, 128, 2, priority_t> MQ2_LL_32_128;
+    if (worklistname == "mq2_ll_32_128")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_LL_32_128>());
+
+
+//    typedef MultiQueueProbLocal<element_t, Comparer, 512, 512, 2, priority_t> MQ2_PL_512_512;
+//    if (worklistname == "mq2_pl_512_512" or worklistname == "mq2_pl_ctr_amd")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_512_512>());
+//
+    typedef StealingMultiQueue<element_t, Comparer, 8, 1, true> SMQ_8_1;
+    if (worklistname == "smq_8_1")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_8_1>());
+//    typedef StealingMultiQueue<element_t, Comparer, 32, 4, true> SMQ_32_4;
+//    if (worklistname == "smq_32_4" or worklistname == "smq_usa" or worklistname == "smq_ctr_amd")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_32_4>());
+//
+//    //////// LJ
+//    typedef MultiQueueProbProb<element_t, Comparer, 1024, 32, 2, priority_t> MQ2_PP_1024_32;
+//    if (worklistname == "mq2_pp_1024_32")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PP_1024_32>());
+//    typedef MultiQueueProbLocal<element_t, Comparer, 1024, 32, 2, priority_t> MQ2_PL_1024_32;
+//    if (worklistname == "mq2_pl_1024_32" or worklistname == "mq2_pl_lj")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_1024_32>());
+//   typedef MultiQueueProbLocalNuma<element_t, Comparer, 1024, 32, 2, priority_t> MQ2_PL_1024_32_NUMA;
+//    if (worklistname == "mq2_pl_1024_32_numa" or worklistname == "mq2_pl_numa_lj")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_1024_32_NUMA>());
+//    typedef MultiQueueLocalProb<element_t, Comparer, 8, 256, 2, priority_t> MQ2_LP_8_256;
+//    if (worklistname == "mq2_lp_8_256")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_LP_8_256>());
+//    typedef MultiQueueLocalLocal<element_t, Comparer, 1024, 32, 2, priority_t> MQ2_LL_512_64;
+//    if (worklistname == "mq2_ll_512_64")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_LL_512_64>());
+//
+//
+//    typedef MultiQueueProbLocal<element_t, Comparer, 4, 16, 2, priority_t> MQ2_PL_4_16;
+//    if (worklistname == "mq2_pl_4_16" or worklistname == "mq2_pl_lj_amd")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_4_16>());
+//
+//    typedef StealingMultiQueue<element_t, Comparer, 16, 16, true> SMQ_16_16;
+//    if (worklistname == "smq_16_16" or worklistname == "smq_lj_amd")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_16_16>());
+//    typedef StealingMultiQueue<element_t, Comparer, 8, 16, true> SMQ_8_16;
+//    if (worklistname == "smq_8_16" or worklistname == "smq_twi")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_8_16>());
+//    typedef StealingMultiQueue<element_t, Comparer, 16, 8, true> SMQ_16_8;
+//    if (worklistname == "smq_16_8" or worklistname == "smq_web")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_16_8>());
+//    typedef StealingMultiQueue<element_t, Comparer, 4, 8, true> SMQ_4_8;
+//    if (worklistname == "smq_4_8" or worklistname == "smq_lj")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_4_8>());
+//    typedef StealingMultiQueue<element_t, Comparer, 16, 4, true> SMQ_16_4;
+//    if (worklistname == "smq_16_4" or worklistname == "smq_ctr")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<SMQ_16_4>());
+//
+//    /// TWI
+//    typedef MultiQueueProbLocal<element_t, Comparer, 1024, 1024, 2, priority_t> MQ2_PL_1024_1024;
+//    if (worklistname == "mq2_pl_1024_1024" or worklistname == "mq2_pl_twi"  or worklistname == "mq2_pl_web")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_1024_1024>());
+//    typedef MultiQueueProbLocalNuma<element_t, Comparer, 1024, 1024, 2, priority_t> MQ2_PL_1024_1024_NUMA;
+//        if (worklistname == "mq2_pl_1024_1024_numa" or worklistname == "mq2_pl_numa_twi"  or worklistname == "mq2_pl_numa_web")
+//          Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_1024_1024_NUMA>());
+//
+//
+//    typedef MultiQueueProbLocal<element_t, Comparer, 1024, 256, 2, priority_t> MQ2_PL_1024_256;
+//    if (worklistname == "mq2_pl_1024_256" or worklistname == "mq2_pl_twi_amd" or worklistname == "mq2_pl_web_amd")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_1024_256>());
+//
+//
+//    typedef MultiQueueProbLocal<element_t, Comparer, 2048, 2048, 2, priority_t> MQ2_PL_2048_2048;
+//    if (worklistname == "mq2_pl_2048_2048")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_2048_2048>());
+//    typedef MultiQueueProbLocalNuma<element_t, Comparer, 2048, 2048, 2, priority_t> MQ2_PL_2048_2048_NUMA;
+//    if (worklistname == "mq2_pl_2048_2048_numa")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_2048_2048_NUMA>());
+//    typedef MultiQueueProbLocal<element_t, Comparer, 4096, 4096, 2, priority_t> MQ2_PL_4096_4096;
+//    if (worklistname == "mq2_pl_4096_4096")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_4096_4096>());
+//    typedef MultiQueueProbLocalNuma<element_t, Comparer, 4096, 4096, 2, priority_t> MQ2_PL_4096_4096_NUMA;
+//    if (worklistname == "mq2_pl_4096_4096_numa")
+//      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<MQ2_PL_4096_4096_NUMA>());
+//
+
+    typedef AdaptiveStealingMultiQueue<element_t, Comparer> ASMQ;
+    if (worklistname == "adap-smq")
+      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<ASMQ>());
+
+#include "Galois/WorkList/experiment_declarations.h"
+
   }
 };
 
@@ -936,8 +1052,12 @@ void run() {
 #endif
 
   T.stop();
-  std::ofstream out(amqResultFile, std::ios::app);
-  out << T.get() << " ";
+//  auto exists = std::filesystem::exists("bfs_results"); //std::filesystem::path(amqResultFile));
+  std::ofstream out(amqResultFile + mqSuff, std::ios::app);
+//  if (!exists) {
+//    out <<"time,wl,nodes,threads" << std::endl;
+//  }
+  out << T.get() << ",";
   out.close();
 
   Galois::reportPageAlloc("MeminfoPost");
@@ -1012,8 +1132,10 @@ int main(int argc, char **argv) {
 
   if (trackWork) {
     std::string wl = worklistname;
-    std::ofstream nodes(amqResultFile, std::ios::app);
-    nodes << wl << " " << getStatVal(nNodesProcessed) << " " << Galois::Runtime::activeThreads << std::endl;
+    if (wl.size() >= 3 && wl[1] == 'm' && wl[2] == 'q' && (wl[0] == 's' || wl[0] == 'a'))
+      wl = wl + mqSuff;
+    std::ofstream nodes(amqResultFile + mqSuff, std::ios::app);
+    nodes << wl << "," << getStatVal(nNodesProcessed) << "," << Galois::Runtime::activeThreads << std::endl;
     nodes.close();
 
     delete BadWork;

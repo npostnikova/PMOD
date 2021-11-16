@@ -36,9 +36,16 @@
 #include "Galois/Runtime/ll/PtrLock.h"
 
 #include "k_lsm/k_lsm.h"
+#include "Heap.h"
+
+#include <random>
+#include <cstdlib>
+#include <chrono>
+#include <memory>
 
 #include <boost/iterator/iterator_facade.hpp>
 #include <boost/heap/d_ary_heap.hpp>
+#include <Galois/Runtime/ll/PaddedLock.h>
 
 #define MEM_BARRIER     asm volatile("":::"memory")
 #define ATOMIC_CAS_MB(p, o, n)  __sync_bool_compare_and_swap(p, o, n)
@@ -899,7 +906,7 @@ public:
 
       if (i == j) continue;
 
-      if (compare(hi->min, hj->min))
+      if (hi->min.prior() > hj->min.prior())
         hi = hj;
     } while (!hi->lock.try_lock());
 
@@ -907,7 +914,7 @@ public:
       hi->lock.unlock();
       for (j = 1; j < nQ; j++) {
         hi = &Q[(i + j) % nQ].data;
-        if (hi->min == emptyK) continue;
+        if (hi->min.prior() == emptyK.prior()) continue;
         hi->lock.lock();
         if (hi->heap.size() > 1)
           goto deq;
@@ -925,6 +932,302 @@ deq:
     return true;
   }
 };
+
+
+template <typename  T,
+          typename Comparer,
+          size_t D = 4,
+          typename Prior = unsigned long>
+struct LockableHeapDAry {
+  boost::heap::d_ary_heap<T, boost::heap::arity<D>, boost::heap::compare<Comparer>> heap;
+  std::atomic<Prior> min;
+  static T usedT;
+
+  LockableHeapDAry() : min(usedT.prior()) {}
+
+  //! Non-blocking lock.
+  inline bool try_lock() {
+    return _lock.try_lock();
+  }
+
+  //! Blocking lock.
+  inline void lock() {
+    _lock.lock();
+  }
+
+  //! Unlocks the queue.
+  inline void unlock() {
+    _lock.unlock();
+  }
+
+  inline bool is_locked() {
+    _lock.is_locked();
+  }
+
+  Prior getMin() {
+    return min.load(std::memory_order_acquire);
+  }
+
+  static bool isUsed(T const& value) {
+    return value == usedT;
+  }
+
+  static bool isUsedMin(Prior const& value) {
+    return value == usedT.prior();
+  }
+
+private:
+  Runtime::LL::SimpleLock<true> _lock;
+};
+
+
+template<typename T,
+         typename Compare,
+         size_t D,
+         typename Prior>
+T LockableHeapDAry<T, Compare, D, Prior>::usedT;
+
+
+template<typename T,
+         typename Comparer,
+         size_t C = 2,
+         bool Concurrent = true,
+         typename Prior = unsigned long>
+class MyHMQ {
+private:
+  typedef T value_t;
+  typedef LockableHeapDAry<T, Comparer, 8, Prior> Heap;
+  ::std::unique_ptr<Runtime::LL::CacheLineStorage<Heap>[]> heaps;
+  Comparer compare;
+  //! Total number of threads.
+  const size_t nT;
+  //! Number of queues.
+  const int nQ;
+
+  //! Thread local random.
+  uint32_t random() {
+    static thread_local uint32_t x =
+        std::chrono::system_clock::now().time_since_epoch().count() % 16386 + 1;
+    uint32_t local_x = x;
+    local_x ^= local_x << 13;
+    local_x ^= local_x >> 17;
+    local_x ^= local_x << 5;
+    x = local_x;
+    return local_x;
+  }
+
+  inline size_t rand_heap() {
+    return random() % nQ;
+  }
+
+  //! Extracts minimum from the locked heap.
+  Galois::optional<value_t> extract_min(Heap *heap) {
+    auto result = getMin(heap);
+
+    heap->min.store(!heap->heap.empty() ? heap->heap.top().prior() : heap->usedT.prior(), ::std::memory_order_release);
+    heap->unlock();
+    return result;
+  }
+
+  //! Gets minimum from locked heap which depends on AMQ flags.
+  value_t getMin(Heap *heap) {
+    auto res =heap->heap.top();
+    heap->heap.pop();
+    return res;
+  }
+public:
+  MyHMQ(): nT(Galois::getActiveThreads()), nQ(C > 0 ? C * nT : 1) {
+    memset(reinterpret_cast<void *>(&Heap::usedT), 0xff, sizeof(Heap::usedT));
+    heaps = ::std::make_unique<Runtime::LL::CacheLineStorage<Heap>[]>(nQ);
+  }
+
+  //! T is the value type of the WL.
+  typedef T value_type;
+
+  //! Change the concurrency flag.
+  template<bool _concurrent>
+  struct rethread {
+    typedef MyHMQ <T, Comparer, C, _concurrent, Prior> type;
+  };
+
+  //! Change the type the worklist holds.
+  template<typename _T>
+  struct retype {
+    typedef MyHMQ <_T, Comparer, C, Concurrent, Prior> type;
+  };
+
+  //! Push a value onto the queue.
+  void push(const value_type &val) {
+    Heap *heap;
+    int q_ind;
+
+    do {
+      q_ind = rand_heap();
+      heap = &heaps[q_ind].data;
+    } while (!heap->try_lock());
+
+    heap->heap.emplace(val);
+    heap->min.store(heap->heap.top().prior(), ::std::memory_order_release);
+    heap->unlock();
+  }
+
+  //! Push a range onto the queue.
+  template<typename Iter>
+  unsigned int push(Iter b, Iter e) {
+    if (b == e) return 0;
+    int npush = 0;
+    Heap *heap = nullptr;
+
+    while (b != e) {
+      push(*b++);
+      npush++;
+    }
+    return npush;
+  }
+
+  //! Push initial range onto the queue.
+  //! Called with the same b and e on each thread.
+  template<typename RangeTy>
+  unsigned int push_initial(const RangeTy &range) {
+    auto rp = range.local_pair();
+    return push(rp.first, rp.second);
+  }
+
+  bool isFirstLess(Prior const &v1, Prior const &v2) {
+    if (Heap::isUsedMin(v1)) {
+      return false;
+    }
+    if (Heap::isUsedMin(v2)) {
+      return true;
+    }
+    return v1 < v2;
+  }
+
+  //! Pop a value from the queue.
+  Galois::optional<value_type> pop() {
+    const size_t ATTEMPTS = 1;
+    Galois::optional<value_type> result;
+    Heap *heap_i = nullptr;
+    Heap *heap_j = nullptr;
+    size_t i_ind = 0;
+    size_t j_ind = 0;
+    unsigned long i_min = 0;
+    unsigned long j_min = 0;
+
+    for (size_t i = 0; i < ATTEMPTS; i++) {
+      while (true) {
+        i_ind = rand_heap();
+        heap_i = &heaps[i_ind].data;
+
+        j_ind = rand_heap();
+        heap_j = &heaps[j_ind].data;
+
+        if (i_ind == j_ind && nQ > 1)
+          continue;
+        i_min = heap_i->getMin();
+        j_min = heap_j->getMin();
+        if (isFirstLess(j_min, i_min)) {
+          i_ind = j_ind;
+          heap_i = heap_j;
+          i_min = j_min;
+        }
+        if (heap_i->isUsedMin(i_min)) {
+          break;
+        }
+        if (heap_i->try_lock())
+          break;
+      }
+      if (!heap_i->isUsedMin(i_min)) {
+        if (!heap_i->heap.empty()) {
+          return extract_min(heap_i);
+        } else {
+          heap_i->unlock();
+        }
+      }
+    }
+    if (nT <= 4) {
+      for (size_t i = 0; i < heaps.size(); i++) {
+        heap_i = &heaps[i].data;
+        if (!heap_i->isUsed(heap_i->getMin())) {
+          if (heap_i->try_lock()) {
+            if (!heap_i->empty()) return extract_min(heap_i);
+            heap_i->unlock();
+          }
+        }
+      }
+    }
+    return result;
+  }
+};
+
+//! Sequential priority queue which implements worklist interface.
+template<typename T,
+typename Comparer,
+bool Concurrent = false>
+class MyPQ {
+private:
+  typedef T value_t;
+  typedef boost::heap::d_ary_heap<T, boost::heap::arity<8>,
+          boost::heap::compare<Comparer>> Heap;
+  Heap heap;
+  Comparer compare;
+
+  //! Extracts minimum from the locked heap.
+  Galois::optional<value_t> extract_min() {
+    auto result = heap.top();
+    heap.pop();
+    return result;
+  }
+public:
+  //! T is the value type of the WL.
+  typedef T value_type;
+
+  //! Change the concurrency flag.
+  template<bool _concurrent>
+  struct rethread {
+    typedef MyPQ <T, Comparer, _concurrent> type;
+  };
+
+  //! Change the type the worklist holds.
+  template<typename _T>
+  struct retype {
+    typedef MyPQ <_T, Comparer, Concurrent> type;
+  };
+
+  //! Push a value onto the queue.
+  void push(const value_type &val) {
+    heap.push(val);
+  }
+
+  //! Push a range onto the queue.
+  template<typename Iter>
+  unsigned int push(Iter b, Iter e) {
+    if (b == e) return 0;
+    int npush = 0;
+
+    while (b != e) {
+      push(*b++);
+      npush++;
+    }
+    return npush;
+  }
+
+  //! Push initial range onto the queue.
+  //! Called with the same b and e on each thread.
+  template<typename RangeTy>
+  unsigned int push_initial(const RangeTy &range) {
+    auto rp = range.local_pair();
+    return push(rp.first, rp.second);
+  }
+
+  //! Pop a value from the queue.
+  Galois::optional<value_type> pop() {
+    Galois::optional<value_type> result;
+    if (!heap.empty()) return extract_min();
+    return result;
+  }
+};
+
 
 template<class Comparer, typename K, bool perPackage>
 class DistQueue {
@@ -1016,6 +1319,246 @@ public:
     return false;
   }
 };
+
+template<typename T, class Comparer, size_t StealProb,
+size_t StealBatchSize = 8, bool Concurrent = true>
+class SkipListSMQ {
+private:
+  typedef LockFreeSkipList<Comparer, T> Heap;
+  std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<Heap>[]> heaps;
+  std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]> popBuffers;
+
+  const size_t nQ;
+  Comparer compare;
+public:
+  typedef T value_type;
+
+  SkipListSMQ() : nQ(Galois::getActiveThreads()) {
+    heaps = std::make_unique<Galois::Runtime::LL::CacheLineStorage<Heap>[]>(nQ);
+    popBuffers = std::make_unique<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]>(nQ);
+  }
+
+  template<bool _concurrent>
+  struct rethread {
+    typedef SkipListSMQ<T, Comparer, StealProb, StealBatchSize, _concurrent> type;
+  };
+
+  bool push(const T& key) {
+    static thread_local unsigned tid = Galois::Runtime::LL::getTID();
+    return heaps[tid].data.push(key);
+  }
+
+  template<typename _T>
+  struct retype {
+    typedef SkipListSMQ<_T, Comparer, StealProb, StealBatchSize, Concurrent> type;
+  };
+
+  template<typename RangeTy>
+  unsigned int push_initial(const RangeTy &range) {
+    auto rp = range.local_pair();
+    return push(rp.first, rp.second);
+  }
+
+  template<typename Iter>
+  int push(Iter b, Iter e) {
+    int npush = 0;
+    while (b != e) {
+      if (push(*b++))
+      npush++;
+    }
+    return npush;
+  }
+
+  uint32_t random() {
+    static thread_local uint32_t x =
+        std::chrono::system_clock::now().time_since_epoch().count() % 16386 + 1;
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    return x;
+  }
+
+  inline size_t rand_heap() {
+    return random() % nQ;
+  }
+
+  bool steal(T& val, size_t randId) {
+    unsigned tId = Galois::Runtime::LL::getTID();
+    if (heaps[randId].data.try_pop(val)) {
+      T val2;
+      for (size_t i = 0; i < StealBatchSize - 1; i++) {
+        if (heaps[randId].data.try_pop(val2)) {
+          popBuffers[tId].data.push_back(val2);
+        } else {
+          break;
+        }
+      }
+      std::reverse(popBuffers[tId].data.begin(), popBuffers[tId].data.end());
+      return true;
+    }
+    return false;
+  }
+
+  Galois::optional<T> pop() {
+    Galois::optional<T> result;
+    T val;
+    unsigned tId = Galois::Runtime::LL::getTID();
+    if (!popBuffers[tId].data.empty()) {
+      auto res = popBuffers[tId].data.back();
+      popBuffers[tId].data.pop_back();
+      return res;
+    }
+
+    if (nQ > 1) {
+      size_t stealR = random() % StealProb;
+      if (stealR == 0) {
+        auto randId = (tId + 1 + (random() % (nQ - 1))) % nQ;
+
+        SkipListNode<T> *localMin = heaps[tId].data.peek_pop();
+        SkipListNode<T> *randMin = heaps[randId].data.peek_pop();
+        T res;
+        if (randMin && (!localMin || (localMin
+        && localMin->key.prior() > randMin->key.prior()))) {
+          if (steal(val, randId)) {
+            return val;
+          }
+        }
+      }
+    }
+    if (heaps[tId].data.try_pop(val))
+      return val;
+    if (nQ == 1) return result;
+    for (size_t i = 0; i < 4; i++) {
+      auto randId = rand_heap();
+      if (randId == tId) continue;
+      if (steal(val, randId)) {
+        return val;
+      }
+    }
+    return result;
+  }
+};
+
+
+template<typename T, class Comparer, size_t StealProb,
+size_t StealBatchSize, size_t LOCAL_NUMA_W, bool Concurrent = true>
+class SkipListSMQNuma {
+private:
+  typedef LockFreeSkipList<Comparer, T> Heap;
+  std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<Heap>[]> heaps;
+  std::unique_ptr<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]> popBuffers;
+
+  const size_t nQ;
+  Comparer compare;
+public:
+  typedef T value_type;
+
+  SkipListSMQNuma() : nQ(Galois::getActiveThreads()) {
+    heaps = std::make_unique<Galois::Runtime::LL::CacheLineStorage<Heap>[]>(nQ);
+    popBuffers = std::make_unique<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]>(nQ);
+  }
+
+  template<bool _concurrent>
+  struct rethread {
+    typedef SkipListSMQNuma<T, Comparer, StealProb, StealBatchSize, LOCAL_NUMA_W, _concurrent> type;
+  };
+
+
+  bool push(const T& key) {
+    static thread_local unsigned tid = Galois::Runtime::LL::getTID();
+    return heaps[tid].data.push(key);
+  }
+
+  template<typename _T>
+  struct retype {
+    typedef SkipListSMQNuma<_T, Comparer, StealProb, StealBatchSize, LOCAL_NUMA_W, Concurrent> type;
+  };
+
+  template<typename RangeTy>
+  unsigned int push_initial(const RangeTy &range) {
+    auto rp = range.local_pair();
+    return push(rp.first, rp.second);
+  }
+
+  template<typename Iter>
+  int push(Iter b, Iter e) {
+    int npush = 0;
+    while (b != e) {
+      if (push(*b++))
+        npush++;
+    }
+    return npush;
+  }
+
+  uint32_t random() {
+    static thread_local uint32_t x =
+        std::chrono::system_clock::now().time_since_epoch().count() % 16386 + 1;
+    x ^= x << 13;
+    x ^= x >> 17;
+    x ^= x << 5;
+    return x;
+  }
+  static const size_t C = 1;
+  const size_t nT = nQ;
+#include "MQOptimized/NUMA.h"
+
+  bool steal(T& val, size_t randId) {
+    unsigned tId = Galois::Runtime::LL::getTID();
+    if (heaps[randId].data.try_pop(val)) {
+      T val2;
+      for (size_t i = 0; i < StealBatchSize - 1; i++) {
+        if (heaps[randId].data.try_pop(val2)) {
+          popBuffers[tId].data.push_back(val2);
+        } else {
+          break;
+        }
+      }
+      std::reverse(popBuffers[tId].data.begin(), popBuffers[tId].data.end());
+      return true;
+    }
+    return false;
+  }
+
+  Galois::optional<T> pop() {
+    Galois::optional<T> result;
+    T val;
+    unsigned tId = Galois::Runtime::LL::getTID();
+    if (!popBuffers[tId].data.empty()) {
+      auto res = popBuffers[tId].data.back();
+      popBuffers[tId].data.pop_back();
+      return res;
+    }
+
+    if (nQ > 1) {
+      size_t stealR = random() % StealProb;
+      if (stealR == 0) {
+        auto randId = (tId + 1 + (random() % (nQ - 1))) % nQ;
+
+        SkipListNode<T> *localMin = heaps[tId].data.peek_pop();
+        SkipListNode<T> *randMin = heaps[randId].data.peek_pop();
+        T res;
+        if (randMin && (!localMin || (localMin
+                                      && localMin->key.prior() > randMin->key.prior()))) {
+          if (steal(val, randId)) {
+            return val;
+          }
+        }
+      }
+    }
+    if (heaps[tId].data.try_pop(val))
+      return val;
+    if (nQ == 1) return result;
+    for (size_t i = 0; i < 4; i++) {
+      auto randId = rand_heap();
+      if (randId == tId) continue;
+      if (steal(val, randId)) {
+        return val;
+      }
+    }
+    return result;
+  }
+};
+
 
 template<class Comparer, typename K>
 class SwarmPQ {

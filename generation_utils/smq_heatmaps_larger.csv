@@ -1,0 +1,8 @@
+sssp,usa,8,1
+sssp,twitter,2,16
+bfs,usa,32,4
+bfs,twitter,8,16
+bfs,web,16,8
+pagerank,web,1024,1024
+pagerank,twitter,1024,1024
+boruvka,usa,4,8

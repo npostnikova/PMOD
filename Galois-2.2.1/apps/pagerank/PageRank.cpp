@@ -688,7 +688,6 @@ struct AsyncPri{
     if (!mqSuff.empty()) {
       mqSuff = "_" + mqSuff;
     }
-
     if (wl == "obim") {
       Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
                      boost::make_transform_iterator(graph.end(), std::ref(fn)),
@@ -699,14 +698,22 @@ struct AsyncPri{
                      boost::make_transform_iterator(graph.end(), std::ref(fn)),
                      Process(graph, tolerance, amp), Galois::wl<ADAPOBIM>());
     }
-//    if (wl == "hmq2")
-//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-//                     Process(graph, tolerance, amp), Galois::wl<HMQ2>());
-//    else if (wl == "hmq3")
-//      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-//                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-//                     Process(graph, tolerance, amp), Galois::wl<HMQ3>());
+    if (wl == "hmq2")
+      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     Process(graph, tolerance, amp), Galois::wl<HMQ2>());
+    else if (wl == "hmq3")
+      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     Process(graph, tolerance, amp), Galois::wl<HMQ3>());
+    if (wl == "mq2")
+      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     Process(graph, tolerance, amp), Galois::wl<MQ2>());
+    else if (wl == "mq3")
+      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
+                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
+                     Process(graph, tolerance, amp), Galois::wl<MQ3>());
 //    else if (wl == "hmq4")
 //      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
 //                     boost::make_transform_iterator(graph.end(), std::ref(fn)),

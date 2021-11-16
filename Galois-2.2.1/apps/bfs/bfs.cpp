@@ -529,15 +529,6 @@ struct AsyncAlgo {
     if (wl == "hmq4_try1") RUN_WL(USUAL_HMQ4_TRY1);
     typedef MyHMQ<UpdateRequest, Comparer, 5, true> USUAL_HMQ5_TRY1;
     if (wl == "hmq5_try1") RUN_WL(USUAL_HMQ5_TRY1);
-    typedef MyHMQBlocking<WorkItem, Comparer, 2, true> USUAL_HMQ2_BLOCKING1;
-    if (worklistname == "hmq2_blocking1")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<USUAL_HMQ2_BLOCKING1>());
-    typedef MyHMQTryLock2Q<WorkItem, Comparer, 2, true> USUAL_HMQ2_TRY2;
-    if (worklistname == "hmq2_try2")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<USUAL_HMQ2_TRY2>());
-    typedef MyHMQBlocking2Q<WorkItem, Comparer, 2, true> USUAL_HMQ2_BLOCKING2;
-    if (worklistname == "hmq2_blocking2")
-      Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<USUAL_HMQ2_BLOCKING2>());
     typedef MyPQ<WorkItem, Comparer, true> USUAL_PQ;
     if (worklistname == "pq")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<USUAL_PQ>());

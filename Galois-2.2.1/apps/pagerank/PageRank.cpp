@@ -132,7 +132,7 @@ struct SerialAlgo {
 
       for (auto ii = graph.begin(), ei = graph.end(); ii != ei; ++ii) {
         GNode src = *ii;
-        // *nNodesProcessed += 1;
+        //        *nNodesProcessed += 1;
         PNode& sdata = graph.getData(src);
         int neighbors = std::distance(graph.edge_begin(src), graph.edge_end(src));
         for (auto jj = graph.edge_begin(src), ej = graph.edge_end(src); jj != ej; ++jj) {

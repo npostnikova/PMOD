@@ -212,13 +212,6 @@ bool verify(Graph& graph, typename Graph::GraphNode source, typename Graph::Grap
     std::cerr << notVisited << " unvisited nodes; this is an error if the graph is strongly connected\n";
   }
 
-
-  // For USA graph. We suppose that not all nodes are required to have optimal distance.
-  std::cout << startNode << " " << destNode << " " << (unsigned int)graph.getData(report).dist << std::endl;
-  if (startNode == 1 && destNode == 22629042 && (unsigned int)graph.getData(report).dist == 42715444) {
-    return true;
-  }
-
   bool consistent = pstl::find_if(graph.begin(), graph.end(), not_consistent<Graph>(graph)) == graph.end();
   if (!consistent) {
     std::cerr << "node found with incorrect distance\n";

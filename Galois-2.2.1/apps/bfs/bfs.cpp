@@ -44,7 +44,6 @@
 #include <sstream>
 #include <limits>
 #include <iostream>
-//#include <filesystem>
 
 #include "HybridBFS.h"
 #ifdef GALOIS_USE_EXP
@@ -464,8 +463,6 @@ struct AsyncAlgo {
     typedef ChunkedFIFO<1> globNoChunk;
     typedef OrderedByIntegerMetric<Indexer,dChunk> OBIM;
     typedef AdaptiveOrderedByIntegerMetric<Indexer, dChunk, 0, true, false, CHUNK_SIZE> ADAPOBIM;
-
-
 //    typedef OrderedByIntegerMetric<Indexer,dChunkedLIFO<64>> OBIM_LIFO;
 //    typedef OrderedByIntegerMetric<Indexer,dChunk, 4> OBIM_BLK4;
 //    typedef OrderedByIntegerMetric<Indexer,dChunk, 0, false> OBIM_NOBSP;
@@ -521,14 +518,6 @@ struct AsyncAlgo {
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<OBIM>());
     else if (wl == "adap-obim")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<ADAPOBIM>());
-    typedef MyHMQ<UpdateRequest, Comparer, 2, true> USUAL_HMQ2_TRY1;
-    if (wl == "hmq2_try1") RUN_WL(USUAL_HMQ2_TRY1);
-    typedef MyHMQ<UpdateRequest, Comparer, 3, true> USUAL_HMQ3_TRY1;
-    if (wl == "hmq3_try1") RUN_WL(USUAL_HMQ3_TRY1);
-    typedef MyHMQ<UpdateRequest, Comparer, 4, true> USUAL_HMQ4_TRY1;
-    if (wl == "hmq4_try1") RUN_WL(USUAL_HMQ4_TRY1);
-    typedef MyHMQ<UpdateRequest, Comparer, 5, true> USUAL_HMQ5_TRY1;
-    if (wl == "hmq5_try1") RUN_WL(USUAL_HMQ5_TRY1);
     typedef MyPQ<WorkItem, Comparer, true> USUAL_PQ;
     if (worklistname == "pq")
       Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<USUAL_PQ>());

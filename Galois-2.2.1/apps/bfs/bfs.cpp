@@ -44,6 +44,7 @@
 #include <sstream>
 #include <limits>
 #include <iostream>
+#include <fstream>
 
 #include "HybridBFS.h"
 #ifdef GALOIS_USE_EXP
@@ -56,7 +57,6 @@
 #ifdef GEM5
   #include "m5op.h"
 #endif
-#include <fstream>
 
 static const char* name = "Breadth-first Search";
 static const char* desc =
@@ -86,28 +86,10 @@ enum DetAlgo {
   disjoint
 };
 
-#ifdef _WIN32
-
-#include <intrin.h>
-uint64_t rdtsc(){
-    return __rdtsc();
-}
-
-//  Linux/GCC
-#else
-
-uint64_t rdtsc(){
-  unsigned int lo,hi;
-  __asm__ __volatile__ ("rdtsc" : "=a" (lo), "=d" (hi));
-  return ((uint64_t)hi << 32) | lo;
-}
-
-#endif
-
 namespace cll = llvm::cl;
 static cll::opt<std::string> filename(cll::Positional, cll::desc("<input graph>"), cll::Required);
 static cll::opt<std::string> transposeGraphName("graphTranspose", cll::desc("Transpose of input graph"));
-static cll::opt<std::string> amqResultFile("resultFile", cll::desc("Result file name for amq experiment"), cll::init("result.csv"));
+static cll::opt<std::string> resultFile("resultFile", cll::desc("Result file name for amq experiment"), cll::init("result.csv"));
 static cll::opt<std::string> mqSuff("suff", cll::desc("Suffix for amq or smq"), cll::init(""));
 static cll::opt<bool> symmetricGraph("symmetricGraph", cll::desc("Input graph is symmetric"));
 static cll::opt<bool> useDetBase("detBase", cll::desc("Deterministic"));
@@ -324,13 +306,10 @@ struct AsyncAlgo {
   struct WorkItem{
     GNode first;
     Dist second;
-    uint64_t time;
 
+    WorkItem(const GNode& N, Dist W): first(N), second(W) {}
 
-    WorkItem(const GNode& N, Dist W): first(N), second(W), time(0) {}
-    WorkItem(const GNode& N, Dist W, uint64_t time): first(N), second(W), time(time) {}
-
-    WorkItem(): first(), second(0), time(0) {}
+    WorkItem(): first(), second(0) {}
 
     Dist prior() const {
       return second;
@@ -369,13 +348,6 @@ struct AsyncAlgo {
   struct Comparer: public std::binary_function<const WorkItem&, const WorkItem&, unsigned> {
     unsigned operator()(const WorkItem& x, const WorkItem& y) const {
       return x.second > y.second;
-    }
-  };
-
-
-  struct ComparerFIFO: public std::binary_function<const WorkItem&, const WorkItem&, unsigned> {
-    unsigned operator()(const WorkItem& x, const WorkItem& y) const {
-      return x.time > y.time;
     }
   };
 
@@ -422,7 +394,7 @@ struct AsyncAlgo {
           if ((unsigned int)oldDist <= newDist)
             break;
           if (__sync_bool_compare_and_swap(&ddata.dist, oldDist, newDist | (oldDist & 0xffffffff00000000ul))) {
-            ctx.push(WorkItem(dst, newDist + 1/*, rdtsc()*/));
+            ctx.push(WorkItem(dst, newDist + 1));
             break;
           }
         }
@@ -1052,11 +1024,7 @@ void run() {
 #endif
 
   T.stop();
-//  auto exists = std::filesystem::exists("bfs_results"); //std::filesystem::path(amqResultFile));
-  std::ofstream out(amqResultFile + mqSuff, std::ios::app);
-//  if (!exists) {
-//    out <<"time,wl,nodes,threads" << std::endl;
-//  }
+  std::ofstream out(resultFile + mqSuff, std::ios::app);
   out << T.get() << ",";
   out.close();
 
@@ -1132,9 +1100,9 @@ int main(int argc, char **argv) {
 
   if (trackWork) {
     std::string wl = worklistname;
-    if (wl.size() >= 3 && wl[1] == 'm' && wl[2] == 'q' && (wl[0] == 's' || wl[0] == 'a'))
+    if (wl.find("smq") == 0)
       wl = wl + mqSuff;
-    std::ofstream nodes(amqResultFile + mqSuff, std::ios::app);
+    std::ofstream nodes(resultFile + mqSuff, std::ios::app);
     nodes << wl << "," << getStatVal(nNodesProcessed) << "," << Galois::Runtime::activeThreads << std::endl;
     nodes.close();
 

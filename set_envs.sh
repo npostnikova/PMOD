@@ -28,6 +28,9 @@ PLT_THREADS=(1 2 4 8 16 32 64 128)
 # Path to the Galois library.
 export GALOIS_HOME=$MQ_ROOT/Galois-2.2.1/
 
+# C parameter for MQ. Number of queue = C x #threads.
+export MQ_C=4
+
 ######### HEATMAPS #########
 
 # Number of threads to count heatmaps.

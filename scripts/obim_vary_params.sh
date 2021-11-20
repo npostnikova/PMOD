@@ -1,11 +1,11 @@
 set -e
 
-# Generated deltas
-DELTAS=( 0 2 4 8 12 14 16 18 )
-# Generated chunk sizes
-CHUNK_SIZE=( 32 64 128 256 512 )
+source $MQ_ROOT/set_envs.sh
+
 # Supported algorithms
 ALGOS=( "bfs" "sssp" "boruvka" "astar" )
+
+threads=$4
 
 clear_file () {
   echo "" > $1
@@ -108,14 +108,7 @@ if [ $action == "build" ]; then
   $MQ_ROOT/scripts/build/build_${algo}.sh
 elif [ $action == "run" ]; then
   graph=$3
-  threads=$4
-  min_cs=$([ -z $5 ] && echo ${CHUNK_SIZE[0]} || echo $5)
-  max_cs=$([ -z $6 ] && echo ${CHUNK_SIZE[-1]} || echo $6)
-  min_d=$([ -z $7 ] && echo ${DELTAS[0]} || echo $7)
-  max_d=$([ -z $8 ] && echo ${DELTAS[-1]} || echo $8)
-  echo $min_cs
-  echo $max_cs
-  runs=5
+  runs=$HM_RUNS
   for cs in "${CHUNK_SIZE[@]}"; do
     echo $cs
     if [ $cs -ge $min_cs ] && [ $cs -le $max_cs ]; then

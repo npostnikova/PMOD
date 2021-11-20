@@ -1022,10 +1022,11 @@ int main(int argc, char **argv) {
 
   if (trackWork) {
     std::string wl = worklistname;
-    if (wl.size() >= 3 && wl[1] == 'm' && wl[2] == 'q' && (wl[0] == 's' || wl[0] == 'a'))
+    if (wl.find("smq") == 0)
       wl = wl + mqSuff;
     std::ofstream nodes(resultFileName + mqSuff, std::ios::app);
-    nodes << wl << "," << getStatVal(nNodesProcessed) << "," << Galois::Runtime::activeThreads << std::endl;
+    nodes << wl << "," << getStatVal(nNodesProcessed) << ","
+          << Galois::Runtime::activeThreads << "," << stepShift << std::endl;
     nodes.close();
 
     delete BadWork;

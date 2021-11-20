@@ -14,11 +14,16 @@ sudo apt install libboost-all-dev -y
 sudo apt install python3.8 -y
 sudo apt update
 
-
 # Compile the project.
 chmod +x *.sh
-./compile.sh
+$MQ_ROOT/compile.sh
+
+chmod +x $MQ_ROOT/scripts/*.sh
+chmod +x $MQ_ROOT/scripts/build/*.sh
+chmod +x $MQ_ROOT/scripts/single_run/*.sh
 
 # Download and prepare graphs.
-chmod +x scripts/*.sh
-scripts/datasets.sh
+$MQ_ROOT/scripts/datasets.sh
+
+# Check that everything is set up
+$MQ_ROOT/scripts/verify_setup.sh

@@ -11,6 +11,7 @@ mkdir -p $MQ_ROOT/datasets
 cd $MQ_ROOT/datasets
 
 ##### DOWNLOAD ######
+echo "Downloading graphs"
 # Road graphs
 wget -c http://users.diag.uniroma1.it/challenge9/data/USA-road-d/USA-road-d.USA.gr.gz
 wget -c http://users.diag.uniroma1.it/challenge9/data/USA-road-d/USA-road-d.USA.co.gz
@@ -36,6 +37,7 @@ tar -xvzf GAP-web.tar.gz
 
 
 ##### CONVERT TO BINARY GR #####
+echo "Converting graphs"
 
 $GALOIS_HOME/build/tools/graph-convert-standalone/graph-convert-standalone -dimacs2gr USA-road-d.USA.gr USA-road-dUSA.bin
 $GALOIS_HOME/build/tools/graph-convert-standalone/graph-convert-standalone -dimacs2gr USA-road-d.W.gr USA-road-dW.bin
@@ -49,10 +51,14 @@ $GALOIS_HOME/build/tools/graph-convert-standalone/graph-convert-standalone -mtx2
 $GALOIS_HOME/build/tools/graph-convert-standalone/graph-convert-standalone -mtx2intgr GAP-web/GAP-web.mtx GAP-web.bin
 #$GALOIS_HOME/build/tools/graph-convert-standalone/graph-convert-standalone -edgelist2randgr soc-LiveJournal1.txt soc-LiveJournal1.bin
 
+echo "Cleaning"
+
 rm GAP-twitter.tar.gz
 rm GAP-web.tar.gz
 rm -R GAP-twitter
 rm -R GAP-web
 #rm soc-LiveJournal1.txt
+
+echo "Graphs are prepared"
 
 

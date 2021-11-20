@@ -1,9 +1,9 @@
 set -e
 
-source set_envs.sh
+source $MQ_ROOT/set_envs.sh
 
 echo "Running sample python script"
-$PYTHON_EXPERIMENTS python_sample.py
+$PYTHON_EXPERIMENTS $MQ_ROOT/scripts/python_sample.py
 
 echo "Checking that all benchmarks and graphs work"
 echo "On success *_benchmarks_test files should contain one record each"
@@ -32,6 +32,9 @@ echo "Each file is expected to have only one line <time>,obim,<nodes>,<threads>"
 verify_execution_result() {
   algo=$1
   graph=$2
+  echo "${algo}_${graph}_benchmarks_test contents:"
+  cat "${algo}_${graph}_benchmarks_test"
+
   lines=$( wc -l < "${algo}_${graph}_benchmarks_test" )
   if [ $lines -ne 1 ]; then
     echo "Wrong number of lines"
@@ -57,3 +60,6 @@ for algo in astar boruvka; do
 done
 
 echo "Seems like everything is OK!"
+echo "Cleaning"
+
+rm -f *_benchmarks_test

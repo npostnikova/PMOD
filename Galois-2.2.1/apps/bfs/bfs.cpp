@@ -1103,7 +1103,8 @@ int main(int argc, char **argv) {
     if (wl.find("smq") == 0)
       wl = wl + mqSuff;
     std::ofstream nodes(resultFile + mqSuff, std::ios::app);
-    nodes << wl << "," << getStatVal(nNodesProcessed) << "," << Galois::Runtime::activeThreads << std::endl;
+    nodes << wl << "," << getStatVal(nNodesProcessed) << ","
+          << Galois::Runtime::activeThreads << "," << stepShift << std::endl;
     nodes.close();
 
     delete BadWork;

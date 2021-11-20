@@ -28,7 +28,7 @@ class HeapWithStealBuffer {
   // Other threads steal the whole buffer at once.
   std::array<T, STEAL_NUM> stealBuffer;
   // Represents epoch & stolen flag
-  // version mod 2 = 0  -- element is stolen
+  // version mod 2 = 0  -- elements are stolen
   // version mod 2 = 1  -- can steal
   std::atomic<size_t> version;
 public:
@@ -72,10 +72,10 @@ public:
     if (v1 % 2 == 0) {
       return dummy;
     }
-    std::array<T, STEAL_NUM> vals = stealBuffer;
+    T minVal = stealBuffer[0];
     auto v2 = getVersion();
     if (v1 == v2) {
-      return vals[0];
+      return minVal;
     }
     // Somebody has stolen the elements.
     raceHappened = true;
@@ -87,10 +87,10 @@ public:
   T getMinWriter() {
     auto v1 = getVersion();
     if (v1 % 2 != 0) {
-      std::array<T, STEAL_NUM> vals = stealBuffer;
+      T minVal = stealBuffer[0];
       auto v2 = getVersion();
       if (v1 == v2) {
-        return vals[0];
+        return minVal;
       }
     }
     return fillBuffer();

@@ -43,3 +43,21 @@ run_mq_hm mqll
 
 echo "Running OBIM & PMOD heatmaps"
 run_hm obim_heatmaps run_obim_params.sh
+
+
+################## PLOTS ##################
+# Running best worklists on different amount of threads (specified in PLT_THREADS).
+
+echo "Running best SMQ combinations on all threads"
+$MQ_ROOT/scripts/run_best_smq.sh smq
+
+echo "Running best SkipList SMQ combinations on all threads"
+$MQ_ROOT/scripts/run_best_smq.sh slsmq
+
+echo "Running best MQ variants on all threads"
+$MQ_ROOT/scripts/run_best_mq.sh
+
+echo "Running other worklists"
+mkdir -p $MQ_ROOT/experiments/$CPU/plots/other_plots
+cd $MQ_ROOT/experiments/$CPU/plots/other_plots
+$MQ_ROOT/scripts/run_other_worklists_all.sh

@@ -1,34 +1,34 @@
 set -e
 
-if [[ -z $1 ]]; then
-  echo "Provide number of threads"
-  exit 1
-fi
-t=$1
-pyscript=$MQ_ROOT/scripts/find_best_wl.py
+source $MQ_ROOT/set_envs.sh
 
-cd $MQ_ROOT/experiments/smq_heatmaps
-$MQ_ROOT/scripts/smq_heatmaps.sh $mq bfs build
-$MQ_ROOT/scripts/smq_heatmaps.sh $mq sssp build
-$MQ_ROOT/scripts/smq_heatmaps.sh $mq astar build
-$MQ_ROOT/scripts/smq_heatmaps.sh $mq boruvka build
-mkdir -p best
-cd best
+t=$HM_THREADS
+times=$PLT_RUNS
+pyscript=$MQ_ROOT/scripts/find_best_wl.py
+smq=$1 # smq or slsmq
+
+hm_dir=$MQ_ROOT/experiments/$CPU/heatmaps/${smq}_heatmaps/
+plt_dir=$MQ_ROOT/experiments/$CPU/plots/${smq}_plots/
+$MQ_ROOT/scripts/${smq}_heatmaps.sh bfs build
+$MQ_ROOT/scripts/${smq}_heatmaps.sh sssp build
+$MQ_ROOT/scripts/${smq}_heatmaps.sh astar build
+$MQ_ROOT/scripts/${smq}_heatmaps.sh boruvka build
+mkdir -p plt_dir
+cd plt_dir
+echo "Writing all thread executions into $plt_dir"
 for algo in bfs sssp; do
   for graph in usa west twi web; do
       echo ">>>>"
       echo "$algo $graph"
-      wl_name=$( python3.7 $pyscript "../${algo}_${graph}_smq_$t" )
-      $MQ_ROOT/scripts/run_wl_n_times_all_threads.sh $algo $graph $wl_name 5 smq
+      wl_name=$( $PYTHON_EXPERIMENTS $pyscript "${hm_dir}/${algo}_${graph}_${smq}_$t" )
+      $MQ_ROOT/scripts/run_wl_n_times_all_threads.sh $algo $graph $wl_name $times $smq
   done
 done
 for algo in boruvka astar; do
   for graph in usa west; do
-    for wl in obim pmod; do
-        echo ">>>>"
-        echo "$algo $graph"
-        wl_name=$( python3.7 $pyscript "../${algo}_${graph}_smq_$t" )
-        $MQ_ROOT/scripts/run_wl_n_times_all_threads.sh $algo $graph $wl_name 5 smq
-    done
+      echo ">>>>"
+      echo "$algo $graph"
+      wl_name=$( $PYTHON_EXPERIMENTS $pyscript "${hm_dir}/${algo}_${graph}_${smq}_$t" )
+      $MQ_ROOT/scripts/run_wl_n_times_all_threads.sh $algo $graph $wl_name $times $smq
   done
 done

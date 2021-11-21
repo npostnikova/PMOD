@@ -109,6 +109,10 @@ if [ $action == "build" ]; then
 elif [ $action == "run" ]; then
   graph=$3
   runs=$HM_RUNS
+  min_cs=$([ -z $5 ] && echo ${CHUNK_SIZE[0]} || echo $5)
+  max_cs=$([ -z $6 ] && echo ${CHUNK_SIZE[-1]} || echo $6)
+  min_d=$([ -z $7 ] && echo ${DELTAS[0]} || echo $7)
+  max_d=$([ -z $8 ] && echo ${DELTAS[-1]} || echo $8)
   for cs in "${CHUNK_SIZE[@]}"; do
     echo $cs
     if [ $cs -ge $min_cs ] && [ $cs -le $max_cs ]; then

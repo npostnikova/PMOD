@@ -11,7 +11,7 @@ echo "On success *_benchmarks_test files should contain one record each"
 rm -f *_benchmarks_test
 
 for algo in bfs sssp astar boruvka; do
-  $MQ_ROOT/build/build.sh $algo
+  $MQ_ROOT/scripts/build/build.sh $algo
 done
 
 for algo in bfs sssp; do

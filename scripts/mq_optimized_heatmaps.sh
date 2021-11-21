@@ -75,4 +75,3 @@ elif [ $action == "run" ]; then
   done
 fi
 
-exit 0

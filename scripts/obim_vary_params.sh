@@ -127,5 +127,3 @@ elif [ $action == "run" ]; then
     fi
   done
 fi
-
-exit 0

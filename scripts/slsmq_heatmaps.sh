@@ -60,5 +60,3 @@ elif [ $action == "run" ]; then
     done
   done
 fi
-
-exit 0

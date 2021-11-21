@@ -224,7 +224,7 @@ struct Indexer: public std::unary_function<WorkItem, unsigned> {
 template<typename UpdateRequest, size_t N>
 struct ParameterizedUpdateRequestIndexer: public std::unary_function<UpdateRequest, unsigned> {
    unsigned operator()(const UpdateRequest& n) {
-      unsigned t = stepShift ? (n.second >> N) : n.second;
+      unsigned t = N ? (n.second >> N) : n.second;
       return t;
    }
 };

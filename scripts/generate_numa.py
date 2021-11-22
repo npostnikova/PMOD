@@ -57,7 +57,7 @@ def declaration_by_name(name):
     elif pref in mq2typedef:
         line = f'typedef MultiQueue{mq2typedef[pref]}<UpdateRequest, Comparer, {splitn[2]}, {splitn[3]}, {splitn[1]}> {name};'
     else:
-        raise f'Sdohnite vse :{name}'
+        raise f'Invalid prefix: {name}'
     line += f'\nif (wl == \"{name}\") RUN_WL({name});\n'
     return line
 
@@ -76,7 +76,7 @@ def numa_declaration_by_name(name, w):
         line = f'typedef MultiQueue{mq2typedef[pref]}Numa<UpdateRequest, Comparer, {splitn[2]}, {splitn[3]}, ' \
            f'{splitn[1]}, {w}> {wl_name};'
     else:
-        raise 'Sdohnite vse'
+        raise f'Invalid prefix: {name}'
     line += f'\nif (wl == \"{wl_name}\") RUN_WL({wl_name});\n'
     return line
 
@@ -84,6 +84,7 @@ def numa_declaration_by_name(name, w):
 
 threads = int(sys.argv[2])
 wl = sys.argv[1]
+heatmap_path=sys.argv[3]
 
 algos = ['bfs', 'sssp', 'boruvka', 'astar']
 
@@ -91,7 +92,7 @@ def generate_best():
     algo2best_names = { algo: set() for algo in algos }
     algo2best = []
     for (algo, graph) in algo_graph:
-        filename = f'{algo}_{graph}_{wl}_{threads}'
+        filename = f'{heatmap_path}/{algo}_{graph}_{wl}_{threads}'
         best_name = find_best_name(filename)
         #         best_names.add(best_name)
         algo2best_names[algo].add(best_name)
@@ -116,7 +117,7 @@ def generate_best_numa():
     algo2best_names = { algo: set() for algo in algos }
     algo2best = []
     for (algo, graph) in algo_graph:
-        filename = f'{algo}_{graph}_{wl}_{threads}'
+        filename = f'{heatmap_path}/{algo}_{graph}_{wl}_{threads}'
         best_name = find_best_name(filename)
         #         best_names.add(best_name)
         algo2best_names[algo].add(best_name)
@@ -124,15 +125,16 @@ def generate_best_numa():
     GALOIS_HOME = os.environ.get('GALOIS_HOME')
     for algo in algos:
         exp_filename = f'{GALOIS_HOME}/apps/{algo}/Experiments.h'
-        exp_file = open(exp_filename, 'w')  # TODO
+        exp_file = open(exp_filename, 'w')
         for name in algo2best_names[algo]:
             for w in numa_ws:
                 line = numa_declaration_by_name(name, w)
                 exp_file.write(line)
         exp_file.close()
     MQ_ROOT = os.environ.get('MQ_ROOT')
-    script = open(f'run_best.sh', 'w')  # TODO w or a
+    script = open(f'run_numa.sh', 'w')
     script.write('set -e\n')
+    script.write('source $MQ_ROOT/set_envs.sh\n')
     for (algo, graph, name) in algo2best:
         for w in numa_ws:
             splitn = name.split('_')
@@ -140,7 +142,7 @@ def generate_best_numa():
             splitn.append(str(w))
             numa_name = '_'.join(splitn)
             res_suff = f'{wl}_numa' # TODO with wl or without
-            script.write(f'$MQ_ROOT/scripts/run_wl_n_times.sh {algo} {graph} {numa_name} $threads $times {res_suff}\n')
+            script.write(f'$MQ_ROOT/scripts/run_wl_n_times.sh {algo} {graph} {numa_name} $HM_THREADS $HM_RUNS {res_suff}\n')
     script.close()
 
 generate_best_numa()

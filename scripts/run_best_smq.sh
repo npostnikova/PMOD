@@ -9,14 +9,15 @@ smq=$1 # smq or slsmq
 
 hm_dir=$MQ_ROOT/experiments/$CPU/heatmaps/${smq}_heatmaps/
 plt_dir=$MQ_ROOT/experiments/$CPU/plots/${smq}_plots/
-$MQ_ROOT/scripts/${smq}_heatmaps.sh bfs build
-$MQ_ROOT/scripts/${smq}_heatmaps.sh sssp build
-$MQ_ROOT/scripts/${smq}_heatmaps.sh astar build
-$MQ_ROOT/scripts/${smq}_heatmaps.sh boruvka build
-mkdir -p plt_dir
-cd plt_dir
+#$MQ_ROOT/scripts/${smq}_heatmaps.sh bfs build
+#$MQ_ROOT/scripts/${smq}_heatmaps.sh sssp build
+#$MQ_ROOT/scripts/${smq}_heatmaps.sh astar build
+#$MQ_ROOT/scripts/${smq}_heatmaps.sh boruvka build
+mkdir -p $plt_dir
+cd $plt_dir
 echo "Writing all thread executions into $plt_dir"
 for algo in bfs sssp; do
+  $MQ_ROOT/scripts/${smq}_heatmaps.sh $algo build
   for graph in usa west twi web; do
       echo ">>>>"
       echo "$algo $graph"
@@ -25,6 +26,7 @@ for algo in bfs sssp; do
   done
 done
 for algo in boruvka astar; do
+  $MQ_ROOT/scripts/${smq}_heatmaps.sh $algo build
   for graph in usa west; do
       echo ">>>>"
       echo "$algo $graph"

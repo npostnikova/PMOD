@@ -18,8 +18,8 @@ for mq in mqpp mqpl mqlp mqll; do
 #  fi
   hm_path=$MQ_ROOT/experiments/$CPU/heatmaps/${mq}_heatmaps/
   plt_dir=$MQ_ROOT/experiments/$CPU/plots/${mq}_plots/
-  mkdir -p plt_dir
-  cd plt_dir
+  mkdir -p $plt_dir
+  cd $plt_dir
   echo "Saving best ${mq} executions for all threads in $plt_dir"
   $MQ_ROOT/scripts/mq_optimized_heatmaps.sh $mq bfs build
   $MQ_ROOT/scripts/mq_optimized_heatmaps.sh $mq sssp build

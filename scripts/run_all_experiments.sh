@@ -6,6 +6,7 @@ source $MQ_ROOT/set_envs.sh
 echo "Computing heatmaps. Be patient!"
 
 hm_dir=$MQ_ROOT/experiments/$CPU/heatmaps
+plt_dir=$MQ_ROOT/experiments/$CPU/plots
 echo "Directory for heatmaps: $hm_dir"
 
 run_hm() {
@@ -53,6 +54,12 @@ $MQ_ROOT/scripts/run_best_smq.sh smq
 
 echo "Running best SkipList SMQ combinations on all threads"
 $MQ_ROOT/scripts/run_best_smq.sh slsmq
+
+echo "Running best OBIM combinations on all threads"
+$MQ_ROOT/scripts/run_best_smq.sh obim
+
+echo "Running best PMOD combinations on all threads"
+$MQ_ROOT/scripts/run_best_smq.sh pmod
 
 echo "Running best MQ variants on all threads"
 $MQ_ROOT/scripts/run_best_mq.sh

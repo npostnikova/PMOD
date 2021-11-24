@@ -31,6 +31,9 @@ export GALOIS_HOME=$MQ_ROOT/Galois-2.2.1/
 # C parameter for MQ. Number of queue = C x #threads.
 export MQ_C=4
 
+# Number of CPUs per NUMA socket.
+export SOCKET_SIZE=$(( $MAX_CPU_NUM / $NUMA_NODES ))
+
 ######### HEATMAPS #########
 
 # Number of threads to count heatmaps.
@@ -75,3 +78,7 @@ DELTA_LARGE_MAX=18
 
 # How many times worklist for each thread should be executed.
 PLT_RUNS=10
+
+# Save NUMA-related configuration.
+echo "#define SOCKETS_NUM $NUMA_NODES" > $GALOIS_HOME/include/Galois/WorkList/MQOptimized/SOCKETS_NUM.h
+echo "#define SOCKET_SIZE $SOCKET_SIZE" > $GALOIS_HOME/include/Galois/WorkList/MQOptimized/SOCKET_SIZE.h

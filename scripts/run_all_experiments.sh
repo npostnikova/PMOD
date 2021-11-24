@@ -42,9 +42,25 @@ run_mq_hm mqlp
 echo "Running MQ Optimized [Task Batching for insert() & delete()] heatmaps"
 run_mq_hm mqll
 
-echo "Running OBIM & PMOD heatmaps"
-run_hm obim_heatmaps run_obim_params.sh
+echo "Running OBIM heatmaps"
+run_hm obim_heatmaps run_obim_hm.sh
 
+echo "Running PMOD heatmaps"
+run_hm pmod_heatmaps run_pmod_hm.sh
+
+
+################## NUMA ##################
+
+if [ $NUMA_NODES -eq 2 || $NUMA_NODES -eq 4 ]; then
+  echo "Vary NUMA weights for best heatmap combinations"
+  $MQ_ROOT/scripts/run_best_numa.sh smq
+  $MQ_ROOT/scripts/run_best_numa.sh mqpp
+  $MQ_ROOT/scripts/run_best_numa.sh mqpl
+  $MQ_ROOT/scripts/run_best_numa.sh mqlp
+  $MQ_ROOT/scripts/run_best_numa.sh mqll
+else
+  echo "NUMA execution for $NUMA_NODES nodes not supported"
+fi
 
 ################## PLOTS ##################
 # Running best worklists on different amount of threads (specified in PLT_THREADS).

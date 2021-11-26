@@ -1,5 +1,3 @@
-from plots.heatmap_lib import *
-
 import numpy as np
 from matplotlib import cm
 import matplotlib
@@ -22,9 +20,9 @@ def draw_heatmap(
         special_xlabel=None,
         special_ylabel=None
 ):
-    fig, axn = plt.subplots(2, len(input_files), sharey='row', figsize=(10, 10))
+    fig, axn = plt.subplots(2, len(input_files), sharey='row')
 
-    file_mul = .82
+    file_mul = .32
     cbar_ax = fig.add_axes([ file_mul * len(input_files) + .11, 0.73, .03, .35])
     cbar_ax2 = fig.add_axes([ file_mul * len(input_files) + .11, 0.17, .03, .35])
 
@@ -69,7 +67,7 @@ def draw_heatmap(
         fmt = lambda x,pos: '{:.2f}'.format(x)
 
         thm = sns.heatmap(hm, ax=axn[0][i], center=1, cmap=cmap,
-                          vmin=min_t, vmax=max_t, annot=True,
+                          vmin=min_t, vmax=max_t,
                           linewidths=.7, square=True, cbar_ax=cbar_ax,
                           cbar_kws={
                               'format': FuncFormatter(fmt),
@@ -107,7 +105,7 @@ def draw_heatmap(
         axn[1][i].set_yticklabels(xl, rotation=30)
 
         if special_xlabel is None:
-            axn[0][i].set_xlabel('delete: $p_{change}$' if x_prob else 'delete: batch size', fontsize=12)   
+            axn[0][i].set_xlabel('delete: $p_{change}$' if x_prob else 'delete: batch size', fontsize=12)
         else:
             axn[0][i].set_xlabel(special_xlabel, fontsize=12)
         best_vals.append((str(2 ** max_t_id_i) if not y_prob else f'1/{2 ** max_t_id_i}',

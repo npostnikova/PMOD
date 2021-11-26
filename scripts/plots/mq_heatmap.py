@@ -1,3 +1,5 @@
+from plots.heatmap_lib import *
+
 import numpy as np
 from matplotlib import cm
 import matplotlib

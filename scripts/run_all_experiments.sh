@@ -63,7 +63,7 @@ else
 fi
 
 ################## BASELINE ##################
-base_dir=hm_dir=$MQ_ROOT/experiments/$CPU/baseline
+base_dir=$MQ_ROOT/experiments/$CPU/baseline
 mkdir -p $base_dir
 cd $base_dir
 echo "Computing baseline in $base_dir"

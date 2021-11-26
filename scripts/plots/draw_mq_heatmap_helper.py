@@ -1,4 +1,4 @@
-import mq_heatmap
+from plots.mq_heatmap import draw_heatmap
 
 def draw_hm(
         image_filename,

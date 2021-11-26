@@ -1,4 +1,5 @@
-import heatmap_lib
+from plots.heatmap_lib import *
+
 import numpy as np
 from matplotlib import cm
 import matplotlib
@@ -25,7 +26,7 @@ def draw_heatmap_obim(
     cbar_ax2 = fig.add_axes([ file_mul * len(input_files) + .11, 0.17, .03, .35])
 
 
-    ticks_delta = [0.5, 1.5, 2.5, 3.5]
+    ticks_delta = [0.5, 1.5, 2.5, 3.5, 4.5]
     ticks_chunks = [0.5, 1.5, 2.5, 3.5, 4.5]
     deltas = [0, 2, 4, 8, 10] if small_delta else [10, 12, 14, 16, 18]
     chunks = ['$2^{5}$', '$2^{6}$', '$2^{7}$', '$2^{8}$', '$2^{9}$']

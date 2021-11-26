@@ -1,7 +1,7 @@
 """A lame library for drawing heatmaps."""
 
 import csv
-
+import numpy as np
 
 def heatmap2avg(filename):
     """Computes avg time and work for each worklist in the file.

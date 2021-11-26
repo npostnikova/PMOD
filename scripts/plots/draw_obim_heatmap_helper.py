@@ -1,4 +1,4 @@
-import obim_heatmap
+from plots.obim_heatmap import draw_heatmap_obim
 
 def draw_hm_obim(image_filename, wl, path_prefix, threads, small_delta,
                  xcolticks=[1, 1.5, 2],

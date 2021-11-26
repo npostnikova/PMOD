@@ -1,5 +1,5 @@
-import plots.draw_obim_heatmap_helper
-import plots.draw_mq_heatmap_helper
+from plots.draw_obim_heatmap_helper import draw_hm_obim
+from  plots.draw_mq_heatmap_helper import draw_hm
 
 import os
 

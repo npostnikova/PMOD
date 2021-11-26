@@ -62,6 +62,14 @@ else
   echo "NUMA execution for $NUMA_NODES nodes not supported"
 fi
 
+################## BASELINE ##################
+base_dir=hm_dir=$MQ_ROOT/experiments/$CPU/baseline
+mkdir -p $base_dir
+cd $base_dir
+echo "Computing baseline in $base_dir"
+$MQ_ROOT/scripts/run_wl_all_algo.sh "hmq$MQ_C" $HM_THREADS $HM_RUNS base
+
+
 ################## PLOTS ##################
 # Running best worklists on different amount of threads (specified in PLT_THREADS).
 

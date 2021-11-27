@@ -16,9 +16,16 @@ def heatmap2avg(filename):
     with open(filename, 'r', newline='') as csvfile:
         reader = csv.DictReader(csvfile, fieldnames=['time', 'wl', 'nodes', 'threads'])
         for row in reader:
-            time = int(row['time'])
-            name = row['wl']
-            nodes = int(row['nodes'])
+            try:
+                time = int(row['time'])
+                name = row['wl']
+                nodes = int(row['nodes'])
+                if not name or not name[0].isalpha():
+                    print("Invalid row: ", row)
+                    continue
+            except ValueError:
+                print("Invalid row: ", row)
+                continue
             cur_time = time
             cur_nodes = nodes
             cur_qty = 1
@@ -160,9 +167,13 @@ def find_avg_hmq(filename):
     with open(filename, 'r', newline='') as csvfile:
         reader = csv.DictReader(csvfile, fieldnames=['time', 'wl', 'nodes', 'threads'])
         for row in reader:
-            time = int(row['time'])
-            name = row['wl']
-            nodes = int(row['nodes'])
+            try:
+                time = int(row['time'])
+                name = row['wl']
+                nodes = int(row['nodes'])
+            except ValueError:
+                print("Invalid row: ", row)
+                continue
             if name == hmq:
                 time_sum += time
                 nodes_sum += nodes

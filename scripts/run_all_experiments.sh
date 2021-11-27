@@ -51,7 +51,7 @@ run_hm pmod_heatmaps run_pmod_hm.sh
 
 ################## NUMA ##################
 
-if [ $NUMA_NODES -eq 2 || $NUMA_NODES -eq 4 ]; then
+if [[ "$NUMA_NODES" == "2" || "$NUMA_NODES" == "4" ]];; then
   echo "Vary NUMA weights for best heatmap combinations"
   $MQ_ROOT/scripts/run_best_numa.sh smq
   $MQ_ROOT/scripts/run_best_numa.sh mqpp
@@ -68,7 +68,7 @@ mkdir -p $base_dir
 cd $base_dir
 echo "Computing baseline in $base_dir"
 $MQ_ROOT/scripts/run_wl_all_algo.sh "hmq$MQ_C" $HM_THREADS $HM_RUNS "base_$HM_THREADS"
-$MQ_ROOT/scripts/run_wl_all_algo.sh "hmq$MQ_C" 1 $HM_RUNS base_1
+$MQ_ROOT/scripts/run_wl_all_algo.sh "hmq$MQ_C" 1 $HM_RUNS "base_1"
 
 
 ################## PLOTS ##################

@@ -2,6 +2,12 @@ set -e
 
 source $MQ_ROOT/set_envs.sh
 
+
+# Save NUMA-related configuration.
+echo "#define SOCKETS_NUM $NUMA_NODES" > $GALOIS_HOME/include/Galois/WorkList/MQOptimized/SOCKETS_NUM.h
+echo "#define SOCKET_SIZE $SOCKET_SIZE" > $GALOIS_HOME/include/Galois/WorkList/MQOptimized/SOCKET_SIZE.h
+
+
 wl=$1
 echo "Running best numa for wl $wl"
 hm_dir=$MQ_ROOT/experiments/$CPU/heatmaps

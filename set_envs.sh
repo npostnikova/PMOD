@@ -78,7 +78,3 @@ DELTA_LARGE_MAX=18
 
 # How many times worklist for each thread should be executed.
 PLT_RUNS=10
-
-# Save NUMA-related configuration.
-echo "#define SOCKETS_NUM $NUMA_NODES" > $GALOIS_HOME/include/Galois/WorkList/MQOptimized/SOCKETS_NUM.h
-echo "#define SOCKET_SIZE $SOCKET_SIZE" > $GALOIS_HOME/include/Galois/WorkList/MQOptimized/SOCKET_SIZE.h

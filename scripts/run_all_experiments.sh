@@ -67,7 +67,8 @@ base_dir=$MQ_ROOT/experiments/$CPU/baseline
 mkdir -p $base_dir
 cd $base_dir
 echo "Computing baseline in $base_dir"
-$MQ_ROOT/scripts/run_wl_all_algo.sh "hmq$MQ_C" $HM_THREADS $HM_RUNS base
+$MQ_ROOT/scripts/run_wl_all_algo.sh "hmq$MQ_C" $HM_THREADS $HM_RUNS "base_$HM_THREADS"
+$MQ_ROOT/scripts/run_wl_all_algo.sh "hmq$MQ_C" 1 $HM_RUNS base_1
 
 
 ################## PLOTS ##################

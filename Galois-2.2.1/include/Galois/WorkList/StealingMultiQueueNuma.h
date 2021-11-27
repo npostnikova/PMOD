@@ -46,70 +46,40 @@ private:
   //! Repeats if failed because of a race.
   Galois::optional<T> trySteal() {
     static thread_local size_t tId = Galois::Runtime::LL::getTID();
-    Heap *localH = &heaps[tId].data;
-
-    bool again = true;
-    while (again) {
-      again = false;
-      // we try to steal
-      auto randId = (tId + 1 + (random() % (nQ - 1))) % nQ;
+    T localMin = heaps[tId].data.getMinWriter();
+    bool nextIterNeeded = true;
+    while (nextIterNeeded) {
+      auto randId = rand_heap();
+      if (randId == tId) continue;
+      nextIterNeeded = false;
       Heap *randH = &heaps[randId].data;
-      auto randMin = randH->getMin(again);
+      auto randMin = randH->getBufferMin(nextIterNeeded);
       if (randH->isDummy(randMin)) {
-        // steal is not successfull
-      } else {
-        bool useless = false;
-        auto localMin = localH->getMin(useless);
-        if (localH->isDummy(localMin)) {
-          localMin = localH->updateMin();
-        }
-        if (randH->isDummy(localMin) || compare(localMin, randMin)) {
-          auto stolen = randH->steal(again);
-          if (stolen.is_initialized()) {
-            auto &buffer = stealBuffers[tId].data;
-            typename Heap::stealing_array_t vals = stolen.get();
-            auto minId = localH->getMinId(vals);
-            for (size_t i = 0; i < vals.size(); i++) {
-              if (i == minId || localH->isDummy(vals[i])) continue;
-              buffer.push_back(vals[i]);
-            }
-            std::sort(buffer.begin(), buffer.end(), [](T const &e1, T const &e2) { return e1.prior() > e2.prior(); });
-            return vals[minId];
+        // Nothing to steal.
+        continue;
+      }
+      if (Heap::isDummy(localMin) || compare(localMin, randMin)) {
+        auto stolen = randH->trySteal(nextIterNeeded);
+        if (stolen.is_initialized()) {
+          auto &buffer = stealBuffers[tId].data;
+          auto elements = stolen.get();
+          for (size_t i = 1; i < elements.size() &&
+                             !Heap::isDummy(elements[i]); i++) {
+            buffer.push_back(elements[i]);
           }
+          std::reverse(buffer.begin(), buffer.end());
+          return elements[0];
         }
       }
     }
-      return Galois::optional<T>();
-  }
-
-  void initStatistic(Galois::Statistic*& st, std::string const& name) {
-    if (st == nullptr)
-      st = new Galois::Statistic(name);
+    return Galois::optional<T>();
   }
 
 public:
   StealingMultiQueueNuma() : nQ(Galois::getActiveThreads()) {
     memset(reinterpret_cast<void*>(&Heap::dummy), 0xff, sizeof(Heap::dummy));
     heaps = std::make_unique<Galois::Runtime::LL::CacheLineStorage<Heap>[]>(nQ);
-    for (size_t i = 0; i < nQ; i++) {
-      heaps[i].data.set_id(i);
-    }
     stealBuffers = std::make_unique<Galois::Runtime::LL::CacheLineStorage<std::vector<T>>[]>(nQ);
-    std::cout << "Queues: " << nQ << std::endl;
-  }
-
-  void deleteStatistic(Galois::Statistic*& st) {
-    if (st != nullptr) {
-      delete st;
-      st = nullptr;
-    }
-  }
-
-  uint64_t getStatVal(Galois::Statistic* value) {
-    uint64_t stat = 0;
-    for (unsigned x = 0; x < Galois::Runtime::activeThreads; ++x)
-      stat += value->getValue(x);
-    return stat;
   }
 
   typedef T value_type;
@@ -138,49 +108,40 @@ public:
   }
 
   template<typename Iter>
-  int push(Iter b, Iter e) {
-    static thread_local size_t tId = Galois::Runtime::LL::getTID(); 
+  unsigned int push(Iter b, Iter e) {
+    static thread_local size_t tId = Galois::Runtime::LL::getTID();
+    if (b == e) return 0;
+    unsigned int pushedNum = 0;
     Heap* heap = &heaps[tId].data;
-    return heap->pushRange(b, e);
+    while (b != e) {
+      heap->pushLocally(*b++);
+      pushedNum++;
+    }
+    heap->fillBufferIfStolen();
+    return pushedNum;
   }
 
   Galois::optional<T> pop() {
-    static thread_local size_t tId = Galois::Runtime::LL::getTID(); 
-
+    static thread_local size_t tId = Galois::Runtime::LL::getTID();
     auto& buffer = stealBuffers[tId].data;
     if (!buffer.empty()) {
       auto val = buffer.back();
       buffer.pop_back();
-      Heap& local = heaps[tId].data;
-      bool useless = false;
-      auto curMin = local.getMin(useless);
-      if (Heap::isDummy(curMin) /**&& cmp(curMin, heap[0])*/ && !local.heap.empty()) { 
-        local.writeMin(local.extractMinLocally());
-      }
+      heaps[tId].data.fillBufferIfStolen();
       return val;
     }
-    Galois::optional<T> result;
-
-    if (nQ > 1) {
-      size_t change = random() % StealProb;
-      if (change < 1) {
-        auto el = trySteal();
-        if (el.is_initialized()) return el;
-
-      }
+    Galois::optional<T> emptyResult;
+    // rand == 0 -- try to steal
+    // otherwise, pop locally
+    if (nQ > 1 && random() % StealProb == 0) {
+      Galois::optional<T> stolen = trySteal();
+      if (stolen.is_initialized()) return stolen;
     }
     auto minVal = heaps[tId].data.extractMin();
-    if (!heaps[tId].data.isDummy(minVal)) {
-      return minVal;
-    }
-    // our heap is empty
-    if (nQ == 1)  { // nobody to steal from
-      return result;
-    }
+    if (minVal.is_initialized()) return minVal;
 
-    auto el = trySteal();
-    if (el.is_initialized()) return el;
-    return result;
+    // Our heap is empty.
+    return nQ == 1 ? emptyResult : trySteal();
   }
 };
 

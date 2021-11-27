@@ -3,7 +3,7 @@
 #define GALOIS_EXPERIMENT_FLAGS_H
 
 // Experiments.
-#define KLSM_EXPERIMENT
+//#define KLSM_EXPERIMENT
 
 
 #ifdef KLSM_EXPERIMENT

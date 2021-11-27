@@ -513,7 +513,7 @@ struct AsyncAlgo {
     }
     if (wl == "obim")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<OBIM>());
-    else if (wl == "adap-obim")
+    else if (wl == "pmod")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<ADAPOBIM>());
 
 #define RUN_WL(WL) Galois::for_each_local(initial, Process(this, graph), Galois::wl<WL>())
@@ -606,9 +606,8 @@ struct AsyncAlgo {
 #define priority_t Dist
 #define element_t UpdateRequest
 
-    typedef AdaptiveStealingMultiQueue<element_t, Comparer> ASMQ;
-    if (worklistname == "adap-smq")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<ASMQ>());
+    typedef StealingMultiQueue<element_t, Comparer, 8, 8, true> smq_default;
+    if (wl == "smq_default") RUN_WL(smq_default);
 
     typedef UpdateRequestIndexer<UpdateRequest> Indexer;
 #include "Galois/WorkList/experiment_declarations.h"

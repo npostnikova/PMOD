@@ -680,7 +680,7 @@ struct AsyncAlgo {
 
     if (wl == "obim")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<OBIM>());
-    else if (wl == "adap-obim")
+    else if (wl == "pmod")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<ADAPOBIM>());
     else if (wl == "slobim")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<SLOBIM>());
@@ -767,33 +767,8 @@ struct AsyncAlgo {
 #define priority_t Dist
 #define element_t UpdateRequest
 
-    typedef StealingMultiQueue<element_t, Comparer, 4, 1, true> SMQ_4_1;
-    if (wl == "smq_4_1" or wl == "smq_west")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_4_1>());
-    typedef StealingMultiQueue<element_t, Comparer, 4, 1, true> SMQ_8_1;
-    if (wl == "smq_8_1" or wl == "smq_west_amd")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<SMQ_8_1>());
-
-
-    typedef AdaptiveStealingMultiQueue<element_t, Comparer> ASMQ;
-    if (wl == "adap-smq")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<ASMQ>());
-    typedef MyPQ<UpdateRequest, Comparer, true> USUAL_PQ;
-    if (worklistname == "pq")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_PQ>());
-
-
-    typedef MultiQueueProbLocal<element_t, Comparer, 512, 4, 2, priority_t> MQ2_PL_512_4;
-    if (worklistname == "mq2_pl_512_4" or worklistname == "mq2_pl_west")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<MQ2_PL_512_4>());
-//   typedef MultiQueueProbLocalNuma<element_t, Comparer, 512, 4, 2, priority_t> MQ2_PL_512_4_NUMA;
-//    if (worklistname == "mq2_pl_512_4_numa" or worklistname == "mq2_pl_numa_west")
-//      Galois::for_each_local(initial, Process(this, graph), Galois::wl<MQ2_PL_512_4_NUMA>());
-//
-
-    typedef MultiQueueProbLocal<element_t, Comparer, 64, 4, 2, priority_t> MQ2_PL_64_4;
-    if (worklistname == "mq2_pl_64_4" or worklistname == "mq2_pl_west_amd")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<MQ2_PL_64_4>());
+    typedef StealingMultiQueue<element_t, Comparer, 8, 8, true> smq_default;
+    if (wl == "smq_default") RUN_WL(smq_default);
 
     typedef UpdateRequestIndexer<UpdateRequest> Indexer;
 #include "Galois/WorkList/experiment_declarations.h"

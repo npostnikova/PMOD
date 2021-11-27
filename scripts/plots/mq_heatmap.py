@@ -143,10 +143,12 @@ def draw_heatmap(
          '\delprob{} & ' if x_prob else '\delbatch{} & ',
          '\\speed{} & ',
          '\workinc{} & ']
+    fs = open('mq_best_parameters.csv', 'a')
     for i in range(4):
         f.write("\\hline\n")
         f.write(rrr[i] + ' & '.join([str(x[i]) for x in best_vals]) + ' \\\\\n')
-
+    fs.write(result_image_name.split('_')[0] + ',' + ','.join([str(x[2]) for x in best_vals]) + '\n')
+    fs.close()
     f.write("\\hline\n")
     f.write("\\end{tabular}\n")
     f.write("\\vspace{0.3em}\n")

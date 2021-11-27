@@ -51,7 +51,7 @@ run_hm pmod_heatmaps run_pmod_hm.sh
 
 ################## NUMA ##################
 
-if [[ "$NUMA_NODES" == "2" || "$NUMA_NODES" == "4" ]];; then
+if [[ "$NUMA_NODES" == "2" || "$NUMA_NODES" == "4" ]]; then
   echo "Vary NUMA weights for best heatmap combinations"
   $MQ_ROOT/scripts/run_best_numa.sh smq
   $MQ_ROOT/scripts/run_best_numa.sh mqpp

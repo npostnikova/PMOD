@@ -17,4 +17,3 @@ echo "" > $GALOIS_HOME/apps/bfs/Experiments.h
 echo "" > $GALOIS_HOME/apps/astar/Experiments.h
 echo "" > $GALOIS_HOME/apps/boruvka/Experiments.h
 #echo "" > $GALOIS_HOME/apps/pagerank/Experiments.h
-

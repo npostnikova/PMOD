@@ -8,7 +8,7 @@ PLT_THREADS=(1 2 4 8 16 32 64 128)
 # How many times worklist for each thread should be executed.
 PLT_RUNS=5
 
-############ SHOULN'T CHANGE THIS ##############
+############ SHOULDN'T CHANGE THIS ##############
 ################################################
 # To store experiments for various CPUs in different locations.
 export CPU=sample

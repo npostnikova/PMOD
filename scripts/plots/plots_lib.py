@@ -39,7 +39,6 @@ class ExecSum:
                  'nodesstd': statistics.stdev([x / nodes_div for x in self.nodes])
                  }
 
-
 class WlExec:
     def __init__(self, name):
         self.name = name
@@ -63,6 +62,11 @@ class WlExec:
 
     def compute(self, t, n):
         return [x.compute(t, n) for x in self.execs.values()]
+
+    def compute(self, t, n, threads):
+        return [self.execs[thr].compute(t, n) if thr in self.execs else
+            {'threads': thr, 'time': 0, 'nodes': 0, 'timestd': 0, 'nodesstd': 0}
+            for thr in threads]
 
 
 def find_avg_time_nodes(wls, threads=1):
@@ -92,7 +96,7 @@ def find_avg_baseline(file):
 
 
 
-def parse_results(names_and_files, baseline_file):
+def parse_results(names_and_files, baseline_file, threads):
     execs = []
     for name, file in names_and_files:
         print(file)
@@ -117,7 +121,7 @@ def parse_results(names_and_files, baseline_file):
             wl.add_exec(threads, time, nodes)
         execs.append(name, wl_exec)
     (t, n) = find_avg_baseline(baseline_file)
-    return [(name, wl_exec.compute(t, n)) for (name, wl_exec) in execs]
+    return [(name, wl_exec.compute(t, n, threads)) for (name, wl_exec) in execs]
 
 cool_cols = [
     '#386cb0',
@@ -143,7 +147,7 @@ def draw_plot_for_wls(time, wl_files, ax, threads, baseline_file):
     ax.set_xscale('log', base=2)
     ax.xaxis.set_major_formatter(tckr.FormatStrFormatter('%0.f'))
     ax.grid(linewidth='0.5', color='lightgray')
-    results = parse_results(wl_files, baseline_file)
+    results = parse_results(wl_files, baseline_file, threads)
     for nice_name, result, i in enumerate(results):
         if time:
             print(nice_name)

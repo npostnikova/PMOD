@@ -224,7 +224,7 @@ struct Indexer: public std::unary_function<WorkItem, unsigned> {
 template<typename UpdateRequest, size_t N>
 struct ParameterizedUpdateRequestIndexer: public std::unary_function<UpdateRequest, unsigned> {
    unsigned operator()(const UpdateRequest& n) {
-      unsigned t = stepShift ? (n.second >> N) : n.second;
+      unsigned t = N ? (n.second >> N) : n.second;
       return t;
    }
 };
@@ -443,7 +443,7 @@ long long runBodyParallel() {
 #else
    if (wl == "obim")
    Galois::for_each_local(initial, process(), Galois::wl<OBIM>());
-   else if (wl == "adap-obim")
+   else if (wl == "pmod")
    Galois::for_each_local(initial, process(), Galois::wl<ADAPOBIM>());
    else if (wl == "slobim")
      Galois::for_each_local(initial, process(), Galois::wl<SLOBIM>());
@@ -521,41 +521,8 @@ long long runBodyParallel() {
   if (worklistname == "pq")
     Galois::for_each_local(initial, process(), Galois::wl<USUAL_PQ>());
 
-  typedef StealingMultiQueue<WorkItem, seq_gt, 4, 8, true> SMQ_4_8;
-  if (wl == "smq_4_8" or wl == "smq_usa")
-    Galois::for_each_local(initial, process(), Galois::wl<SMQ_4_8>());
-  typedef StealingMultiQueue<WorkItem, seq_gt, 16, 16, true> SMQ_16_16;
-  if (wl == "smq_16_16"/* or wl == "smq_west"*/)
-    Galois::for_each_local(initial, process(), Galois::wl<SMQ_16_16>());
-  typedef StealingMultiQueue<WorkItem, seq_gt, 8, 8, true> SMQ_8_8;
-  if (wl == "smq_8_8")
-    Galois::for_each_local(initial, process(), Galois::wl<SMQ_8_8>());
-  typedef StealingMultiQueue<WorkItem, seq_gt, 32, 32, true> SMQ_32_32;
-  if (wl == "smq_32_32" or wl == "smq_west")
-    Galois::for_each_local(initial, process(), Galois::wl<SMQ_32_32>());
-  typedef StealingMultiQueue<WorkItem, seq_gt, 4, 16, true> SMQ_4_16;
-  if (wl == "smq_4_16" or wl == "smq_west_amd")
-    Galois::for_each_local(initial, process(), Galois::wl<SMQ_4_16>());
-
-  #define priority_t unsigned
-
-  typedef MultiQueueProbLocal<WorkItem, seq_gt, 1024, 256, 2, unsigned> MQ2_PL_1024_256;
-  if (worklistname == "mq2_pl_1024_256" or worklistname == "mq2_pl_west")
-    Galois::for_each_local(initial, process(), Galois::wl<MQ2_PL_1024_256>());
-//  typedef MultiQueueProbLocalNuma<WorkItem, seq_gt, 1024, 256, 2, unsigned> MQ2_PL_1024_256_NUMA;
-//  if (worklistname == "mq2_pl_1024_256_numa" or worklistname == "mq2_pl_numa_west")
-//    Galois::for_each_local(initial, process(), Galois::wl<MQ2_PL_1024_256_NUMA>());
-
-
-  typedef MultiQueueProbLocal<WorkItem, seq_gt, 1024, 1024, 2, unsigned> MQ2_PL_1024_1024;
-  if (worklistname == "mq2_pl_1024_1024" or worklistname == "mq2_pl_west_amd")
-    Galois::for_each_local(initial, process(), Galois::wl<MQ2_PL_1024_1024>());
-
-
-  typedef AdaptiveStealingMultiQueue<WorkItem, seq_gt> ASMQ;
-  if (wl == "adap-smq")
-    Galois::for_each_local(initial, process(), Galois::wl<ASMQ>());
-
+  typedef StealingMultiQueue<element_t, Comparer, 8, 8, true> smq_default;
+  if (wl == "smq_default") RUN_WL(smq_default);
 
 #include "Galois/WorkList/experiment_declarations.h"
 
@@ -810,10 +777,11 @@ int main(int argc, char **argv) {
 
    if (trackWork) {
      std::string wl = worklistname;
-     if (wl.size() >= 3 && wl[1] == 'm' && wl[2] == 'q' && (wl[0] == 's' || wl[0] == 'a'))
+     if (wl.find("smq") == 0)
        wl = wl + mqSuff;
      std::ofstream nodes(resultFile + mqSuff, std::ios::app);
-     nodes << wl << "," << getStatVal(nNodesProcessed) << "," << Galois::Runtime::activeThreads << "," << stepShift << std::endl;
+     nodes << wl << "," << getStatVal(nNodesProcessed) << ","
+           << Galois::Runtime::activeThreads << "," << stepShift << std::endl;
      nodes.close();
 
      delete WLEmptyWork;

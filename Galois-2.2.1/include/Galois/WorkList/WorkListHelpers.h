@@ -960,10 +960,6 @@ struct LockableHeapDAry {
     _lock.unlock();
   }
 
-  inline bool is_locked() {
-    _lock.is_locked();
-  }
-
   Prior getMin() {
     return min.load(std::memory_order_acquire);
   }
@@ -1146,11 +1142,11 @@ public:
       }
     }
     if (nT <= 4) {
-      for (size_t i = 0; i < heaps.size(); i++) {
+      for (size_t i = 0; i < nQ; i++) {
         heap_i = &heaps[i].data;
-        if (!heap_i->isUsed(heap_i->getMin())) {
+        if (!heap_i->isUsedMin(heap_i->getMin())) {
           if (heap_i->try_lock()) {
-            if (!heap_i->empty()) return extract_min(heap_i);
+            if (!heap_i->heap.empty()) return extract_min(heap_i);
             heap_i->unlock();
           }
         }

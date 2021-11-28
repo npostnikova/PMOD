@@ -1,6 +1,5 @@
-// #define MQ_NUMA
-#define SOCKET_SIZE 64
-#define SOCKETS_NUM 2
+#include "SOCKET_SIZE.h"
+#include "SOCKETS_NUM.h"
 
 #if SOCKETS_NUM==2
 

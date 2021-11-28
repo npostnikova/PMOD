@@ -1,7 +1,7 @@
 set -e
 
-PROBS=( 1 2 4 8 16 32 64 128 256 512 1024 )
-STEAL_SIZES=( 1 2 4 8 16 32 64 128 256 512 1024 )
+source $MQ_ROOT/set_envs.sh
+
 # Supported algorithms
 ALGOS=( "bfs" "sssp" "boruvka" "astar" )
 
@@ -11,7 +11,7 @@ clear_file () {
 
 
 mq=$1
-C=4
+C=$MQ_C
 mq_c="${mq}_$C"
 
 mq_name="Killme"
@@ -26,9 +26,9 @@ if [ $mq == "mqpp" ]; then
 fi
 
 generate_heatmaps () {
-  for p in "${PROBS[@]}"
+  for p in "${HM_FST[@]}"
   do
-    for ss in "${STEAL_SIZES[@]}"
+    for ss in "${HM_SND[@]}"
       do
         name="${mq_c}_${p}_${ss}"
         echo "typedef MultiQueue${mq_name}<UpdateRequest, Comparer, $p, $ss, $C> $name;" >> $1
@@ -66,13 +66,12 @@ if [ $action == "build" ]; then
 elif [ $action == "run" ]; then
   graph=$4
   threads=$5
-  runs=5
-  for p in "${PROBS[@]}"; do
-    for ss in "${STEAL_SIZES[@]}"; do
+  runs=$HM_RUNS
+  for p in "${HM_FST[@]}"; do
+    for ss in "${HM_SND[@]}"; do
         name="${mq_c}_${p}_${ss}"
         run_wl_n_times $name $runs "${algo}_${graph}_${mq}_$threads"
     done
   done
 fi
 
-exit 0

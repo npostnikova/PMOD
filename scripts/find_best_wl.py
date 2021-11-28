@@ -10,6 +10,9 @@ def find_avg_for_each(file):
         for row in data:
             time = int(row['time'])
             name = row['wl']
+            if not name or not name[0].isalpha():
+                print("Invalid row: ", row)
+                continue
             cur_sum = time
             cur_qty = 1
             if name in name_to_sum_qnty:

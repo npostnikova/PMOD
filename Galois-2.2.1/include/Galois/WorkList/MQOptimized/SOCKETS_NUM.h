@@ -1,0 +1,1 @@
+#define SOCKETS_NUM 2

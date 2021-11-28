@@ -513,7 +513,7 @@ struct AsyncAlgo {
     }
     if (wl == "obim")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<OBIM>());
-    else if (wl == "adap-obim")
+    else if (wl == "pmod")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<ADAPOBIM>());
 
 #define RUN_WL(WL) Galois::for_each_local(initial, Process(this, graph), Galois::wl<WL>())
@@ -606,9 +606,8 @@ struct AsyncAlgo {
 #define priority_t Dist
 #define element_t UpdateRequest
 
-    typedef AdaptiveStealingMultiQueue<element_t, Comparer> ASMQ;
-    if (worklistname == "adap-smq")
-      Galois::for_each_local(initial, Process(this, graph), Galois::wl<ASMQ>());
+    typedef StealingMultiQueue<element_t, Comparer, 8, 8, true> smq_default;
+    if (wl == "smq_default") RUN_WL(smq_default);
 
     typedef UpdateRequestIndexer<UpdateRequest> Indexer;
 #include "Galois/WorkList/experiment_declarations.h"
@@ -839,10 +838,11 @@ int main(int argc, char **argv) {
 
   if (trackWork) {
     std::string wl = worklistname;
-    if (wl.size() >= 3 && wl[1] == 'm' && wl[2] == 'q' && (wl[0] == 's' || wl[0] == 'a'))
+    if (wl.find("smq") == 0)
       wl = wl + mqSuff;
     std::ofstream nodes(amqResultFile + mqSuff, std::ios::app);
-    nodes << wl << "," << getStatVal(nNodesProcessed) << "," << Galois::Runtime::activeThreads << "," << stepShift << std::endl;
+    nodes << wl << "," << getStatVal(nNodesProcessed) << ","
+          << Galois::Runtime::activeThreads << "," << stepShift << std::endl;
     nodes.close();
 
     delete BadWork;

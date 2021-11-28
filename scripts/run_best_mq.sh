@@ -1,11 +1,11 @@
-set -e
+#set -e
 
 source $MQ_ROOT/set_envs.sh
 
 t=$HM_THREADS
 times=$PLT_RUNS
 pyscript=$MQ_ROOT/scripts/find_best_wl.py
-for mq in mqpp mqpl mqlp mqll; do
+for mq in mqpl; do # mqpp mqpl mqlp mqll; do
 #  dir=''
 #  if [ $mq == "mqpp" ]; then
 #    dir="probprob"
@@ -21,11 +21,8 @@ for mq in mqpp mqpl mqlp mqll; do
   mkdir -p $plt_dir
   cd $plt_dir
   echo "Saving best ${mq} executions for all threads in $plt_dir"
-  $MQ_ROOT/scripts/mq_optimized_heatmaps.sh $mq bfs build
-  $MQ_ROOT/scripts/mq_optimized_heatmaps.sh $mq sssp build
-  $MQ_ROOT/scripts/mq_optimized_heatmaps.sh $mq astar build
-  $MQ_ROOT/scripts/mq_optimized_heatmaps.sh $mq boruvka build
   for algo in bfs sssp; do
+    $MQ_ROOT/scripts/mq_optimized_heatmaps.sh $mq $algo build
     for graph in usa west twi web; do
         echo ">>>>"
         echo "$algo $graph"
@@ -34,6 +31,7 @@ for mq in mqpp mqpl mqlp mqll; do
     done
   done
   for algo in boruvka astar; do
+    $MQ_ROOT/scripts/mq_optimized_heatmaps.sh $mq $algo build
     for graph in usa west; do
         echo ">>>>"
         echo "$algo $graph"

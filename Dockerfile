@@ -1,30 +1,16 @@
-FROM ubuntu:20.04
+FROM npostnikova/mq-based-schedulers:datasets
 
 RUN apt update && \
     apt upgrade -y
 
-RUN apt install nano                    -y
-RUN apt install wget                    -y
-RUN apt install apt-utils               -y
+ENV MQ_ROOT=/mq-based-schedulers/
+ENV GALOIS_HOME=/mq-based-schedulers/Galois-2.2.1/
 
-RUN apt install cmake                   -y
-RUN apt install build-essential         -y
-RUN apt install libnuma-dev             -y
-RUN apt install libboost-all-dev        -y
-RUN apt install libpthread-stubs0-dev   -y
+RUN apt-get install -y git
+RUN git clone https://github.com/npostnikova/mq-based-schedulers
 
-RUN apt install python3.8               -y
-RUN apt install python3-pip             -y
+RUN cd $MQ_ROOT && git switch super-fast-run
 
-RUN pip install matplotlib
-RUN pip install seaborn
-RUN pip install numpy
-
-ARG ds_path=/datasets/
-
-RUN mkdir -p "$ds_path"
-
-COPY datasets/*.co       $ds_path
-COPY datasets/*.bin      $ds_path
+RUN cp /datasets/* /mq-based-schedulers/datasets/
 
 ENTRYPOINT ["/bin/bash"]

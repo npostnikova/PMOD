@@ -1,4 +1,4 @@
-set -e
+#set -e
 
 threads=$1
 mq=$2

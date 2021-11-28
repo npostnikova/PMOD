@@ -1,44 +1,29 @@
 ######### ACTION REQUIRED #########
 
-# Absolute path to the clonned repository.
-export MQ_ROOT=~/mq-based-schedulers
-
-# To store experiments for various CPUs in different locations.
-export CPU=intel
-
-# Number of logical CPUs (including hyperthreading).
-# If you don't want heatmaps to use these many threads, please
-# update HM_THREADS below.
-export MAX_CPU_NUM=128
-
-# Number of NUMA nodes.
-# Used *only* for SMQ & MQ Opitimized NUMA experiments.
-# Currently, only 2 and 4 nodes are supported for the experiments.
-export NUMA_NODES=2
-
-# The version of python to use for scripts.
-export PYTHON_EXPERIMENTS=python3.8
-
 # Threads used for drawing plots.
 # We use power of two until logical CPU number.
+# !! Mustn't exceed the number of CPUs. !!
 PLT_THREADS=(1 2 4 8 16 32 64 128)
 
-################################################
+# How many times worklist for each thread should be executed.
+PLT_RUNS=5
 
-# Path to the Galois library.
-export GALOIS_HOME=$MQ_ROOT/Galois-2.2.1/
+############ SHOULN'T CHANGE THIS ##############
+################################################
+# To store experiments for various CPUs in different locations.
+export CPU=sample
 
 # C parameter for MQ. Number of queue = C x #threads.
 export MQ_C=4
 
-# Number of CPUs per NUMA socket.
-export SOCKET_SIZE=$(( $MAX_CPU_NUM / $NUMA_NODES ))
+# The version of python to use for scripts.
+export PYTHON_EXPERIMENTS=python3.8
 
 ######### HEATMAPS #########
 
 # Number of threads to count heatmaps.
 # We use the number logical CPUs (hyperthreading included).
-export HM_THREADS=$MAX_CPU_NUM
+export HM_THREADS=128
 
 # How many times one set of parameters is run.
 export HM_RUNS=5
@@ -73,8 +58,3 @@ DELTA_SMALL_MAX=10
 DELTA_LARGE_MIN=10
 DELTA_LARGE_MAX=18
 
-
-######### PLOTS #########
-
-# How many times worklist for each thread should be executed.
-export PLT_RUNS=10

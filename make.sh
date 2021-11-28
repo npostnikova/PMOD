@@ -1,5 +1,3 @@
-GALOIS_HOME=./Galois-2.2.1
-
 cd $GALOIS_HOME;
 mkdir build;
 cd build;

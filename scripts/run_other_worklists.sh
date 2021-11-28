@@ -3,7 +3,7 @@ source $MQ_ROOT/set_envs.sh
 mkdir -p $MQ_ROOT/experiments/$CPU/plots/other_plots
 cd $MQ_ROOT/experiments/$CPU/plots/other_plots
 
-WLS=( heapswarm spraylist )
+WLS=( heapswarm spraylist "hmq$MQ_C" )
 echo "Run other wls ${WLS[@]}"
 for wl in "${WLS[@]}" ; do
   for t in "${PLT_THREADS[@]}"; do

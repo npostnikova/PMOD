@@ -33,7 +33,6 @@ class ExecSum:
     def compute(self, time_div, nodes_div):
         if self.qty == 1:
             print(f'Qty1 for threads {self.threads}')
-        print("Thr sum ", sum(self.time))
         return { 'threads': self.threads,
                  'time': time_div / (sum(self.time) / self.qty),
                  'nodes': (sum(self.nodes) / self.qty) / nodes_div,
@@ -164,7 +163,6 @@ def draw_plot_for_wls(time, wl_files, ax, threads, baseline_file):
         else:
             x = [z['nodes'] for z in result]
             err = [z['nodesstd'] for z in result]
-            print(x)
         cur_col = cool_cols[i % len(cool_cols)]
         line = linestyles[i % len(linestyles)]
         ax.errorbar(valid_thrs, x, yerr=err, color=cur_col,

@@ -23,17 +23,17 @@ draw_hm('slsmq_heatmaps', hm_prefix, 'slsmq', threads, False, True,
 
 ###### MultiQueue Optimized
 
-draw_hm('mqpp_heatmaps', hm_prefix, 'mqpp', 128, True, True,
-        xcolticks=[[1, 1.5], [1, 2, 3]], ycolticks=[ [2, 4, 6, 9, 12], [2, 4, 8, 12]])
+# draw_hm('mqpp_heatmaps', hm_prefix, 'mqpp', 128, True, True,
+#         xcolticks=[[1, 1.5], [1, 2, 3]], ycolticks=[ [2, 4, 6, 9, 12], [2, 4, 8, 12]])
 
 draw_hm('mqpl_heatmaps', hm_prefix, 'mqpl', threads, False, True,
         xcolticks=[[1, 2], [1, 2, 3]], ycolticks=[ [10, 30, 50], [10, 30, 50]])
 
-draw_hm('mqlp_heatmaps', hm_prefix, 'mqlp', threads, True, False,
-        xcolticks=[[1, 1.5], [1, 2]], ycolticks=[ [4, 8], [3, 6]])
-
-draw_hm('mqll_heatmaps', hm_prefix, 'mqll', threads, False, False,
-        xcolticks=[[1, 2], [1, 2, 3]], ycolticks=[ [10, 30, 50], [10, 30, 50]])
+# draw_hm('mqlp_heatmaps', hm_prefix, 'mqlp', threads, True, False,
+#         xcolticks=[[1, 1.5], [1, 2]], ycolticks=[ [4, 8], [3, 6]])
+#
+# draw_hm('mqll_heatmaps', hm_prefix, 'mqll', threads, False, False,
+#         xcolticks=[[1, 2], [1, 2, 3]], ycolticks=[ [10, 30, 50], [10, 30, 50]])
 
 
 ##### OBIM & PMOD

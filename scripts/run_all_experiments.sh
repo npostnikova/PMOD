@@ -91,3 +91,20 @@ $MQ_ROOT/scripts/run_best_mq.sh
 
 echo "Running defult SMQ, OBIM, PMOD and other worklists"
 $MQ_ROOT/scripts/run_other_worklists.sh
+
+
+################## DRAWING PICTURES ##################
+pic_dir=$MQ_ROOT/experiments/$CPU/pictures
+
+echo "Drawing heatmaps"
+
+mkdir -p $pic_dir/heatmaps
+cd $pic_dir/heatmaps
+$PYTHON_EXPERIMENTS $MQ_ROOT/scripts/draw_all_heatmaps.py
+
+echo "Drawing plots"
+mkdir -p $pic_dir/plots
+cd $pic_dir/plots
+$PYTHON_EXPERIMENTS $MQ_ROOT/scripts/draw_plots_all.py "${PLT_THREADS[@]}"
+
+echo "That's all! I hope, nothing has failed..."

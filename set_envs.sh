@@ -77,4 +77,4 @@ DELTA_LARGE_MAX=18
 ######### PLOTS #########
 
 # How many times worklist for each thread should be executed.
-PLT_RUNS=10
+export PLT_RUNS=10

@@ -5,18 +5,48 @@
 # !! Mustn't exceed the number of CPUs. !!
 PLT_THREADS=(1 2 4 8 16 32 64 128)
 
-# Number of threads to count heatmaps.
-# We use the number logical CPUs (hyperthreading included).
-export OBIM_HM_THREADS=128
+# Number of logical CPUs (including hyperthreading).
+# If you don't want heatmaps to use these many threads, please
+# update HM_THREADS below.
+export MAX_CPU_NUM=128
 
-####################################################################
+# Number of NUMA nodes.
+# Used *only* for SMQ & MQ Opitimized NUMA experiments.
+# Currently, only 2 and 4 nodes are supported for the experiments.
+export NUMA_NODES=2
+
+# To store experiments for various CPUs in different locations.
+export CPU=intel
+
+################################################
+
+# C parameter for MQ. Number of queues = C x #threads.
+export MQ_C=4
+
+# Number of CPUs per NUMA socket.
+export SOCKET_SIZE=$(( $MAX_CPU_NUM / $NUMA_NODES ))
+
+# The version of python to use for scripts. Python3.8 is pre-install in the image.
+export PYTHON_EXPERIMENTS=python3.8
+
+######### PLOTS #########
 
 # How many times worklist for each thread should be executed.
-export PLT_RUNS=5
+PLT_RUNS=10
+
+######### HEATMAPS #########
+
+# Number of threads to count heatmaps.
+# We use the number logical CPUs (hyperthreading included).
+export HM_THREADS=$MAX_CPU_NUM
 
 # How many times one set of parameters is run.
 export HM_RUNS=5
 
+# Values for the first and second heatmap parameters (y and x axis).
+# For instance, for SMQ stealing prob = 1 / HM_FST[i] and stealing size = HM_SND[j].
+HM_FST=( 1 2 4 8 16 32 64 128 256 512 1024 )
+HM_SND=( 1 2 4 8 16 32 64 128 256 512 1024 )
 
 #### OBIM/PMOD heatmaps
 
@@ -42,27 +72,4 @@ DELTA_SMALL_MAX=10
 # USED for SSSP and A* with road graphs.
 DELTA_LARGE_MIN=10
 DELTA_LARGE_MAX=18
-
-############ SHOULDN'T CHANGE THIS ##############
-################################################
-# To store experiments for various CPUs in different locations.
-export CPU=sample
-
-# C parameter for MQ. Number of queue = C x #threads.
-export MQ_C=4
-
-# The version of python to use for scripts.
-export PYTHON_EXPERIMENTS=python3.8
-
-######### HEATMAPS #########
-
-# Number of threads to count heatmaps.
-# We use the number logical CPUs (hyperthreading included).
-export HM_THREADS=128
-
-# Values for the first and second heatmap parameters (y and x axis).
-# For instance, for SMQ stealing prob = 1 / HM_FST[i] and stealing size = HM_SND[j].
-HM_FST=( 1 2 4 8 16 32 64 128 256 512 1024 )
-HM_SND=( 1 2 4 8 16 32 64 128 256 512 1024 )
-
 

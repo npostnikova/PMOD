@@ -1,58 +1,30 @@
-# Multi-Queues Can Be State-of-the-Art Priority Schedulers
+# MQ-Based Schedulers: Super Fast Experiments
+To save your time, computed heatmaps are stored in `$MQ_ROOT/executions/sample/heatmaps`.
+You will only run the best and default worklist versions.
 
-## Getting Started Guide
+For this configuration, most of the scripts were simplified.
+However, there are still a couple of steps left for you.
 
-TODO tag
+```bash
+nano $MQ_ROOT/set_envs.sh  # Please update if needed!
+$MQ_ROOT/run_experiments.sh
+```
+See details below.
 
-It is recommended to use images from 
-[npostnikova/mq-based-schedulers](https://hub.docker.com/repository/docker/npostnikova/mq-based-schedulers) repository.
+## Configure `set_envs.sh`
+It is the most important step. 
+1. Please specify `PLT_THREADS` 
+which sets on which threads worklists should be executed. Normally, we take 
+powers of 2 til the number of logical CPUs.
 
-### For those who DO NOT use images
-Good luck! 
+2. Adjust `PLT_RUNS` if needed. For plots you can see in the paper, we used 10. 
+However, to make the script "super fast" you can use less.
 
-> **_NOTE:_**  Please refer a sample `setup.sh` script. 
-> The script should be called from the root directory. 
-#### 1. Dependencies
-* A modern C++ compiler compliant with the C++-17 standard (gcc >= 7, Intel >= 19.0.1, clang >= 7.0)
-* CMake
-* Boost library (the full installation is recommended)
-* Libnuma
-* Libpthread
-* Python (>= 3.7) with matplotlib, numpy and seaborn
-* wget
-> **_Helpful links:_** 
-> [Boost Installation Guide](https://www.boost.org/doc/libs/1_66_0/more/getting_started/unix-variants.html), 
-> [Everything you may need for Galois](https://github.com/IntelligentSoftwareSystems/Galois/blob/master/README.md).
-#### 2. Env variables
-Please **update** `set_envs.sh`. Further, it will "configure" experiments execution.
-#### 3. Compile project
-Use `compile.sh` script to compile the project. Needs to be called from the repository root.
-#### 4. Datasets
-Use `datasets.sh` to install and prepare all required datasets.
-#### 5. Checking that everything is fine
+3. Please don't change other fields. They help to make execution more flexible 
+for those who want to spend ages computing heatmaps.
 
+## Run `run_experiments.sh`  
+This executes all required experiments to draw plots.
+Execution info (such as time & amount of work for worklist) is located in `$MQ_ROOT/experiments/sample/plots/`.
 
-
-
-## AdaptiveMultiQueue testing
-#### Preparations
-* install _libnuma support_
-`sudo apt-get install -y libnuma-dev`
-* set Boost_LIBRARYDIR & Boost_INCLUDE_DIR 
-   * seems like _serialization_ and _iostreams_ libs are needed, not sure that's all :(
-* everything you _may_ need for Galois is described here 
-https://github.com/IntelligentSoftwareSystems/Galois/blob/master/README.md
-    
-### Get started
-Let's go to PMOD.
-
-`$ ./compile.sh`
-
-`cd Galois-2.2.1/build`
-
-To run my ugly tests
-
-`./scripts/run_amq_small.sh`
-
-Something should appear in amq_reports dir...
-
+Plots themselves can be found in `$MQ_ROOT/experiments/sample/pictures/plots/`.

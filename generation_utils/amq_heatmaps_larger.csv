@@ -1,8 +1,0 @@
-sssp,usa,1024,4
-sssp,twitter,1024,1024
-bfs,usa,1024,256
-bfs,twitter,1024,1024
-bfs,web,1024,1024
-pagerank,web,1024,1024
-pagerank,twitter,1024,1024
-boruvka,usa,1024,512

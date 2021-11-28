@@ -1,4 +1,4 @@
-set -e
+#set -e
 
 wl=$1
 threads=$2

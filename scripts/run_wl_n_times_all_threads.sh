@@ -1,4 +1,4 @@
-set -e
+#set -e
 source $MQ_ROOT/set_envs.sh
 
 algo=$1

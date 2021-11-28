@@ -1,4 +1,4 @@
-set -e
+#set -e
 
 source $MQ_ROOT/set_envs.sh
 
@@ -90,6 +90,7 @@ echo "Running best PMOD combinations on all threads"
 $MQ_ROOT/scripts/run_best_wl.sh pmod
 
 echo "Running best MQ variants on all threads"
+echo "Warning! Runs MQPL only, please change run_best_mq script if itsn't what you need"
 $MQ_ROOT/scripts/run_best_mq.sh
 
 echo "Running defult SMQ, OBIM, PMOD and other worklists"

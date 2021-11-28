@@ -1,7 +1,7 @@
 ######### ACTION REQUIRED #########
 
 # Absolute path to the clonned repository.
-export MQ_ROOT=~/PMOD
+export MQ_ROOT=~/mq-based-schedulers
 
 # To store experiments for various CPUs in different locations.
 export CPU=intel

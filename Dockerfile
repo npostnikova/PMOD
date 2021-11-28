@@ -9,7 +9,7 @@ ENV GALOIS_HOME=/mq-based-schedulers/Galois-2.2.1/
 RUN apt-get install -y git
 RUN git clone https://github.com/npostnikova/mq-based-schedulers
 
-RUN cd $MQ_ROOT && git fetch --all && git switch not-too-slow-experiments
+RUN cd $MQ_ROOT && git fetch --all && git switch extra-slow-experiments
 
 RUN cp /datasets/* /mq-based-schedulers/datasets/
 

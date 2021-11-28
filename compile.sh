@@ -31,9 +31,6 @@ make clean; make
 
 cd ../boruvka;
 make clean; make
-#
-#cd ../pagerank;
-#make clean; make
 
 cd ../../tools/graph-convert-standalone/
 make clean; make

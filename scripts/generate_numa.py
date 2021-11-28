@@ -136,7 +136,7 @@ def generate_best_numa():
         exp_file.close()
     MQ_ROOT = os.environ.get('MQ_ROOT')
     script = open(f'run_numa.sh', 'w')
-    script.write('set -e\n')
+    # script.write('set -e\n')
     script.write('source $MQ_ROOT/set_envs.sh\n')
     for (algo, graph, name) in algo2best:
         for w in numa_ws:

@@ -11,13 +11,23 @@ for wl in "${WLS[@]}" ; do
   done
 done
 
-DEF=( smq obim pmod )
+DEF=( smq )
 echo "Run default wls ${DEF[@]}"
 for wl in "${DEF[@]}" ; do
   mkdir -p $MQ_ROOT/experiments/$CPU/plots/${wl}_plots
   cd $MQ_ROOT/experiments/$CPU/plots/${wl}_plots
   for t in "${PLT_THREADS[@]}"; do
     $MQ_ROOT/scripts/run_wl_all_algo.sh "${wl}_default" $t $PLT_RUNS "${wl}_default"
+  done
+done
+
+DEF=( obim pmod )
+echo "Run default wls ${DEF[@]}"
+for wl in "${DEF[@]}" ; do
+  mkdir -p $MQ_ROOT/experiments/$CPU/plots/${wl}_plots
+  cd $MQ_ROOT/experiments/$CPU/plots/${wl}_plots
+  for t in "${PLT_THREADS[@]}"; do
+    $MQ_ROOT/scripts/run_wl_all_algo.sh $wl $t $PLT_RUNS "${wl}_default"
   done
 done
 

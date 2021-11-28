@@ -5,33 +5,18 @@
 # !! Mustn't exceed the number of CPUs. !!
 PLT_THREADS=(1 2 4 8 16 32 64 128)
 
-# How many times worklist for each thread should be executed.
-PLT_RUNS=5
-
-############ SHOULDN'T CHANGE THIS ##############
-################################################
-# To store experiments for various CPUs in different locations.
-export CPU=sample
-
-# C parameter for MQ. Number of queue = C x #threads.
-export MQ_C=4
-
-# The version of python to use for scripts.
-export PYTHON_EXPERIMENTS=python3.8
-
-######### HEATMAPS #########
-
 # Number of threads to count heatmaps.
 # We use the number logical CPUs (hyperthreading included).
-export HM_THREADS=128
+export OBIM_HM_THREADS=128
+
+####################################################################
+
+# How many times worklist for each thread should be executed.
+export PLT_RUNS=5
 
 # How many times one set of parameters is run.
 export HM_RUNS=5
 
-# Values for the first and second heatmap parameters (y and x axis).
-# For instance, for SMQ stealing prob = 1 / HM_FST[i] and stealing size = HM_SND[j].
-HM_FST=( 1 2 4 8 16 32 64 128 256 512 1024 )
-HM_SND=( 1 2 4 8 16 32 64 128 256 512 1024 )
 
 #### OBIM/PMOD heatmaps
 
@@ -57,4 +42,27 @@ DELTA_SMALL_MAX=10
 # USED for SSSP and A* with road graphs.
 DELTA_LARGE_MIN=10
 DELTA_LARGE_MAX=18
+
+############ SHOULDN'T CHANGE THIS ##############
+################################################
+# To store experiments for various CPUs in different locations.
+export CPU=sample
+
+# C parameter for MQ. Number of queue = C x #threads.
+export MQ_C=4
+
+# The version of python to use for scripts.
+export PYTHON_EXPERIMENTS=python3.8
+
+######### HEATMAPS #########
+
+# Number of threads to count heatmaps.
+# We use the number logical CPUs (hyperthreading included).
+export HM_THREADS=128
+
+# Values for the first and second heatmap parameters (y and x axis).
+# For instance, for SMQ stealing prob = 1 / HM_FST[i] and stealing size = HM_SND[j].
+HM_FST=( 1 2 4 8 16 32 64 128 256 512 1024 )
+HM_SND=( 1 2 4 8 16 32 64 128 256 512 1024 )
+
 

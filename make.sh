@@ -1,3 +1,5 @@
+GALOIS_HOME=./Galois-2.2.1
+
 cd $GALOIS_HOME;
 mkdir build;
 cd build;
@@ -18,3 +20,17 @@ echo "" > $GALOIS_HOME/apps/astar/Experiments.h
 echo "" > $GALOIS_HOME/apps/boruvka/Experiments.h
 #echo "" > $GALOIS_HOME/apps/pagerank/Experiments.h
 
+cd apps/sssp;
+make clean; make;
+
+cd ../bfs;
+make clean; make;
+
+cd ../astar;
+make clean; make
+
+cd ../boruvka;
+make clean; make
+
+cd ../../tools/graph-convert-standalone/
+make clean; make

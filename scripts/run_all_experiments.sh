@@ -89,7 +89,5 @@ $MQ_ROOT/scripts/run_best_smq.sh pmod
 echo "Running best MQ variants on all threads"
 $MQ_ROOT/scripts/run_best_mq.sh
 
-echo "Running other worklists"
-mkdir -p $MQ_ROOT/experiments/$CPU/plots/other_plots
-cd $MQ_ROOT/experiments/$CPU/plots/other_plots
-$MQ_ROOT/scripts/run_other_worklists_all.sh
+echo "Running defult SMQ, OBIM, PMOD and other worklists"
+$MQ_ROOT/scripts/run_other_worklists.sh

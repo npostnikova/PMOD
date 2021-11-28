@@ -5,6 +5,7 @@ from matplotlib.lines import Line2D
 
 import glob
 import sys
+import csv
 import statistics
 import numpy as np
 
@@ -32,6 +33,7 @@ class ExecSum:
     def compute(self, time_div, nodes_div):
         if self.qty == 1:
             print(f'Qty1 for threads {self.threads}')
+        print("Thr sum ", sum(self.time))
         return { 'threads': self.threads,
                  'time': time_div / (sum(self.time) / self.qty),
                  'nodes': (sum(self.nodes) / self.qty) / nodes_div,
@@ -64,9 +66,8 @@ class WlExec:
         return [x.compute(t, n) for x in self.execs.values()]
 
     def compute(self, t, n, threads):
-        return [self.execs[thr].compute(t, n) if thr in self.execs else
-            {'threads': thr, 'time': 0, 'nodes': 0, 'timestd': 0, 'nodesstd': 0}
-            for thr in threads]
+        thrs = [thr for thr in threads if thr in self.execs]
+        return (thrs, [self.execs[thr].compute(t, n) for thr in thrs])
 
 
 def find_avg_time_nodes(wls, threads=1):
@@ -75,24 +76,26 @@ def find_avg_time_nodes(wls, threads=1):
     return None
 
 
-def find_avg_baseline(file):
-    name_to_sum_qnty = {}
-    with open(file, newline='') as csvfile:
-        data = csv.DictReader(csvfile, fieldnames=['time', 'wl', 'nodes', 'threads'])
-        for row in data:
-            time = int(row['time'])
-            name = row['wl']
-            if not name or not name[0].isalpha():
+def find_avg_baseline(filename):
+    baseline = 'hmq4'
+    time_sum = 0
+    nodes_sum = 0
+    qty = 0
+    with open(filename, 'r', newline='') as csvfile:
+        reader = csv.DictReader(csvfile, fieldnames=['time', 'wl', 'nodes', 'threads'])
+        for row in reader:
+            try:
+                time = int(row['time'])
+                name = row['wl']
+                nodes = int(row['nodes'])
+            except ValueError:
                 print("Invalid row: ", row)
                 continue
-            cur_sum = time
-            cur_qty = 1
-            if name in name_to_sum_qnty:
-                (prev_sum, prev_qty) = name_to_sum_qnty[name]
-                cur_sum += prev_sum
-                cur_qty += prev_qty
-            name_to_sum_qnty[name] = (cur_sum, cur_qty)
-    return {k: int(v[0] / v[1]) for k, v in name_to_sum_qnty.items()}['hmq4']
+            if name == baseline:
+                time_sum += time
+                nodes_sum += nodes
+                qty += 1
+    return time_sum / qty, nodes_sum / qty
 
 
 
@@ -100,43 +103,44 @@ def parse_results(names_and_files, baseline_file, threads):
     execs = []
     for name, file in names_and_files:
         print(file)
-        rows = np.recfromcsv(file, delimiter=',', case_sensitive=False, deletechars='', encoding='utf-8')
         wl_exec = None
-        for row in rows:
-            try:
-                time = int(row[0])
-                wl = row[1]
-                nodes = int(row[2])
-                threads = int(row[3])
-                if not wl or not wl[0].isalpha():
+        with open(file, 'r', newline='') as csvfile:
+            reader = csv.DictReader(csvfile, fieldnames=['time', 'wl', 'nodes', 'threads'])
+            for row in reader:
+                try:
+                    time = int(row['time'])
+                    wl = row['wl']
+                    nodes = int(row['nodes'])
+                    thrs = int(row['threads'])
+                    if not wl or not wl[0].isalpha():
+                        print("Invalid row: ", row)
+                        continue
+                except ValueError:
                     print("Invalid row: ", row)
                     continue
-            except ValueError:
-                print("Invalid row: ", row)
-                continue
-            if wl_exec is None:
-                wl_exec = WlExec(wl)
-            elif wl_exec.name != wl:
-                raise "Execution file should contain only one worklist"
-            wl.add_exec(threads, time, nodes)
-        execs.append(name, wl_exec)
+                if wl_exec is None:
+                    wl_exec = WlExec(wl)
+                elif wl_exec.name != wl:
+                    raise "Execution file should contain only one worklist"
+                wl_exec.add_exec(thrs, time, nodes)
+        execs.append((name, wl_exec))
     (t, n) = find_avg_baseline(baseline_file)
     return [(name, wl_exec.compute(t, n, threads)) for (name, wl_exec) in execs]
 
 cool_cols = [
+    '#ff7f00',
     '#386cb0',
     '#67a9cf',
-    '#ff7f00',
     '#0020a3',
     '#33a02c',
     '#01665e',
     '#998ec3',
     '#ae362b',
     '#a6cee3',
+    '#386cb0',
 ]
 
-
-markers = ['o', '^', 'v', 'x',  '*']
+markers = ['o', '^', 'v', 'x', '*']
 linestyles = ['--', '-.']
 
 lines = []
@@ -148,7 +152,10 @@ def draw_plot_for_wls(time, wl_files, ax, threads, baseline_file):
     ax.xaxis.set_major_formatter(tckr.FormatStrFormatter('%0.f'))
     ax.grid(linewidth='0.5', color='lightgray')
     results = parse_results(wl_files, baseline_file, threads)
-    for nice_name, result, i in enumerate(results):
+    for i, res in enumerate(results):
+        nice_name = res[0]
+        valid_thrs = res[1][0]
+        result = res[1][1]
         if time:
             print(nice_name)
         if time:
@@ -160,8 +167,8 @@ def draw_plot_for_wls(time, wl_files, ax, threads, baseline_file):
             print(x)
         cur_col = cool_cols[i % len(cool_cols)]
         line = linestyles[i % len(linestyles)]
-        ax.errorbar(threads, x, yerr=err, color=cur_col,
-                    markersize=6, marker=markers[i % len(markers)], label=name, linestyle=line, lw=1.2)
+        ax.errorbar(valid_thrs, x, yerr=err, color=cur_col,
+                    markersize=6, marker=markers[i % len(markers)], label=nice_name, linestyle=line, lw=1.2)
         i += 1
     plt.ylim(0)
     ax.axhline(y=1, c='#696969')

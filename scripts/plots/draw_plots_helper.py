@@ -27,12 +27,12 @@ def get_files_by_algo(algo, graph):
 def get_baseline_file(algo, graph):
     mq_root = os.environ['MQ_ROOT']
     cpu = os.environ['CPU']
-    hm_threads = os.environ['HM_THREADS']
-    return f'{mq_root}/experiments/{cpu}/baseline/{algo}_{graph}_base_{hm_threads}'
+    # hm_threads = os.environ['HM_THREADS']
+    return f'{mq_root}/experiments/{cpu}/baseline/{algo}_{graph}_base_1'
 
 
 def draw_plots_for_appendix(name, algo_graph,
-                            titles, threads, time_max, nodes_max, time_ticks,
+                            titles, threads, nodes_max, time_ticks,
                             nodes_ticks,fig_height=2, fig_width=2.1,
                             nodes_min=0, with_legend=True, col_num=3
                             ):
@@ -51,17 +51,17 @@ def draw_plots_for_appendix(name, algo_graph,
         nodes_subpl = fig.add_subplot(grid[2, plot_id], yticklabels=[])
         axarr_t = np.append(axarr_t, [time_subpl])
         axarr_n = np.append(axarr_n, [nodes_subpl])
-        draw_plot_for_wls(True,  get_files_by_algo(algo, graph), time_subpl, threads, get_files_by_algo(algo, graph))
-        draw_plot_for_wls(False, get_files_by_algo(algo, graph), nodes_subpl, threads, get_files_by_algo(algo, graph))
+        draw_plot_for_wls(True,  get_files_by_algo(algo, graph), time_subpl, threads, get_baseline_file(algo, graph))
+        draw_plot_for_wls(False, get_files_by_algo(algo, graph), nodes_subpl, threads, get_baseline_file(algo, graph))
         time_subpl.set_ylim(ymin=0)
         time_subpl.set_title(titles[plot_id])
         time_subpl.set_xticks(threads)
         nodes_subpl.set_xticks(threads)
         time_subpl.set_xticklabels([''] * len(threads))
-        xt = [ '' if i % 2 == 1 else str(x) for x, i in enumerate(threads)]
+        xt = [ '' if i % 2 == 1 else str(x) for i, x in enumerate(threads)]
         nodes_subpl.set_xticklabels(xt)
         nodes_subpl.set_ylim(ymin=nodes_min, ymax=nodes_max)
-        time_subpl.set_ylim(ymin=0, ymax=time_max)
+        # time_subpl.set_ylim(ymin=0, ymax=time_max)
         if not with_legend:
             nodes_subpl.set_xlabel("Threads")
 

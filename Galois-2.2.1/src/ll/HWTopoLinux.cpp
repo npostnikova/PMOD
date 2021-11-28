@@ -175,7 +175,7 @@ std::vector<int> parseCPUSet() {
   if (!f) {
     free(path2);
     free(path);
-    GALOIS_SYS_DIE("failed opening ", path2);
+//    GALOIS_SYS_DIE("failed opening ", path2);
     return vals; //Shouldn't get here
   }
 

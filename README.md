@@ -57,6 +57,21 @@ $MQ_ROOT/run_experiments.sh
 ```
 See `README.md` in your image for details.
 
+### If you cannot pull an image
+You can build it by yourself! If you want to use the code from github and
+ `npostnikova/mq-based-schedulers:datasets` which contains
+all the datasets prepared, build `Dockerfile` in `mq-based-schedulers_$tag.zip`.
+
+Alternatively, 
+* To use srcs from `mq-based-schedulers_$tag.zip` you can build `Dockerfile_without_git`
+outside `mq-based-schedulers/`. This will still use `npostnikova/mq-based-schedulers:datasets`.
+* To avoid using datasets image, build `Dockerfile_all_from_src` and run experiments this way:
+    ```
+    $MQ_ROOT/compile.sh
+    $MQ_ROOT/scripts/datasets.sh
+    $MQ_ROOT/scripts/run_all_experiments.sh 2>&1 | tee $MQ_ROOT/logs.txt
+    ``` 
+
 ## For those who DO NOT use images
 Good luck! You may want to use another branch which contains less experiments (see the image options). But please take a look at **this** `README` 
 anyway as branches for images specify how to set up `set_envs.sh` only.
@@ -90,6 +105,10 @@ It contains:
 * Baseline computation (for heatmaps and plots).
 * All-thread computation for all worklists above + SprayList and Swarm.
 
+```
+# Run experiments with logging.
+$MQ_ROOT/scripts/run_all_experiments.sh 2>&1 | tee $MQ_ROOT/logs.txt
+```
 > **_NOTE:_**  You can vary heatmap parameters as you want (i.e. change deltas for OBIM).
 > It will change the scope for selecting the optimal parameters for final plots.
 > However, drawing-heatmap scrips are not that flexible and you may need to change it accordingly.

@@ -1,0 +1,28 @@
+FROM ubuntu:20.04
+
+RUN apt update && \
+    apt upgrade -y
+
+RUN apt install nano                    -y
+RUN apt install wget                    -y
+RUN apt install apt-utils               -y
+
+RUN apt install cmake                   -y
+RUN apt install build-essential         -y
+RUN apt install libnuma-dev             -y
+RUN apt install libboost-all-dev        -y
+RUN apt install libpthread-stubs0-dev   -y
+
+RUN apt install python3.8               -y
+RUN apt install python3-pip             -y
+
+RUN pip install  'matplotlib<3.5'
+RUN pip install seaborn
+RUN pip install numpy
+
+ENV MQ_ROOT=/mq-based-schedulers/
+ENV GALOIS_HOME=/mq-based-schedulers/Galois-2.2.1/
+
+COPY mq-based-schedulers/ $MQ_ROOT
+
+ENTRYPOINT ["/bin/bash"]

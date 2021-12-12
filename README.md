@@ -160,6 +160,18 @@ Finally, results should have the following structure:
         * `*_base_$HM_THREADS`
         * `*_base_1`
     * `pictures/` — all plots
-        * `heatmaps/`
-        * `plots/`
-    
+        * `heatmaps/` — correspond to the Figures 3-14, 17-20
+        * `plots/` — correspond to the Figures 21-22   
+        
+### What can be tuned
+* `set_envs.sh` allows to select the amount of threads for executions, vary 
+heatmap parameters, or choose another C for baseline MultiQueue.
+* Other worklists can be added for execution:
+    * If they are not already, add worklists to benchmarks sources located in `$GALOIS_HOME/apps/$bench/*.cpp`
+    where `bench` is `bfs`, `sssp`, `boruvka`, `astar`.
+    * Add worklists to WLS array in `$MQ_ROOT/scripts/run_other_worklists.sh`
+    * Add path to execution results in `$MQ_ROOT/scripts/plots/draw_plots_helper.py`
+* To add other graphs:
+    * Create a script in `$MQ_ROOT/scripts/single_run/${benc}_$graph.sh` similar 
+    to existing ones.
+    * Modify `$MQ_ROOT/scripts/run_wl_all_algo.sh` to include the graph.

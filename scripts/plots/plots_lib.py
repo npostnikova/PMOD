@@ -32,7 +32,14 @@ class ExecSum:
 
     def compute(self, time_div, nodes_div):
         if self.qty == 1:
-            print(f'Qty1 for threads {self.threads}')
+            print(f'Qty == 1 for threads {self.threads}')
+            return {
+                'threads': self.threads,
+                'time': time_div / self.time[0],
+                'nodes': self.nodes[0] / nodes_div,
+                'timestd': 0,
+                'nodesstd': 0
+            }
         return { 'threads': self.threads,
                  'time': time_div / (sum(self.time) / self.qty),
                  'nodes': (sum(self.nodes) / self.qty) / nodes_div,

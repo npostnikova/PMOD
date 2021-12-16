@@ -8,7 +8,9 @@ PLT_THREADS=(1 2 4 8 16 32 64 128)
 # How many times worklist for each thread should be executed.
 PLT_RUNS=5
 
-############ SHOULDN'T CHANGE THIS ##############
+############ DON'T CHANGE BELOW ##############
+
+
 ################################################
 # To store experiments for various CPUs in different locations.
 export CPU=sample
@@ -23,6 +25,7 @@ export PYTHON_EXPERIMENTS=python3.8
 
 # Number of threads to count heatmaps.
 # We use the number logical CPUs (hyperthreading included).
+# DON'T CHANGE
 export HM_THREADS=128
 
 # How many times one set of parameters is run.

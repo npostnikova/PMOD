@@ -43,7 +43,12 @@ DELTA_SMALL_MAX=10
 DELTA_LARGE_MIN=10
 DELTA_LARGE_MAX=18
 
-############ SHOULDN'T CHANGE THIS ##############
+
+
+
+############ DON'T CHANGE FIELDS BELOW ##############
+
+
 ################################################
 # To store experiments for various CPUs in different locations.
 export CPU=sample
@@ -58,6 +63,7 @@ export PYTHON_EXPERIMENTS=python3.8
 
 # Number of threads to count heatmaps.
 # We use the number logical CPUs (hyperthreading included).
+# DO NOT CHANGE!!
 export HM_THREADS=128
 
 # Values for the first and second heatmap parameters (y and x axis).

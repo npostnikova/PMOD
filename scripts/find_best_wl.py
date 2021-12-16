@@ -11,7 +11,7 @@ def find_avg_for_each(file):
             time = int(row['time'])
             name = row['wl']
             if not name or not name[0].isalpha():
-                print("Invalid row: ", row)
+                # print("Invalid row: ", row)
                 continue
             cur_sum = time
             cur_qty = 1

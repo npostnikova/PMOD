@@ -4,6 +4,7 @@ from  plots.draw_mq_heatmap_helper import draw_hm
 import os
 
 threads = os.environ['HM_THREADS']
+threads_obim = os.environ['HM_THREADS']
 mq_root = os.environ['MQ_ROOT']
 cpu = os.environ['CPU']
 hm_prefix = f'{mq_root}/experiments/{cpu}/'

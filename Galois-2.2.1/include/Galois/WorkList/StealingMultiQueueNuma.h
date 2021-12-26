@@ -3,9 +3,9 @@
 
 #include <atomic>
 #include <cstdlib>
+#include <memory>
 #include <vector>
 
-#include "StealingQueue.h"
 #include "StealingMultiQueue.h"
 
 

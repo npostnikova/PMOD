@@ -3,6 +3,7 @@
 
 #include <atomic>
 #include <cstdlib>
+#include <memory>
 #include <vector>
 
 namespace Galois {

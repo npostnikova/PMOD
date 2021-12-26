@@ -3,8 +3,8 @@
 
 #include <atomic>
 #include <cstdlib>
+#include <memory>
 #include <vector>
-//#include <filesystem>
 
 #include "StealingQueue.h"
 #include "Heap.h"

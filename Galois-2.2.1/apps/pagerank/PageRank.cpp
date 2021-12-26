@@ -858,13 +858,6 @@ struct AsyncPri{
 //                     Process(graph, tolerance, amp), Galois::wl<SL>());*/
 //    std::cout<< "here2\n";
 
-
-    typedef AdaptiveStealingMultiQueue<WorkItem, Comparer> ASMQ;
-    if (wl == "adap-smq")
-      Galois::for_each(boost::make_transform_iterator(graph.begin(), std::ref(fn)),
-                     boost::make_transform_iterator(graph.end(), std::ref(fn)),
-                     Process(graph, tolerance, amp), Galois::wl<ASMQ>());
-
   }
 
   void verify(Graph& graph, PRTy tolerance) {

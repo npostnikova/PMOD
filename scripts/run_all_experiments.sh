@@ -75,16 +75,16 @@ $MQ_ROOT/scripts/run_wl_all_algo.sh "hmq$MQ_C" 1 $HM_RUNS "base_1"
 # Running best worklists on different amount of threads (specified in PLT_THREADS).
 
 echo "Running best SMQ combinations on all threads"
-$MQ_ROOT/scripts/run_best_smq.sh smq
+$MQ_ROOT/scripts/run_best_wl.sh smq
 
 echo "Running best SkipList SMQ combinations on all threads"
-$MQ_ROOT/scripts/run_best_smq.sh slsmq
+$MQ_ROOT/scripts/run_best_wl.sh slsmq
 
 echo "Running best OBIM combinations on all threads"
-$MQ_ROOT/scripts/run_best_smq.sh obim
+$MQ_ROOT/scripts/run_best_wl.sh obim
 
 echo "Running best PMOD combinations on all threads"
-$MQ_ROOT/scripts/run_best_smq.sh pmod
+$MQ_ROOT/scripts/run_best_wl.sh pmod
 
 echo "Running best MQ variants on all threads"
 $MQ_ROOT/scripts/run_best_mq.sh

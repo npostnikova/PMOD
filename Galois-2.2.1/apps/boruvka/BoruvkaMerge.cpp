@@ -524,8 +524,6 @@ long long runBodyParallel() {
   typedef StealingMultiQueue<element_t, Comparer, 8, 8, true> smq_default;
   if (wl == "smq_default") RUN_WL(smq_default);
 
-#include "Galois/WorkList/experiment_declarations.h"
-
 #endif
    T.stop();
 

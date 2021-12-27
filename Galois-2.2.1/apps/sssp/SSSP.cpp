@@ -517,6 +517,10 @@ struct AsyncAlgo {
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<ADAPOBIM>());
 
 #define RUN_WL(WL) Galois::for_each_local(initial, Process(this, graph), Galois::wl<WL>())
+
+#define priority_t Dist
+#define element_t UpdateRequest
+    typedef UpdateRequestIndexer<UpdateRequest> Indexer;
 #include "Experiments.h"
 
 //    else if (wl == "slobim")
@@ -549,7 +553,7 @@ struct AsyncAlgo {
 //      Galois::for_each_local(initial, Process(this, graph), Galois::wl<OBIM_GLOB>());
 //    else if (wl == "obim-glob-nochunk")
 //      Galois::for_each_local(initial, Process(this, graph), Galois::wl<OBIM_GLOB_NOCHUNK>());
-    else if (wl == "skiplist")
+    if (wl == "skiplist")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<GPQ>());
     else if (wl == "spraylist")
       Galois::for_each_local(initial, ProcessWithBreaks(this, graph), Galois::wl<SL>());
@@ -603,14 +607,9 @@ struct AsyncAlgo {
     if (worklistname == "pq")
       Galois::for_each_local(initial, Process(this, graph), Galois::wl<USUAL_PQ>());
 
-#define priority_t Dist
-#define element_t UpdateRequest
-
     typedef StealingMultiQueue<element_t, Comparer, 8, 8, true> smq_default;
     if (wl == "smq_default") RUN_WL(smq_default);
 
-    typedef UpdateRequestIndexer<UpdateRequest> Indexer;
-#include "Galois/WorkList/experiment_declarations.h"
   }
 };
 

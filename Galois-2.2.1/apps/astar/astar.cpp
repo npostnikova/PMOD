@@ -676,6 +676,11 @@ struct AsyncAlgo {
     }
 
 #define RUN_WL(WL) Galois::for_each_local(initial, Process(this, graph), Galois::wl<WL>())
+
+#define priority_t Dist
+#define element_t UpdateRequest
+    typedef UpdateRequestIndexer<UpdateRequest> Indexer;
+
 #include "Experiments.h"
 
     if (wl == "obim")
@@ -763,15 +768,9 @@ struct AsyncAlgo {
 //    else
 //      std::cerr << "No work list!" << "\n";
 
-
-#define priority_t Dist
-#define element_t UpdateRequest
-
     typedef StealingMultiQueue<element_t, Comparer, 8, 8, true> smq_default;
     if (wl == "smq_default") RUN_WL(smq_default);
 
-    typedef UpdateRequestIndexer<UpdateRequest> Indexer;
-#include "Galois/WorkList/experiment_declarations.h"
 
   }
 };

@@ -479,7 +479,10 @@ struct AsyncAlgo {
     std::string wl = worklistname;
 
 #define RUN_WL(WL) Galois::for_each(WorkItem(source, 1), Process(graph), Galois::wl<WL>())
+#define element_t WorkItem
+#define priority_t Dist
 #include "Experiments.h"
+
     if (!mqSuff.empty()) {
       mqSuff = "_" + mqSuff;
     }
@@ -575,14 +578,9 @@ struct AsyncAlgo {
 //    else
 //      std::cerr << "No work list!" << "\n";
 
-#define priority_t Dist
-#define element_t WorkItem
 
     typedef StealingMultiQueue<element_t, Comparer, 8, 8, true> smq_default;
     if (wl == "smq_default") RUN_WL(smq_default);
-
-#include "Galois/WorkList/experiment_declarations.h"
-
   }
 };
 

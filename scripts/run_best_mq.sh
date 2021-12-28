@@ -6,16 +6,6 @@ t=$HM_THREADS
 times=$PLT_RUNS
 pyscript=$MQ_ROOT/scripts/find_best_wl.py
 for mq in mqpl; do # mqpp mqpl mqlp mqll; do
-#  dir=''
-#  if [ $mq == "mqpp" ]; then
-#    dir="probprob"
-#  elif [ $mq == "mqpl" ]; then
-#    dir="problocal"
-#  elif [ $mq == "mqlp" ]; then
-#    dir="localprob"
-#  elif [ $mq == "mqll" ]; then
-#    dir="locallocal"
-#  fi
   hm_path=$MQ_ROOT/experiments/$CPU/heatmaps/${mq}_heatmaps/
   plt_dir=$MQ_ROOT/experiments/$CPU/plots/${mq}_plots/
   mkdir -p $plt_dir

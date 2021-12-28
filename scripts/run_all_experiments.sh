@@ -6,16 +6,16 @@ source $MQ_ROOT/set_envs.sh
 # Running best worklists on different amount of threads (specified in PLT_THREADS).
 
 echo "Running best SMQ combinations on all threads"
-$MQ_ROOT/scripts/run_best_smq.sh smq
+$MQ_ROOT/scripts/run_best_wl.sh smq
 
 echo "Running best SkipList SMQ combinations on all threads"
-$MQ_ROOT/scripts/run_best_smq.sh slsmq
+$MQ_ROOT/scripts/run_best_wl.sh slsmq
 
 echo "Running best OBIM combinations on all threads"
-$MQ_ROOT/scripts/run_best_smq.sh obim
+$MQ_ROOT/scripts/run_best_wl.sh obim
 
 echo "Running best PMOD combinations on all threads"
-$MQ_ROOT/scripts/run_best_smq.sh pmod
+$MQ_ROOT/scripts/run_best_wl.sh pmod
 
 echo "Running best MQ variants on all threads"
 echo "Warning! Runs MQPL only, please change run_best_mq script if itsn't what you need"
@@ -24,6 +24,8 @@ $MQ_ROOT/scripts/run_best_mq.sh
 echo "Running defult SMQ, OBIM, PMOD and other worklists"
 $MQ_ROOT/scripts/run_other_worklists.sh
 
+echo "Running best kLSM combinations on all threads"
+$MQ_ROOT/scripts/run_best_wl.sh klsm
 
 ################## DRAWING PICTURES ##################
 pic_dir=$MQ_ROOT/experiments/$CPU/pictures

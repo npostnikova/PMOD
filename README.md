@@ -27,7 +27,7 @@ Execution info (such as time & amount of work for worklist) is located in `$MQ_R
 
 Plots themselves can be found in `$MQ_ROOT/experiments/sample/pictures/plots/`.
 
-Logs are recorded to `logs.txt` file.
+Logs are recorded to `$MQ_ROOT/logs.txt` file.
 
 To draw heatmaps from the pre-loaded data, you can use:
 ```

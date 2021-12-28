@@ -2,6 +2,11 @@
 
 source $MQ_ROOT/set_envs.sh
 
+# Delta shift values.
+DELTAS=( 0 2 4 8 10 12 14 16 18 )
+# Chunk sizes.
+CHUNK_SIZE=( 32 64 128 256 512 )
+
 # Supported algorithms
 ALGOS=( "bfs" "sssp" "boruvka" "astar" )
 

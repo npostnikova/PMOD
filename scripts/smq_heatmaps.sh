@@ -2,8 +2,8 @@
 
 source $MQ_ROOT/set_envs.sh
 
-PROBS=("${HM_FST[@]}")
-STEAL_SIZES=("${HM_SND[@]}")
+PROBS=( 1 2 4 8 16 32 64 128 256 512 1024 )
+STEAL_SIZES=( 1 2 4 8 16 32 64 128 256 512 1024 )
 # Supported algorithms
 ALGOS=( "bfs" "sssp" "boruvka" "astar" )
 

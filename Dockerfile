@@ -1,7 +1,7 @@
 FROM npostnikova/mq-based-schedulers:datasets
 
-RUN apt update && \
-    apt upgrade -y
+RUN apt-get update && \
+    apt-get upgrade -y
 
 ENV MQ_ROOT=/mq-based-schedulers/
 ENV GALOIS_HOME=/mq-based-schedulers/Galois-2.2.1/

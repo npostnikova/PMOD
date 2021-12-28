@@ -3,5 +3,5 @@
 # !! Mustn't exceed the number of CPUs. !!
 PLT_THREADS=(1 2 4 8 16 32 64 128)
 
-# How many times worklist for each thread should be executed.
+# How many times a worklist should be executed for each thread .
 PLT_RUNS=5

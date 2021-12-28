@@ -144,9 +144,10 @@ cool_cols = [
     '#ae362b',
     '#a6cee3',
     '#386cb0',
+    '#cba3c5',
 ]
 
-markers = ['o', '^', 'v', 'x', '*']
+markers = ['o', '^', 'v', 'x', '*', 'o', '^', 'v', 'x', '*', 'x']
 linestyles = ['--', '-.']
 
 lines = []

@@ -13,4 +13,6 @@ RUN git clone https://github.com/npostnikova/mq-based-schedulers
 
 RUN cd $MQ_ROOT && git fetch --all && git switch extra-slow-experiments
 
+WORKDIR $MQ_ROOT
+
 ENTRYPOINT ["/bin/bash"]

@@ -9,12 +9,14 @@ from plots.plots_lib import draw_plot_for_wls
 def get_files_by_algo(algo, graph):
     mq_root = os.environ['MQ_ROOT']
     cpu = os.environ['CPU']
+    nodes = os.environ['NUMA_NODES']
     path_prefix = f'{mq_root}/experiments/{cpu}/plots/'
     return [
         ('SMQ (Tuned)', f'{path_prefix}/smq_plots/{algo}_{graph}_smq'),
         ('SMQ (Default)', f'{path_prefix}/smq_plots/{algo}_{graph}_smq_default'),
         ('SkipList SMQ (Tuned)', f'{path_prefix}/slsmq_plots/{algo}_{graph}_slsmq'),
-        ('MQ Optimized (Tuned)', f'{path_prefix}/mqpl_plots/{algo}_{graph}_mqpl'),
+        ('MQ Optimized & NUMA (Tuned)', f'{path_prefix}/mqpl_plots/{algo}_{graph}_mqpl_numa')
+          if nodes == 2 or nodes == 4 else ('MQ Optimized (Tuned)', f'{path_prefix}/mqpl_plots/{algo}_{graph}_mqpl'),
         ('OBIM (Tuned)', f'{path_prefix}/obim_plots/{algo}_{graph}_obim'),
         ('OBIM (Default)', f'{path_prefix}/obim_plots/{algo}_{graph}_obim_default'),
         ('PMOD (Tuned)', f'{path_prefix}/pmod_plots/{algo}_{graph}_pmod'),

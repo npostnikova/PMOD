@@ -23,7 +23,7 @@ def get_files_by_algo(algo, graph):
         ('PMOD (Default)', f'{path_prefix}/pmod_plots/{algo}_{graph}_pmod_default'),
         ('RELD', f'{path_prefix}/other_plots/{algo}_{graph}_heapswarm'),
         ('SprayList', f'{path_prefix}/other_plots/{algo}_{graph}_spraylist'),
-        ('k-LSM (Tuned)', f'{path_prefix}/klsm_plots/{algo}_{graph}_klsm'),
+        # ('k-LSM (Tuned)', f'{path_prefix}/klsm_plots/{algo}_{graph}_klsm'),
         # ('Classic MQ', f'{path_prefix}/other_plots/{algo}_{graph}_hmq4'),
     ]
 

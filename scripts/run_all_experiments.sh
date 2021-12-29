@@ -48,8 +48,8 @@ run_hm obim_heatmaps run_obim_hm.sh
 echo "Running PMOD heatmaps"
 run_hm pmod_heatmaps run_pmod_hm.sh
 
-echo "Running kLSM params"
-run_hm klsm_heatmaps run_klsm_hm.sh
+#echo "Running kLSM params"
+#run_hm klsm_heatmaps run_klsm_hm.sh
 
 
 ################## BASELINE ##################
@@ -96,8 +96,8 @@ $MQ_ROOT/scripts/run_best_mq.sh
 echo "Running defult SMQ, OBIM, PMOD and other worklists"
 $MQ_ROOT/scripts/run_other_worklists.sh
 
-echo "Running best kLSM combinations on all threads"
-$MQ_ROOT/scripts/run_best_wl.sh klsm
+#echo "Running best kLSM combinations on all threads"
+#$MQ_ROOT/scripts/run_best_wl.sh klsm
 
 ################## DRAWING PICTURES ##################
 pic_dir=$MQ_ROOT/experiments/$CPU/pictures

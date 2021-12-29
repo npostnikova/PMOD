@@ -1,9 +1,9 @@
-# MQ-Based Schedulers: Extra Slow Experiments
+# MQ-Based Schedulers: Slow Experiments
 Brave adventurer, good luck! I warned you: it's going to be really slow.
 
 You are going to compute heatmaps for SMQ, SkipList SMQ, MQ Optimized (TL for `insert()`
-and B for `delete()`), OBIM & PMOD. After that, you will run all these worklist on 
-all specified threads.
+and B for `delete()`), OBIM & PMOD. Also, you will vary parameters for k-LSM.
+After that, you will run all these worklist on all specified threads.
 
 ```bash
 nano $MQ_ROOT/set_envs.sh  # Please update if needed!
@@ -15,7 +15,7 @@ See details below.
 It is the most important step. 
 1. Please specify `PLT_THREADS` 
 which sets on which threads worklists should be executed for the final plot. Normally, we take 
-powers of 2 til the number of logical CPUs.
+powers of 2 til the number of logical CPUs. **Mustn't** exceed the number of logical CPUs!!
 
 2. Specify `HM_THREADS`. It's the amount of threads for heatmaps.
 Should be the number of logical CPUs.
@@ -29,14 +29,17 @@ you can change it as well.
 5. You can vary heatmap parameters (such as `delta`, `chunk_size` for OBIM and 
 `steal_size` & `steal_prob` for SMQ). It will affect the scope from which the best params are selected.
 
-> **_NOTE*:_**  Changing parameters will work fine for final plots. However,
+> **_NOTE:_**  Changing parameters will work fine for final plots. However,
 > drawing heatmap scripts do not support this yet (so you miss a nice heatmap picture). Anyway, I can help with that :)
+>
 > Btw, if you just remove some vals (i.e. using `deltas = (0 2 8)`), you should be able to use existing drawing scripts, having
 > zeros for removed values.
 
 
 ## Run `run_experiments.sh`  
 This executes all required experiments to draw plots.
-Execution info (such as time & amount of work for worklist) is located in `$MQ_ROOT/experiments/sample/plots/`.
-Heatmap executions for OBIM/PMOD are located in `$MQ_ROOT/experiments/sample/heatmaps/` in `obim_heatmaps` and `pmod_heatmaps` folders.
-Plots themselves can be found in `$MQ_ROOT/experiments/sample/pictures/`.
+Execution info (such as time & amount of work for worklist) is located in `$MQ_ROOT/experiments/$CPU/plots/`.
+Heatmap executions are located in `$MQ_ROOT/experiments/$CPU/heatmaps/`.
+
+Plots themselves can be found in `$MQ_ROOT/experiments/sample/pictures/`. To take a look at sample figures
+[follow the link](https://github.com/npostnikova/mq-based-schedulers/tree/master/experiments/sample/pictures).

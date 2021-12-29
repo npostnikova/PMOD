@@ -26,12 +26,9 @@ export MQ_C=4
 # Number of CPUs per NUMA socket.
 export SOCKET_SIZE=$(( $MAX_CPU_NUM / $NUMA_NODES ))
 
-# The version of python to use for scripts. Python3.8 is pre-install in the image.
-export PYTHON_EXPERIMENTS=python3.8
-
 ######### PLOTS #########
 
-# How many times worklist for each thread should be executed.
+# How many times a worklist should be executed for each thread.
 PLT_RUNS=10
 
 ######### HEATMAPS #########

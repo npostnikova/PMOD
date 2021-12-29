@@ -21,7 +21,10 @@ powers of 2 til the number of logical CPUs. It **mustn't** exceed the number of 
 2. Adjust `PLT_RUNS` if needed. For plots you can see in the paper, we used 10. 
 However, to make the script "super fast" you can use less.
 
-> **_NOTE:_** To run `k-LSM`, uncomment lines `27-28` in `$MQ_ROOT/scripts/run_all_experiments.sh` and the line `24` in `$MQ_ROOT/scripts/plots/draw_plots_helper.py`. But it's incredibly slow for some benchmarks on small amount of threads.
+> **_NOTE:_** `k-LSM` was **extremely** slow for some benchmarks on the small amount of threads (i.e. BFS WEB for 1 thread)
+> so I commented it out. If you want to run `k-LSM` anyway, uncomment lines `27-28` in 
+>`$MQ_ROOT/scripts/run_all_experiments.sh` and the line `24` in 
+> `$MQ_ROOT/scripts/plots/draw_plots_helper.py`.
 
 
 ## Run `run_experiments.sh`  

@@ -1,14 +1,14 @@
-lj=$MQ_ROOT/datasets/soc-LiveJournal1.bin
-lj_tr=$MQ_ROOT/datasets/soc-LiveJournal1.bin_transpose
-ctr=$MQ_ROOT/datasets/USA-road-dCTR.bin
-usa=$MQ_ROOT/datasets/USA-road-dUSA.bin
-usa_coord=$MQ_ROOT/datasets/USA-road-d.USA.co
-web=$MQ_ROOT/datasets/GAP-web.bin
-web_tr=$MQ_ROOT/datasets/GAP-web.bin_transpose
-twi=$MQ_ROOT/datasets/GAP-twitter.bin
-twi_tr=$MQ_ROOT/datasets/GAP-twitter.bin_transpose
-west=$MQ_ROOT/datasets/USA-road-dW.bin
-west_coord=$MQ_ROOT/datasets/USA-road-d.W.co
+lj=$DATASETS_DIR/soc-LiveJournal1.bin
+lj_tr=$DATASETS_DIR/soc-LiveJournal1.bin_transpose
+ctr=$DATASETS_DIR/USA-road-dCTR.bin
+usa=$DATASETS_DIR/USA-road-dUSA.bin
+usa_coord=$DATASETS_DIR/USA-road-d.USA.co
+web=$DATASETS_DIR/GAP-web.bin
+web_tr=$DATASETS_DIR/GAP-web.bin_transpose
+twi=$DATASETS_DIR/GAP-twitter.bin
+twi_tr=$DATASETS_DIR/GAP-twitter.bin_transpose
+west=$DATASETS_DIR/USA-road-dW.bin
+west_coord=$DATASETS_DIR/USA-road-d.W.co
 
 bfs=$GALOIS_HOME/build/apps/bfs/bfs
 sssp=$GALOIS_HOME/build/apps/sssp/sssp

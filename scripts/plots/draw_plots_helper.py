@@ -12,7 +12,8 @@ def get_files_by_algo(algo, graph):
     nodes = os.environ['NUMA_NODES']
     path_prefix = f'{mq_root}/experiments/{cpu}/plots/'
     return [
-        ('SMQ (Tuned)', f'{path_prefix}/smq_plots/{algo}_{graph}_smq'),
+        ('SMQ & NUMA (Tuned)', f'{path_prefix}/smq_plots/{algo}_{graph}_smq_numa')
+          if nodes == '2' or nodes == '4' else ('SMQ (Tuned)', f'{path_prefix}/smq_plots/{algo}_{graph}_smq'),
         ('SMQ (Default)', f'{path_prefix}/smq_plots/{algo}_{graph}_smq_default'),
         ('SkipList SMQ (Tuned)', f'{path_prefix}/slsmq_plots/{algo}_{graph}_slsmq'),
         ('MQ Optimized & NUMA (Tuned)', f'{path_prefix}/mqpl_plots/{algo}_{graph}_mqpl_numa')

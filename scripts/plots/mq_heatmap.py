@@ -156,5 +156,6 @@ def draw_heatmap(
     f.write("\\label{table:todo}\n")
     f.write("\\end{table}\n")
     f.close()
+    plt.subplots_adjust(hspace=0)
     plt.show()
     fig.savefig(result_image_name + ".png", bbox_inches="tight", transparent=True)

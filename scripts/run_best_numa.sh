@@ -22,13 +22,13 @@ cd $plt_dir/${wl}_plots
 for algo in sssp bfs; do
   for graph in usa twi web west; do
     wl_name=$( $PYTHON_EXPERIMENTS $MQ_ROOT/scripts/find_best_wl.py "${numa_path}/${algo}_${graph}_${wl}_numa" )
-    $MQ_ROOT/scripts/run_wl_n_times_all_threads.sh $algo $graph $wl_name $HM_RUNS  "${wl}_numa"
+    $MQ_ROOT/scripts/run_wl_n_times_all_threads.sh $algo $graph $wl_name $PLT_RUNS  "${wl}_numa"
   done
 done
 
 for algo in astar boruvka; do
   for graph in usa west; do
     wl_name=$( $PYTHON_EXPERIMENTS $MQ_ROOT/scripts/find_best_wl.py "${numa_path}/${algo}_${graph}_${wl}_numa" )
-    $MQ_ROOT/scripts/run_wl_n_times_all_threads.sh $algo $graph $wl_name $HM_RUNS  "${wl}_numa"
+    $MQ_ROOT/scripts/run_wl_n_times_all_threads.sh $algo $graph $wl_name $PLT_RUNS  "${wl}_numa"
   done
 done

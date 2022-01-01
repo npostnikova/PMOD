@@ -95,16 +95,18 @@ def draw_heatmap(
 
         axn[0][i].set_xticks(ticks)
         axn[1][i].set_xticks(ticks)
-        axn[0][i].set_xticklabels(labels_neg if x_prob else labels, rotation=30)
-        axn[1][i].set_xticklabels(labels_neg if x_prob else labels, rotation=30)
+        numbers_font_size = 11
+        axn[0][i].set_xticklabels(labels_neg if x_prob else labels, rotation=30, fontdict={'fontsize': numbers_font_size})
+        axn[1][i].set_xticklabels(labels_neg if x_prob else labels, rotation=30, fontdict={'fontsize': numbers_font_size})
 
 
         axn[0][i].set_yticks(ticks)
         axn[1][i].set_yticks(ticks)
         xl = labels_neg if y_prob else labels
         xl[-1] = None
-        axn[0][i].set_yticklabels(xl, rotation=30)
-        axn[1][i].set_yticklabels(xl, rotation=30)
+        axn[0][i].set_yticklabels(xl, rotation=30, fontdict={'fontsize': numbers_font_size})
+        axn[1][i].set_yticklabels(xl, rotation=30, fontdict={'fontsize': numbers_font_size})
+
 
         if special_xlabel is None:
             axn[0][i].set_xlabel('delete: $p_{change}$' if x_prob else 'delete: batch size', fontsize=12)

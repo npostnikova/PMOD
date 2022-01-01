@@ -25,8 +25,8 @@ def draw_heatmap(
     fig, axn = plt.subplots(2, len(input_files), sharey='row')
 
     file_mul = .32
-    cbar_ax = fig.add_axes([ file_mul * len(input_files) + .11, 0.73, .03, .35])
-    cbar_ax2 = fig.add_axes([ file_mul * len(input_files) + .11, 0.17, .03, .35])
+    cbar_ax = fig.add_axes([ file_mul * len(input_files) + .11, 0.65, .03, .35])
+    cbar_ax2 = fig.add_axes([ file_mul * len(input_files) + .11, 0.1, .03, .35])
 
 
     ticks = [0.5, 2.5, 4.5, 6.5, 8.5, 10.5]
@@ -66,7 +66,7 @@ def draw_heatmap(
 
 
         print(titles[i] + ": {" + str(2 ** max_t_id_j) + ", " + str(2 **max_t_id_i) + "} " + str(hm[max_t_id_i][max_t_id_j]))
-        fmt = lambda x,pos: '{:.2f}'.format(x)
+        fmt = lambda x, pos: '{:.1f}'.format(round(x, 1))
 
         thm = sns.heatmap(hm, ax=axn[0][i], center=1, cmap=cmap,
                           vmin=min_t, vmax=max_t,
@@ -120,7 +120,7 @@ def draw_heatmap(
     fig.axes[-2].yaxis.label.set_size(15)
     for i in range(0, len(input_files)):
         axn[0][i].set_title(titles[i], fontsize=13, pad=17)
-    fig.tight_layout(rect=[0, 0, len(input_files) * file_mul + .1, 1.3])
+    fig.tight_layout(rect=[0, 0, len(input_files) * file_mul + .1, 1.15], pad=0)
 
 
     if special_ylabel is None:

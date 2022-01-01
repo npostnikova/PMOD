@@ -12,12 +12,16 @@ sudo apt-get install libnuma-dev -y
 sudo apt-get install libpthread-stubs0-dev -y
 sudo apt-get install libboost-all-dev -y
 sudo apt-get install python3.8 -y
+sudo apt-get install python3-pip             -y
 sudo apt-get install wget -y
 sudo apt-get update
 
-pip install matplotlib
+pip install 'matplotlib<3.5'
 pip install seaborn
 pip install numpy
+
+# Update the configuration if needed.
+nano $MQ_ROOT/set_envs.sh
 
 # Compile the project.
 chmod +x *.sh

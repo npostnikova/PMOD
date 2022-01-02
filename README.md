@@ -11,7 +11,7 @@ The implementation of the designed priority schedulers can be found in
 ## Using an image
 We provide images that contain all the dependencies and datasets. Images can be pulled from
 [npostnikova/mq-based-schedulers](https://hub.docker.com/repository/docker/npostnikova/mq-based-schedulers) repository,
-or downloaded from [Zenodo](https://zenodo.org/record/5810743).
+or downloaded from [Zenodo](https://zenodo.org/record/5813302).
 
 #### 1. Select an image
 As running **all** the experiments takes a very long time, we provide different image options:
@@ -47,7 +47,7 @@ We provide two options for loading the image.
 1) Download the image from the paper artifacts:
     ```
     file=mq-based-schedulers_${tag}.tar.gz
-    wget -c https://zenodo.org/record/5810743/files/$file
+    wget -c https://zenodo.org/record/5813302/files/$file
     sudo docker load -i $file
     ```
 2) Pull the image from the Docker Hub:

@@ -158,5 +158,5 @@ Finally, execution results should have the following structure:
         * `*_base_$HM_THREADS`
         * `*_base_1`
     * `pictures/` — all plots
-        * `heatmaps/` — corresponds to the Figures 3-14, 17-20
-        * `plots/` — corresponds to the Figures 21-22   
+        * `heatmaps/` — corresponds to the Figures 1, 2, and other heatmaps from appendix
+        * `plots/` — corresponds to the Figures 3, 4 

@@ -103,7 +103,6 @@ def draw_heatmap(
         axn[0][i].set_yticks(ticks)
         axn[1][i].set_yticks(ticks)
         xl = labels_neg if y_prob else labels
-        xl[-1] = None
         axn[0][i].set_yticklabels(xl, rotation=30, fontdict={'fontsize': numbers_font_size})
         axn[1][i].set_yticklabels(xl, rotation=30, fontdict={'fontsize': numbers_font_size})
 
